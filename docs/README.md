@@ -1,7 +1,7 @@
 ---
 home: true
 title: Home
-heroImage: https://vuejs.press/images/hero.png
+heroImage: https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/isf_view.png
 actions:
   - text: Get Started
     link: /get-started.html
@@ -22,6 +22,6 @@ features:
 footer: MIT Licensed | Copyright © 2018-present VuePress Community
 ---
 
-If you want to know the latest development version of the source code, you can visit [InspireFace-Dev](https://github.com/HyperInspire/InspireFace) to see the latest developments
+If you want to know the latest development version of the source code, you can visit [InspireFace-Develop](https://github.com/HyperInspire/InspireFace) to see the latest developments
 
 [default-theme-home]: https://vuejs.press/reference/default-theme/frontmatter.html#home-page

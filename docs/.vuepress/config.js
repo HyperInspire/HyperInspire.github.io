@@ -6,10 +6,10 @@ export default defineUserConfig({
   lang: 'en-US',
 
   title: 'InspireFace',
-  description: 'InspireFace is a cross-platform face recognition SDK developed in C/C++ that supports multiple operating systems and various inference backends including CPU, GPU, and NPU.',
+  description: 'A cross-platform high-performance deep learning facial analysis SDK framework.',
 
   theme: defaultTheme({
-    logo: 'https://vuejs.press/images/hero.png',
+    logo: 'https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/126000993.png',
 
     navbar: ['/', '/get-started'],
   }),
