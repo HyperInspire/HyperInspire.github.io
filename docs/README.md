@@ -15,9 +15,9 @@ features:
   - title: Face Analysis
     details: Provide out-of-the-box algorithms for face detection, tracking, recognition, key point detection and various facial expression state analysis.
   - title: Cross Platform
-    details: Supports deployment under a variety of platforms, and supports CPU, NPU, GPU and other devices to accelerate inference. You can download the SDK you need from the [release page](https://github.com/HyperInspire/InspireFace/releases).
+    details: Supports deployment under a variety of platforms, and supports CPU, NPU, GPU and other devices to accelerate inference.
   - title: Customized model
-    details: You can download various SOTA face models from the [model zoo page](https://github.com/HyperInspire/InspireFace/releases/tag/v1.x).
+    details: Customize a variety of SOTA face model deployments according to your needs.
 
 footer: MIT Licensed | Copyright © 2018-present VuePress Community
 ---
