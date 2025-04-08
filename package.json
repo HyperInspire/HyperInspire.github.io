@@ -1,6 +1,6 @@
 {
   "name": "inspireface",
-  "description": "A VuePress project",
+  "description": "InspireFace is a cross-platform face recognition SDK developed in C/C++ that supports multiple operating systems and various inference backends including CPU, GPU, and NPU.",
   "version": "1.2.1",
   "license": "MIT",
   "type": "module",
