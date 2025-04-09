@@ -5,6 +5,10 @@ import { viteBundler } from '@vuepress/bundler-vite'
 export default defineUserConfig({
   lang: 'en-US',
 
+  head: [
+    ['link', { rel: 'icon', href: 'https://tunm-resource.oss-cn-hongkong.aliyuncs.com/blogs_box/favicon32.jpg' }]
+  ],
+
   title: 'InspireFace',
   description: 'A cross-platform high-performance deep learning facial analysis SDK framework.',
 
