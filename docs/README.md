@@ -13,7 +13,7 @@ actions:
 
 features:
   - title: Face Analysis
-    details: Provide out-of-the-box algorithms for face detection, tracking, recognition, key point detection and various facial expression state analysis.
+    details: Provide out-of-the-box algorithms for face detection, tracking, recognition, landmark detection and various facial expression state analysis.
   - title: Cross Platform
     details: Supports deployment under a variety of platforms, and supports CPU, NPU, GPU and other devices to accelerate inference.
   - title: Customized model
