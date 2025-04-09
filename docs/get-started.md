@@ -37,6 +37,12 @@ We have completed the adaptation and testing of the software across various oper
 - **Passed Tests**: The feature has at least **passed unit tests** on offline devices.
 - **Release**: The solution is already supported and has been successfully compiled and released through **[GitHub Actions](https://github.com/HyperInspire/InspireFace/actions/workflows/built_release_from_docker.yaml)**.
 
+::: tip
+See the [develop repository](https://github.com/HyperInspire/InspireFace) for the latest **platform/device** adaptations.
+
+If the **platform/device** you need is not in the table above, you can ask in the [issues](https://github.com/HyperInspire/InspireFace/issues/187).
+:::
+
 ## How to Get SDK
 
 If you are using C/C++ with InspireFace, you can download the corresponding library files from the [Release Pages](https://github.com/HyperInspire/InspireFace/releases). If you are using Android or Python, you can try simpler installation methods.
