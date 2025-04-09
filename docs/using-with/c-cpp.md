@@ -1,12 +1,17 @@
 # Using InspireFace in C/C++
 
+Whether it is C or C++, we recommend the use of a single CAPI header file +lib, because CAPI long-term maintenance is relatively stable, of course, there are C++ interfaces, specific reference to C++ header files.
+
 ## Installation and Setup
 
 You can download the precompiled inspireface library from the [release page](https://github.com/HyperInspire/InspireFace/releases), which includes the dynamic library +CAPI header by default. You need to link and include them in your project, using cmake as an example:
 
 ```cmake
-include_directories(InspireFace/include)
-link_directories(InspireFace/lib)
+# Prepare your inspireface-sdk directory in advance
+set(INSPIREFACE_DIR your_dir/InspireFace)
+include_directories(${INSPIREFACE_DIR}/include)
+link_directories(${INSPIREFACE_DIR}/lib)
+
 # Link to your project
 target_link_libraries(YourProject InspireFace)
 ```
@@ -50,6 +55,10 @@ When creating a session, there are some important parameters that need to be spe
     - **Tracking by Detection**: With detector-dependent tracking, detection is performed every frame, with low speed and high precision
 - **Max Faces**: Limit the maximum number of faces to detect, if the number of faces is too large, the algorithm will be slow
 - **Detect Pixel Level**: Face detector level, the higher the more accurate, but also affect the execution speed, usually 160, 192, 256, 320, 640
+
+::: warning
+When creating a session, it will use device memory, and as more options are enabled, the memory usage increases. Appropriately disabling some unnecessary features can save memory.
+:::
 
 ```c
 // Enable the functions: face recognition, mask detection, live detection, and face quality

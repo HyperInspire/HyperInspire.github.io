@@ -54,8 +54,13 @@ If you are using C/C++ with InspireFace, you can download the corresponding libr
 @tab cmake
 
 ```cmake
-include_directories(InspireFace/include)
-link_directories(InspireFace/lib)
+# Prepare your inspireface-sdk directory in advance
+set(INSPIREFACE_DIR your_dir/InspireFace)
+include_directories(${INSPIREFACE_DIR}/include)
+link_directories(${INSPIREFACE_DIR}/lib)
+
+# Link to your project
+target_link_libraries(YourProject InspireFace)
 ```
 
 @tab android
