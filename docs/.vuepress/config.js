@@ -45,6 +45,14 @@ export default defineUserConfig({
             text: 'iOS',
             link: '/using-with/ios',
           },
+          {
+            text: 'CUDA',
+            link: '/using-with/cuda',
+          },
+          {
+            text: 'Rockchip NPU',
+            link: '/using-with/rknpu',
+          },
         ],
       },
       {
