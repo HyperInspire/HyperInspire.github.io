@@ -109,5 +109,22 @@ image.Write("result.jpg");
 
 Get face Embeding is an important step in face recognition, comparison or face swap, which usually needs to be carried out after face detection or tracking:
 
+```cpp
+// Get face embedding
+inspire::FaceEmbedding feature;
+session.FaceFeatureExtract(process, results[0], feature, true);
+```
 
-TODO    
+### Face Comparison
+
+Face comparison is the process of comparing two faces to determine if they are the same person.
+
+```cpp
+// Get face embedding
+float res = -1.0f;
+INSPIREFACE_FEATURE_HUB->CosineSimilarity(feature1.data, feature2.data, feature1.size, res);
+```
+
+## More
+
+TODO
