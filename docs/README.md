@@ -19,7 +19,7 @@ features:
   - title: Customized model
     details: Customize a variety of SOTA face model deployments according to your needs.
 
-footer: MIT Licensed | Copyright © 2018-present VuePress Community
+footer: MIT Licensed | Copyright © 2025-InspireFace. All Rights Reserved
 ---
 
 If you want to know the latest development version of the source code, you can visit [InspireFace-Develop](https://github.com/HyperInspire/InspireFace) to see the latest developments
