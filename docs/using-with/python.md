@@ -2,6 +2,10 @@
 
 The python version of inspireface is based on ctypes and the standard edition of InspireFaceSDK libraries, and usually requires **python >= 3.7**.
 
+::: warning
+If you install inspireface from pypi, it is usually a regular version that **only supports the cpu** version. If you want to build python based on CUDA, Rockchip NPU, ANE inference backend, you will need to re-adapt the corresponding version of the library to the Python project. See the repository for [more details](https://github.com/HyperInspire/InspireFace/tree/master/python).
+:::
+
 ## Installation and Setup
 
 You can use pip to install the InspireFace Python package:
@@ -179,3 +183,7 @@ if __name__ == '__main__':
     case_face_comparison()
 
 ```
+
+## More
+
+TODO
