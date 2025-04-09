@@ -1,6 +1,6 @@
 # Using InspireFace in C/C++
 
-Whether it is C or C++, we recommend the use of a single CAPI header file +lib, because CAPI long-term maintenance is relatively stable, of course, there are C++ interfaces, specific reference to C++ header files.
+Whether it is C or C++, we recommend the use of a single CAPI header file + lib, because CAPI long-term maintenance is relatively stable, of course, there are C++ interfaces, specific reference to C++ header files.
 
 ## Installation and Setup
 
@@ -577,3 +577,7 @@ int main(int argc, char* argv[]) {
     }
 }
 ```
+
+## More
+
+TODO
