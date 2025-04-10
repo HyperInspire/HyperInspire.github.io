@@ -189,13 +189,18 @@ if (multipleFaceData.detectedNum == 0) {  // Check if any faces were detected
     return ret;
 }
 
-float embedding[512];
 // Extract facial features from the first detected face, an interface that uses copy features in a comparison scenario
-ret = HFFaceFeatureExtractCpy(session, stream, multipleFaceData.tokens[0], embedding);  // Extract features
+HFFaceFeature feature;
+ret = HFCreateFaceFeature(&feature);
 if (ret != HSUCCEED) {
-    HFLogPrint(HF_LOG_ERROR, "Extract feature error: %d", ret);
+    HFLogPrint(HF_LOG_ERROR, "Create face feature error: %d", ret);
     return ret;
 }
+
+...
+
+// Not in use need to release
+HFReleaseFaceFeature(&feature);
 ```
 
 ## Face Feature Management
@@ -211,345 +216,134 @@ TODO
 Provide a complete example of the program including face detection, landmark location and face attribute recognition:
 
 ```c
-#include <iostream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <inspireface.h>
 
+#define NUM_IMAGES 2
+
 int main(int argc, char* argv[]) {
-    // Check whether the number of parameters is correct
-    if (argc < 3 || argc > 4) {
-        HFLogPrint(HF_LOG_ERROR, "Usage: %s <pack_path> <source_path> [rotation]", argv[0]);
-        return 1;
-    }
-
-    auto packPath = argv[1];
-    auto sourcePath = argv[2];
-    int rotation = 0;
-
-    // If rotation is provided, check and set the value
-    if (argc == 4) {
-        rotation = std::atoi(argv[3]);
-        if (rotation != 0 && rotation != 90 && rotation != 180 && rotation != 270) {
-            HFLogPrint(HF_LOG_ERROR, "Invalid rotation value. Allowed values are 0, 90, 180, 270.");
-            return 1;
-        }
-    }
-    HFRotation rotation_enum;
-    // Set rotation based on input parameter
-    switch (rotation) {
-        case 90:
-            rotation_enum = HF_CAMERA_ROTATION_90;
-            break;
-        case 180:
-            rotation_enum = HF_CAMERA_ROTATION_180;
-            break;
-        case 270:
-            rotation_enum = HF_CAMERA_ROTATION_270;
-            break;
-        case 0:
-        default:
-            rotation_enum = HF_CAMERA_ROTATION_0;
-            break;
-    }
-
-    HFLogPrint(HF_LOG_INFO, "Pack file Path: %s", packPath);
-    HFLogPrint(HF_LOG_INFO, "Source file Path: %s", sourcePath);
-    HFLogPrint(HF_LOG_INFO, "Rotation: %d", rotation);
-
-    HFSetLogLevel(HF_LOG_INFO);
-
     HResult ret;
-    // The resource file must be loaded before it can be used
-    ret = HFLaunchInspireFace(packPath);
-    if (ret != HSUCCEED) {
-        HFLogPrint(HF_LOG_ERROR, "Load Resource error: %d", ret);
-        return ret;
-    }
+    const char* packPath;
+    const char* imgPath1;
+    const char* imgPath2;
+    HOption option;
+    HFSession session;
+    HFFaceFeature features[NUM_IMAGES];
+    const char* imgPaths[NUM_IMAGES];
+    int i;
+    HFloat similarity;
+    HFloat recommended_cosine_threshold;
+    HFloat percentage;
 
-    // Enable the functions in the pipeline: mask detection, live detection, and face quality
-    // detection
-    HOption option = HF_ENABLE_QUALITY | HF_ENABLE_MASK_DETECT | HF_ENABLE_LIVENESS | HF_ENABLE_DETECT_MODE_LANDMARK;
-    // Non-video or frame sequence mode uses IMAGE-MODE, which is always face detection without
-    // tracking
-    HFDetectMode detMode = HF_DETECT_MODE_ALWAYS_DETECT;
-    // Maximum number of faces detected
-    HInt32 maxDetectNum = 20;
-    // Face detection image input level
-    HInt32 detectPixelLevel = 160;
-    // Handle of the current face SDK algorithm context
-    HFSession session = {0};
-    ret = HFCreateInspireFaceSessionOptional(option, detMode, maxDetectNum, detectPixelLevel, -1, &session);
-    if (ret != HSUCCEED) {
-        HFLogPrint(HF_LOG_ERROR, "Create FaceContext error: %d", ret);
-        return ret;
-    }
-
-    HFSessionSetTrackPreviewSize(session, detectPixelLevel);
-    HFSessionSetFilterMinimumFacePixelSize(session, 4);
-
-    // Load a image
-    HFImageBitmap image;
-    ret = HFCreateImageBitmapFromFilePath(sourcePath, 3, &image);
-    if (ret != HSUCCEED) {
-        HFLogPrint(HF_LOG_ERROR, "The source entered is not a picture or read error.");
-        return ret;
-    }
-    // Prepare an image parameter structure for configuration
-    HFImageStream imageHandle = {0};
-    ret = HFCreateImageStreamFromImageBitmap(image, rotation_enum, &imageHandle);
-    if (ret != HSUCCEED) {
-        HFLogPrint(HF_LOG_ERROR, "Create ImageStream error: %d", ret);
-        return ret;
-    }
-
-    // Execute HF_FaceContextRunFaceTrack captures face information in an image
-    HFMultipleFaceData multipleFaceData = {0};
-    ret = HFExecuteFaceTrack(session, imageHandle, &multipleFaceData);
-    if (ret != HSUCCEED) {
-        HFLogPrint(HF_LOG_ERROR, "Execute HFExecuteFaceTrack error: %d", ret);
-        return ret;
-    }
-
-    // Print the number of faces detected
-    auto faceNum = multipleFaceData.detectedNum;
-    HFLogPrint(HF_LOG_INFO, "Num of face: %d", faceNum);
-
-    // Copy a new image to draw
-    HFImageBitmap drawImage = {0};
-    ret = HFImageBitmapCopy(image, &drawImage);
-    if (ret != HSUCCEED) {
-        HFLogPrint(HF_LOG_ERROR, "Copy ImageBitmap error: %d", ret);
-        return ret;
-    }
-    HFImageBitmapData data;
-    ret = HFImageBitmapGetData(drawImage, &data);
-    if (ret != HSUCCEED) {
-        HFLogPrint(HF_LOG_ERROR, "Get ImageBitmap data error: %d", ret);
-        return ret;
-    }
-    for (int index = 0; index < faceNum; ++index) {
-        HFLogPrint(HF_LOG_INFO, "========================================");
-        HFLogPrint(HF_LOG_INFO, "Token size: %d", multipleFaceData.tokens[index].size);
-        HFLogPrint(HF_LOG_INFO, "Process face index: %d", index);
-        HFLogPrint(HF_LOG_INFO, "DetConfidence: %f", multipleFaceData.detConfidence[index]);
-        HFImageBitmapDrawRect(drawImage, multipleFaceData.rects[index], {0, 100, 255}, 4);
-
-        // Print FaceID, In IMAGE-MODE it is changing, in VIDEO-MODE it is fixed, but it may be lost
-        HFLogPrint(HF_LOG_INFO, "FaceID: %d", multipleFaceData.trackIds[index]);
-
-        // Print Head euler angle, It can often be used to judge the quality of a face by the Angle
-        // of the head
-        HFLogPrint(HF_LOG_INFO, "Roll: %f, Yaw: %f, Pitch: %f", multipleFaceData.angles.roll[index], multipleFaceData.angles.yaw[index],
-                   multipleFaceData.angles.pitch[index]);
-
-        HInt32 numOfLmk;
-        HFGetNumOfFaceDenseLandmark(&numOfLmk);
-        HPoint2f denseLandmarkPoints[numOfLmk];
-        ret = HFGetFaceDenseLandmarkFromFaceToken(multipleFaceData.tokens[index], denseLandmarkPoints, numOfLmk);
-        if (ret != HSUCCEED) {
-            HFLogPrint(HF_LOG_ERROR, "HFGetFaceDenseLandmarkFromFaceToken error!!");
-            return -1;
-        }
-        for (size_t i = 0; i < numOfLmk; i++) {
-            HFImageBitmapDrawCircleF(drawImage, {denseLandmarkPoints[i].x, denseLandmarkPoints[i].y}, 0, {100, 100, 0}, 2);
-        }
-        auto& rt = multipleFaceData.rects[index];
-        float area = ((float)(rt.height * rt.width)) / (data.width * data.height);
-        HFLogPrint(HF_LOG_INFO, "area: %f", area);
-
-        HPoint2f fiveKeyPoints[5];
-        ret = HFGetFaceFiveKeyPointsFromFaceToken(multipleFaceData.tokens[index], fiveKeyPoints, 5);
-        if (ret != HSUCCEED) {
-            HFLogPrint(HF_LOG_ERROR, "HFGetFaceFiveKeyPointsFromFaceToken error!!");
-            return -1;
-        }
-        for (size_t i = 0; i < 5; i++) {
-            HFImageBitmapDrawCircleF(drawImage, {fiveKeyPoints[i].x, fiveKeyPoints[i].y}, 0, {0, 0, 232}, 2);
-        }
-    }
-    HFImageBitmapWriteToFile(drawImage, "draw_detected.jpg");
-    HFLogPrint(HF_LOG_WARN, "Write to file success: %s", "draw_detected.jpg");
-
-    // Run pipeline function
-    // Select the pipeline function that you want to execute, provided that it is already enabled
-    // when FaceContext is created!
-    auto pipelineOption = HF_ENABLE_QUALITY | HF_ENABLE_MASK_DETECT | HF_ENABLE_LIVENESS;
-    // In this loop, all faces are processed
-    ret = HFMultipleFacePipelineProcessOptional(session, imageHandle, &multipleFaceData, pipelineOption);
-    if (ret != HSUCCEED) {
-        HFLogPrint(HF_LOG_ERROR, "Execute Pipeline error: %d", ret);
-        return ret;
-    }
-
-    // Get mask detection results from the pipeline cache
-    HFFaceMaskConfidence maskConfidence = {0};
-    ret = HFGetFaceMaskConfidence(session, &maskConfidence);
-    if (ret != HSUCCEED) {
-        HFLogPrint(HF_LOG_ERROR, "Get mask detect result error: %d", ret);
-        return -1;
-    }
-
-    // Get face quality results from the pipeline cache
-    HFFaceQualityConfidence qualityConfidence = {0};
-    ret = HFGetFaceQualityConfidence(session, &qualityConfidence);
-    if (ret != HSUCCEED) {
-        HFLogPrint(HF_LOG_ERROR, "Get face quality result error: %d", ret);
-        return -1;
-    }
-
-    for (int index = 0; index < faceNum; ++index) {
-        HFLogPrint(HF_LOG_INFO, "========================================");
-        HFLogPrint(HF_LOG_INFO, "Process face index from pipeline: %d", index);
-        HFLogPrint(HF_LOG_INFO, "Mask detect result: %f", maskConfidence.confidence[index]);
-        HFLogPrint(HF_LOG_INFO, "Quality predict result: %f", qualityConfidence.confidence[index]);
-        // We set the threshold of wearing a mask as 0.85. If it exceeds the threshold, it will be
-        // judged as wearing a mask. The threshold can be adjusted according to the scene
-        if (maskConfidence.confidence[index] > 0.85) {
-            HFLogPrint(HF_LOG_INFO, "Mask");
-        } else {
-            HFLogPrint(HF_LOG_INFO, "Non Mask");
-        }
-    }
-
-    ret = HFReleaseImageStream(imageHandle);
-    if (ret != HSUCCEED) {
-        HFLogPrint(HF_LOG_ERROR, "Release image stream error: %d", ret);
-    }
-    // The memory must be freed at the end of the program
-    ret = HFReleaseInspireFaceSession(session);
-    if (ret != HSUCCEED) {
-        HFLogPrint(HF_LOG_ERROR, "Release session error: %d", ret);
-        return ret;
-    }
-
-    ret = HFReleaseImageBitmap(image);
-    if (ret != HSUCCEED) {
-        HFLogPrint(HF_LOG_ERROR, "Release image bitmap error: %d", ret);
-        return ret;
-    }
-
-    ret = HFReleaseImageBitmap(drawImage);
-    if (ret != HSUCCEED) {
-        HFLogPrint(HF_LOG_ERROR, "Release draw image bitmap error: %d", ret);
-        return ret;
-    }
-
-    return 0;
-}
-
-```
-
-## [Example] Face Comparison
-
-Provide a complete example of a program that includes a 1:1 face comparison:
-
-```c
-#include <iostream>
-#include <vector>
-#include <inspireface.h>
-
-int main(int argc, char* argv[]) {
-    // Check whether the number of parameters is correct
+    /* Check whether the number of parameters is correct */
     if (argc != 4) {
         HFLogPrint(HF_LOG_ERROR, "Usage: %s <pack_path> <img1_path> <img2_path>", argv[0]);
         return 1;
     }
 
-    auto packPath = argv[1];
-    auto imgPath1 = argv[2];
-    auto imgPath2 = argv[3];
+    packPath = argv[1];
+    imgPath1 = argv[2];
+    imgPath2 = argv[3];
+
+    /* Initialize features array to NULL */
+    memset(features, 0, sizeof(features));
+
+    /* Allocate memory for feature vectors */
+    for (i = 0; i < NUM_IMAGES; i++) {
+        ret = HFCreateFaceFeature(&features[i]);
+        if (ret != HSUCCEED) {
+            HFLogPrint(HF_LOG_ERROR, "Create face feature error: %d", ret);
+            goto cleanup;
+        }
+    }
+
+    /* Set the image path array */
+    imgPaths[0] = imgPath1;
+    imgPaths[1] = imgPath2;
 
     HFLogPrint(HF_LOG_INFO, "Pack file Path: %s", packPath);
     HFLogPrint(HF_LOG_INFO, "Source file Path 1: %s", imgPath1);
     HFLogPrint(HF_LOG_INFO, "Source file Path 2: %s", imgPath2);
 
-    HResult ret;
-    // The resource file must be loaded before it can be used
+    /* The resource file must be loaded before it can be used */
     ret = HFLaunchInspireFace(packPath);
     if (ret != HSUCCEED) {
         HFLogPrint(HF_LOG_ERROR, "Load Resource error: %d", ret);
-        return ret;
+        goto cleanup;
     }
 
-    // Create a session for face recognition
-    HOption option = HF_ENABLE_FACE_RECOGNITION;
-    HFSession session;
+    /* Create a session for face recognition */
+    option = HF_ENABLE_FACE_RECOGNITION;
     ret = HFCreateInspireFaceSessionOptional(option, HF_DETECT_MODE_ALWAYS_DETECT, 1, -1, -1, &session);
     if (ret != HSUCCEED) {
         HFLogPrint(HF_LOG_ERROR, "Create session error: %d", ret);
-        return ret;
+        goto cleanup;
     }
 
-    std::vector<char*> twoImg = {imgPath1, imgPath2};
-    std::vector<std::vector<float>> vec(2, std::vector<float>(512));
-    for (int i = 0; i < twoImg.size(); ++i) {
+    /* Process two images */
+    for (i = 0; i < NUM_IMAGES; i++) {
         HFImageBitmap imageBitmap = {0};
-        ret = HFCreateImageBitmapFromFilePath(twoImg[i], 3, &imageBitmap);
-        if (ret != HSUCCEED) {
-            HFLogPrint(HF_LOG_ERROR, "Create image bitmap error: %d", ret);
-            return ret;
-        }
-        // Prepare image data for processing
-
         HFImageStream stream;
-        ret = HFCreateImageStreamFromImageBitmap(imageBitmap, HF_CAMERA_ROTATION_0, &stream);  // Create an image stream for processing
-        if (ret != HSUCCEED) {
-            HFLogPrint(HF_LOG_ERROR, "Create stream error: %d", ret);
-            return ret;
-        }
-
-        // Execute face tracking on the image
         HFMultipleFaceData multipleFaceData = {0};
-        ret = HFExecuteFaceTrack(session, stream, &multipleFaceData);  // Track faces in the image
+
+        ret = HFCreateImageBitmapFromFilePath(imgPaths[i], 3, &imageBitmap);
         if (ret != HSUCCEED) {
+            HFReleaseImageBitmap(imageBitmap);
+            HFLogPrint(HF_LOG_ERROR, "Create image bitmap error: %d", ret);
+            goto cleanup;
+        }
+
+        ret = HFCreateImageStreamFromImageBitmap(imageBitmap, HF_CAMERA_ROTATION_0, &stream);
+        if (ret != HSUCCEED) {
+            HFReleaseImageStream(stream);
+            HFReleaseImageBitmap(imageBitmap);
+            HFLogPrint(HF_LOG_ERROR, "Create stream error: %d", ret);
+            goto cleanup;
+        }
+
+        ret = HFExecuteFaceTrack(session, stream, &multipleFaceData);
+        if (ret != HSUCCEED) {
+            HFReleaseImageStream(stream);
+            HFReleaseImageBitmap(imageBitmap);
             HFLogPrint(HF_LOG_ERROR, "Run face track error: %d", ret);
-            return ret;
-        }
-        if (multipleFaceData.detectedNum == 0) {  // Check if any faces were detected
-            HFLogPrint(HF_LOG_ERROR, "No face was detected: %s", twoImg[i]);
-            return ret;
+            goto cleanup;
         }
 
-        // Extract facial features from the first detected face, an interface that uses copy features in a comparison scenario
-        ret = HFFaceFeatureExtractCpy(session, stream, multipleFaceData.tokens[0], vec[i].data());  // Extract features
+        if (multipleFaceData.detectedNum == 0) {
+            HFReleaseImageStream(stream);
+            HFReleaseImageBitmap(imageBitmap);
+            HFLogPrint(HF_LOG_ERROR, "No face was detected: %s", imgPaths[i]);
+            goto cleanup;
+        }
+
+        ret = HFFaceFeatureExtractTo(session, stream, multipleFaceData.tokens[0], features[i]);
         if (ret != HSUCCEED) {
+            HFReleaseImageStream(stream);
+            HFReleaseImageBitmap(imageBitmap);
             HFLogPrint(HF_LOG_ERROR, "Extract feature error: %d", ret);
-            return ret;
+            goto cleanup;
         }
 
-        ret = HFReleaseImageStream(stream);
-        if (ret != HSUCCEED) {
-            HFLogPrint(HF_LOG_ERROR, "Release image stream error: %d", ret);
-        }
-        ret = HFReleaseImageBitmap(imageBitmap);
-        if (ret != HSUCCEED) {
-            HFLogPrint(HF_LOG_ERROR, "Release image bitmap error: %d", ret);
-            return ret;
-        }
+        HFReleaseImageStream(stream);
+        HFReleaseImageBitmap(imageBitmap);
     }
 
-    // Make feature1
-    HFFaceFeature feature1 = {0};
-    feature1.data = vec[0].data();
-    feature1.size = vec[0].size();
+    HFFaceFeature feature1 = features[0];
+    HFFaceFeature feature2 = features[1];
 
-    // Make feature2
-    HFFaceFeature feature2 = {0};
-    feature2.data = vec[1].data();
-    feature2.size = vec[1].size();
-
-    // Run comparison
-    HFloat similarity;
+    /* Run comparison */
     ret = HFFaceComparison(feature1, feature2, &similarity);
     if (ret != HSUCCEED) {
         HFLogPrint(HF_LOG_ERROR, "Feature comparison error: %d", ret);
-        return ret;
+        goto cleanup;
     }
 
-    HFloat recommended_cosine_threshold;
     ret = HFGetRecommendedCosineThreshold(&recommended_cosine_threshold);
     if (ret != HSUCCEED) {
         HFLogPrint(HF_LOG_ERROR, "Get recommended cosine threshold error: %d", ret);
-        return ret;
+        goto cleanup;
     }
 
     if (similarity > recommended_cosine_threshold) {
@@ -559,22 +353,30 @@ int main(int argc, char* argv[]) {
     }
     HFLogPrint(HF_LOG_INFO, "Similarity score: %.3f", similarity);
 
-    // Convert cosine similarity to percentage similarity.
-    // Note: conversion parameters are not optimal and should be adjusted based on your specific use case.
-    HFloat percentage;
     ret = HFCosineSimilarityConvertToPercentage(similarity, &percentage);
     if (ret != HSUCCEED) {
         HFLogPrint(HF_LOG_ERROR, "Convert similarity to percentage error: %d", ret);
-        return ret;
+        goto cleanup;
     }
     HFLogPrint(HF_LOG_INFO, "Percentage similarity: %f", percentage);
 
-    // The memory must be freed at the end of the program
+    /* Clean up resources */
     ret = HFReleaseInspireFaceSession(session);
     if (ret != HSUCCEED) {
         HFLogPrint(HF_LOG_ERROR, "Release session error: %d", ret);
-        return ret;
     }
+    
+cleanup:
+    /* Release the feature vector memory */
+    for (i = 0; i < NUM_IMAGES; i++) {
+        if (features[i].data != NULL) {  // Only release features that were successfully created
+            HFReleaseFaceFeature(&features[i]);
+        }
+    }
+    
+    HFDeBugShowResourceStatistics();
+    
+    return ret;
 }
 ```
 
