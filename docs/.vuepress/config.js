@@ -27,6 +27,10 @@ export default defineUserConfig({
         link: '/get-started',
       },
       {
+        text: 'Feature',
+        link: '/feature',
+      },
+      {
         text: 'Using with',
         children: [
           {
@@ -66,7 +70,10 @@ export default defineUserConfig({
             text: 'Architecture',
             link: '/guides/arch',
           },
-          
+          {
+            text: 'Dense Landmark',
+            link: '/guides/dense-landmark',
+          },
         ],
       },
     ],
