@@ -8,7 +8,7 @@ We offer the latest **HyperLandmarkV2**, a high-precision facial landmark detect
 
 ::: code-tabs#shell
 
-@tab python
+@tab Python
 
 ```python
 faces = session.get_face_dense_landmark(image)
