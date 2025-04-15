@@ -74,6 +74,10 @@ export default defineUserConfig({
             text: 'Dense Landmark',
             link: '/guides/dense-landmark',
           },
+          {
+            text: 'Lightweight CV library',
+            link: '/guides/inspirecv',
+          },
         ],
       },
     ],
