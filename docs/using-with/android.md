@@ -100,10 +100,17 @@ CustomParameter parameter = InspireFace.CreateCustomParameter()
         .enableInteractionLiveness(true)   // Enable interaction liveness detection
         .enableLiveness(true)              // Enable liveness detection
         .enableMaskDetect(true);           // Enable mask detection
+// Face detection level, 160/320/640
+int detectLevel = 320;
+// Supports the maximum number of faces detected
+int maxFaces = 1;
 // Create session
 Session session = InspireFace.CreateSession(
-    parameter, InspireFace.DETECT_MODE_ALWAYS_DETECT, 10, -1, -1);
-
+    parameter, InspireFace.DETECT_MODE_ALWAYS_DETECT, maxFaces, detectLevel, -1);
+// Configure some face detection parameters
+InspireFace.SetTrackPreviewSize(session, 320);
+InspireFace.SetFaceDetectThreshold(session, 0.5f);
+InspireFace.SetFilterMinimumFacePixelSize(session, 0);
 ....
 
 // Destroy session, when you don't need it
@@ -184,7 +191,7 @@ TODO
 
 :::
 
-## Face Detection
+### Face Detection
 
 Face detection is the first step in the analysis of faces, which requires the input of an image or frame:
 
@@ -193,7 +200,11 @@ Face detection is the first step in the analysis of faces, which requires the in
 @tab Java
 
 ```java
-TODO
+MultipleFaceData multipleFaceData = InspireFace.ExecuteFaceTrack(session, stream);
+for (int i = 0; i < multipleFaceData.detectedNum; i++) {
+    // continue to processing
+    // ...
+}
 ```
 
 @tab Kotlin
@@ -203,3 +214,204 @@ TODO
 ```
 
 :::
+
+### Get Face Embedding
+
+Get face Embeding is an important step in face recognition, comparison or face swap, which usually needs to be carried out after face detection or tracking:
+
+
+::: code-tabs#shell
+
+@tab Java
+
+```java
+int selectIndex = 0;    // Select an index
+FaceFeature feature = InspireFace.ExtractFaceFeature(session, stream, multipleFaceData.tokens[selectIndex]);
+```
+
+@tab Kotlin
+
+```kotlin
+TODO
+```
+
+:::
+
+## Feature Hub
+
+FeatureHub is a globally scoped database that manages face features with full support for create, read, update, and delete operations. It supports both in-memory and persistent storage modes and only needs to be configured once globally upon initialization.
+
+::: warning
+Please be mindful when selecting the storage mode. If you choose the persistent mode, make sure to securely store the database file to prevent data loss.
+:::
+
+### Initialization and configuration
+
+This operation is performed once to initialize FeatureHub, and need to select the storage mode to work.
+
+- **enablePersistence**: Enable persistence mode, If not enabled, it will only be stored in the current memory.
+- **persistenceDbPath**: After this function is enabled, you need to specify the path for saving the DB file.
+
+::: code-tabs#shell
+
+@tab Java
+
+```java
+FeatureHubConfiguration configuration = InspireFace.CreateFeatureHubConfiguration()
+        .setEnablePersistence(true)
+        .setPersistenceDbPath(dbPath)
+        .setSearchThreshold(0.42f)
+        .setSearchMode(InspireFace.SEARCH_MODE_EXHAUSTIVE)
+        .setPrimaryKeyMode(InspireFace.PK_AUTO_INCREMENT);
+
+boolean enableStatus = InspireFace.FeatureHubDataEnable(configuration);
+Log.d(TAG, "Enable feature hub data status: " + enableStatus);
+```
+
+@tab Kotlin
+
+```kotlin
+TODO
+```
+
+:::
+
+### Insert face
+
+Insert a face into the database
+
+::: code-tabs#shell
+
+@tab Java
+
+```java
+boolean succ = InspireFace.FeatureHubInsertFeature(identity);
+// After successful insertion, you can save the id to your system
+if (succ) {
+    Log.i(TAG, "Allocation ID: " + identity.id);
+}
+```
+
+@tab Kotlin
+
+```kotlin
+TODO
+```
+
+:::
+
+### Search face
+
+Using the face embedding feature to search for similar faces.
+
+- Search for the most similar faces
+
+::: code-tabs#shell
+
+@tab Java
+
+```java
+FaceFeatureIdentity searched = InspireFace.FeatureHubFaceSearch(feature);
+Log.i(TAG, "Searched id: " + searched.id + ", Confidence: " + searched.searchConfidence);
+```
+
+@tab Kotlin
+
+```kotlin
+TODO
+```
+
+:::
+
+- Search for the most similar k faces
+
+::: code-tabs#shell
+
+@tab Java
+
+```java
+SearchTopKResults topKResults = InspireFace.FeatureHubFaceSearchTopK(feature, 10);
+for (int i = 0; i < topKResults.num; i++) {
+    Log.i(TAG, "TopK id: " + topKResults.ids[i] + ", Confidence: " + topKResults.confidence[i]);
+}
+```
+
+@tab Kotlin
+
+```kotlin
+TODO
+```
+
+:::
+
+### Update face
+
+Specify an id to update face features.
+
+::: code-tabs#shell
+
+@tab Java
+
+```java
+int updateId = 8;
+newFeature.data = new float[InspireFace.GetFeatureLength()];
+FaceFeatureIdentity identity = FaceFeatureIdentity.create(updateId, newFeature);
+boolean updateSucc = InspireFace.FeatureHubFaceUpdate(identity);
+if (updateSucc) {
+    Log.i(TAG, "Update feature success: " + updateId);
+}
+```
+
+@tab Kotlin
+
+```kotlin
+TODO
+```
+
+:::
+
+### Remove face
+
+Specify an id to remove a face from the database.
+
+::: code-tabs#shell
+
+@tab Java
+
+```java
+int removeId = 4;
+boolean removeSucc = InspireFace.FeatureHubFaceRemove(removeId);
+if (removeSucc) {
+    Log.i(TAG, "Remove feature success: " + removeId);
+}
+```
+
+@tab Kotlin
+
+```kotlin
+TODO
+```
+
+:::
+
+### Get face embedding
+
+Gets the embedding of a face by id.
+
+::: code-tabs#shell
+
+@tab Java
+
+```java
+int id = 4;
+FaceFeatureIdentity identity = InspireFace.FeatureHubGetFaceIdentity(id);
+```
+
+@tab Kotlin
+
+```kotlin
+TODO
+```
+
+:::
+
