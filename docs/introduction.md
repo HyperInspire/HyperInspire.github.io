@@ -3,7 +3,7 @@
 **InspireFace** is a powerful, cross-platform face recognition SDK written in C/C++ that enables high-performance facial analysis across a wide range of hardware platforms. Designed for real-world deployment in mobile, embedded, and server-side environments, InspireFace provides a full pipeline for facial processing, from detection to recognition, with support for advanced features such as liveness detection, mask detection, facial attributes, and more.
 
 ---
-![alt text](https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/banner-side%20%282%29.png)
+![alt text](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/banner-side%20%282%29.png)
 
 
 ## Core Features
@@ -18,7 +18,7 @@
 - **Expression & Action Detection** — Blink, nod, and head-shake detection for interactive apps.
 - **Quality Assessment** — Image quality metrics to ensure robust inference.
 
-<img src="https://tunm-resource.oss-cn-hongkong.aliyuncs.com/blogs_box/o-10.gif" width="200" height="200"> <img src="https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/o-4.gif" width="200" height="200"> <img src="https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/out-8.gif" width="200" height="200">
+<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/blogs_box/o-10.gif" width="200" height="200"> <img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/o-4.gif" width="200" height="200"> <img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/out-8.gif" width="200" height="200">
 
 ---
 

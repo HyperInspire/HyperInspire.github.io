@@ -2,7 +2,7 @@
 
 **InspireCV** is a lightweight computer vision library that provides high-level abstract interfaces for commonly used vision algorithms. It features a flexible backend architecture, allowing users to leverage a lightweight backend by default while also offering the option to switch to a more powerful **OpenCV backend** for enhanced performance.
 
-![InspireCV](https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/cv2.jpg)
+![InspireCV](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv2.jpg)
 
 - Supports both OpenCV and custom OKCV backends
 - Core functionality includes:
@@ -128,7 +128,7 @@ Image processing is a core functionality of InspireCV. It provides a set of func
 
 Take this original image for example:
 
-![KunKun](https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/kun_cartoon_crop.jpg)
+![KunKun](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/kun_cartoon_crop.jpg)
 
 Features includes:
 
@@ -150,7 +150,7 @@ TODO
 
 :::
 
-![Gray Image](https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/cv/gray.jpg)
+![Gray Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/gray.jpg)
 
 ---
 
@@ -172,7 +172,7 @@ TODO
 
 :::
 
-![Blurred Image](https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/cv/blurred.jpg)
+![Blurred Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/blurred.jpg)
 
 ---
 
@@ -196,7 +196,7 @@ TODO
 
 :::
 
-![Resized Image](https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/cv/resized.jpg)
+![Resized Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/resized.jpg)
 
 ---
 
@@ -219,7 +219,7 @@ TODO
 
 :::
 
-![Rotated Image](https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/cv/rotated.jpg)
+![Rotated Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/rotated.jpg)
 
 ---
 
@@ -242,7 +242,7 @@ TODO
 
 :::
 
-![Flipped Image](https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/cv/flipped_vertical.jpg)
+![Flipped Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/flipped_vertical.jpg)
 
 ---
 
@@ -262,7 +262,7 @@ TODO
 
 :::
 
-![Flipped Image](https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/cv/flipped_horizontal.jpg)
+![Flipped Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/flipped_horizontal.jpg)
 
 ---
 
@@ -285,7 +285,7 @@ TODO
 
 :::
 
-![Cropped Image](https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/cv/cropped.jpg)
+![Cropped Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/cropped.jpg)
 
 ---
 
@@ -308,7 +308,7 @@ TODO
 
 :::
 
-![Padded Image](https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/cv/padded.jpg)
+![Padded Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/padded.jpg)
 
 ---
 
@@ -330,7 +330,7 @@ TODO
 
 :::
 
-![Swapped Image](https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/cv/swapped.jpg)
+![Swapped Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/swapped.jpg)
 
 ---
 
@@ -353,7 +353,7 @@ TODO
 
 :::
 
-![Scaled Image](https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/cv/scaled.jpg)
+![Scaled Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/scaled.jpg)
 
 ---
 
@@ -376,7 +376,7 @@ TODO
 
 :::
 
-![Added Image](https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/cv/added.jpg)
+![Added Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/added.jpg)
 
 ---
 
@@ -385,7 +385,7 @@ TODO
 
 Origin input is rotated 90 degree image, and the transform matrix is from face location:
 
-![Rotated Image](https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/cv/rotated.jpg)
+![Rotated Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/rotated.jpg)
 
 ::: code-tabs#shell
 
@@ -427,7 +427,7 @@ TODO
 
 :::
 
-![Affine Image](https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/cv/affine.jpg)
+![Affine Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/affine.jpg)
 
 ---
 
@@ -456,7 +456,7 @@ TODO
 
 :::
 
-![Draw Rectangle](https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/cv/draw_rect.jpg)
+![Draw Rectangle](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/draw_rect.jpg)
 
 ---
 
@@ -481,7 +481,7 @@ TODO
 
 :::
 
-![Draw Circle](https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/cv/draw_circle.jpg)
+![Draw Circle](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/draw_circle.jpg)
 
 ---
 
@@ -506,7 +506,7 @@ TODO
 
 :::
 
-![Draw Lines](https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/cv/draw_line.jpg)
+![Draw Lines](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/draw_line.jpg)
 
 ---
 
@@ -528,7 +528,7 @@ TODO
 
 :::
 
-![Fill](https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/cv/fill_rect.jpg)
+![Fill](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/fill_rect.jpg)
 
 ---
 
@@ -552,7 +552,7 @@ TODO
 
 :::
 
-![Reset](https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/cv/reset.jpg)
+![Reset](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/reset.jpg)
 
 
 ## Frame Process
@@ -595,7 +595,7 @@ TODO
 
 Example of raw data:
 
-![Resized Image](https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/cv/rotated.jpg)
+![Resized Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/rotated.jpg)
 
 ### Pipeline
 
@@ -642,7 +642,7 @@ TODO
 
 :::
 
-![Transform Image](https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/cv/transform_img.jpg)
+![Transform Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/transform_img.jpg)
 
 ---
 
@@ -680,7 +680,7 @@ TODO
 
 :::
 
-![Affine Processing Image](https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/cv/affine_img.jpg)
+![Affine Processing Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/affine_img.jpg)
 
 ## Performance Considerations
 

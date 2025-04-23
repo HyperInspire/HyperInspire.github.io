@@ -1,7 +1,7 @@
 ---
 home: true
 title: Home
-heroImage: https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/isf_view.png
+heroImage: https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/isf_view.png
 actions:
   - text: Get Started
     link: /get-started.html

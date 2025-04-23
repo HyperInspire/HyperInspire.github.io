@@ -2,7 +2,7 @@
 
 We offer the latest **HyperLandmarkV2**, a high-precision facial landmark detection model optimized for mobile devices. It is designed for seamless integration with AR cameras, beauty filters, and skin analysis applications. On mid-range iOS and Android devices, it achieves an average inference speed of **1ms per frame**, delivering real-time performance without compromising accuracy.
 
-![landmark](https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/feature/lmk.jpg)
+![landmark](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/feature/lmk.jpg)
 
 ## Usage
 
@@ -43,5 +43,5 @@ Point2f[] lmk = InspireFace.GetFaceDenseLandmarkFromFaceToken(multipleFaceData.t
 
 We provide a set of dense facial landmarks based on a 106-point standard. The following diagram shows the mapping between landmark indices and their corresponding facial regions.
 
-![landmark](https://tunm-resource.oss-cn-hongkong.aliyuncs.com/docs/feature/hpylmkv2-order.jpg)
+![landmark](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/feature/hpylmkv2-order.jpg)
 
