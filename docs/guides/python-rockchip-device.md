@@ -3,7 +3,7 @@
 If you want to run InspireFace on a Rockchip device with a Linux system and get hardware acceleration support such as **Rockchip NPU** and **Rockchip RGA**, you need to manually create a Python version installation package.
 
 ::: warning
-If you do not need the support of device acceleration such as NPU and RGA, you can directly use pip to install the regular CPU version. This will be very easy, but you will not be able to leverage the performance advantages of the device, and the computation speed will be slow.
+If you do not need the support of device acceleration such as NPU and RGA, you can directly use pip to install the regular **CPU** version. This will be very easy, but you will not be able to leverage the performance advantages of the device, and the computation **speed will be slow**.
 :::
 
 Before creating the installation package, ensure that the following configurations are complete:
