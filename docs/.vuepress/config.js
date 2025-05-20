@@ -82,6 +82,10 @@ export default defineUserConfig({
             text: 'Python on Rockchip Device',
             link: '/guides/python-rockchip-device',
           },
+          {
+            text: 'Benchmark',
+            link: '/guides/benchmark-remark(updating)',
+          },
         ],
       },
     ],
