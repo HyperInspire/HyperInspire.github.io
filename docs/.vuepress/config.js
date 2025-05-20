@@ -78,6 +78,10 @@ export default defineUserConfig({
             text: 'Lightweight CV library',
             link: '/guides/inspirecv',
           },
+          {
+            text: 'Python on Rockchip Device',
+            link: '/guides/python-rockchip-device',
+          },
         ],
       },
     ],
