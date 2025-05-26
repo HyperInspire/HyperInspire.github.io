@@ -202,10 +202,153 @@ if (ret != HSUCCEED) {
 // Not in use need to release
 HFReleaseFaceFeature(&feature);
 ```
+## Face Embedding Database
 
-## Face Feature Management
+We provide a lightweight face embedding vector database (**FeatureHub**) storage solution that includes basic functions such as adding, deleting, modifying, and searching, while supporting both **memory** and **persistent** storage modes.
 
-TODO
+Before starting FeatureHub, you need to be familiar with the following parameters:
+
+- **primaryKeyMode**: Primary key mode, with two modes available. It's recommended to use HF_PK_AUTO_INCREMENT by default
+  - HF_PK_AUTO_INCREMENT: Auto-increment mode for primary keys
+  - HF_PK_MANUAL_INPUT: Manual input mode for primary keys, requiring users to avoid duplicate primary keys themselves
+- **enablePersistence**: Whether to enable persistent database storage mode
+  - If true: The database will write to local files for persistent storage during usage
+  - If false: High-speed memory management mode, dependent on program lifecycle
+- **persistenceDbPath**: Storage path required only for persistent mode, defined by the user. If the input is a folder rather than a file, the system default file naming will be used
+- **searchThreshold**: Face search threshold, using floating-point numbers. During search, only embeddings above the threshold are searched. Different models and scenarios require manual threshold settings
+- **searchMode**: Search mode, **effective only when searching for top-1 face**, with EAGER and EXHAUSTIVE modes (**this feature is temporarily disabled in the current version**)
+  - HF_SEARCH_MODE_EAGER: Complete search immediately upon encountering the first face above the threshold
+  - HF_SEARCH_MODE_EXHAUSTIVE: Search all similar faces and return the one with the highest similarity
+
+### Enable/Disable FeatureHub
+
+Using thread-safe singleton pattern design, it has global scope and only needs to be opened once:
+
+```c
+// When you need to enable global storage
+HFFeatureHubConfiguration configuration;
+configuration.primaryKeyMode = HF_PK_AUTO_INCREMENT;	// Recommended to use auto increment
+configuration.enablePersistence = 1;		// If the memory mode is set to 0
+configuration.persistenceDbPath = db_path;
+configuration.searchMode = HF_SEARCH_MODE_EXHAUSTIVE;
+configuration.searchThreshold = 0.48f;
+ret = HFFeatureHubDataEnable(configuration);
+if (ret != HSUCCEED) {
+    HFLogPrint(HF_LOG_ERROR, "Enable feature hub error: %d", ret);
+    return ret;
+}
+
+// .....
+
+// You can manually close it when you don't need to use it, or ignore it until the program ends
+HFFeatureHubDataDisable();
+```
+
+### Insert Face Embedding
+
+Insert a face embedding feature vector into FeatureHub. If in HF_PK_AUTO_INCREMENT mode, the input feature.id will be ignored. If in HF_PK_MANUAL_INPUT mode, the input feature.id is the ID the user expects to insert, and the actual inserted face ID is returned through result_id.
+
+```c
+// Insert face feature into the hub
+HFFaceFeatureIdentity featureIdentity;
+featureIdentity.feature = &feature;
+featureIdentity.id = -1;
+HFaceId result_id;
+ret = HFFeatureHubInsertFeature(featureIdentity, &result_id);
+if (ret != HSUCCEED) {
+    HFLogPrint(HF_LOG_ERROR, "Insert feature error: %d", ret);
+    return ret;
+}
+```
+
+### Search Most Similar Face
+
+Input a face embedding to be queried and search for a face ID from FeatureHub that is above the threshold (Cosine similarity).
+
+```c
+// Search face feature
+HFFaceFeatureIdentity query_featureIdentity;
+query_featureIdentity.feature = &query_feature;
+query_featureIdentity.id = -1;
+HFloat confidence;
+ret = HFFeatureHubFaceSearch(query_feature, &confidence, &query_featureIdentity);
+
+if (ret != HSUCCEED) {
+    HFLogPrint(HF_LOG_ERROR, "Search feature error: %d", ret);
+    return ret;
+}
+```
+
+### Search Top-K Faces
+
+Search for the top K faces with the highest similarity. Note that the data obtained by the `HFFeatureHubFaceSearchTopK` interface is cached data, and you need to retrieve all the result data you need before the next call, otherwise the next call will overwrite the historical data.
+
+```c
+// Create HFSearchTopKResults to store search results
+HFSearchTopKResults results;
+ret = HFFeatureHubFaceSearchTopK(feature, topK, &results);
+if (ret != HSUCCEED) {
+    HFLogPrint(HF_LOG_ERROR, "The search for the top k vectors failed: %d", ret);
+    return ret;
+}
+
+// Get all the results
+for (int i = 0; i < results.size; i++) {
+  	HFloat score = results.confidence[i];
+  	HPFaceId id =  results.ids[i];
+}
+```
+
+### Delete Face Embedding
+
+Specify a face ID to delete that face from FeatureHub.
+
+```c
+// Remove face feature
+ret = HFFeatureHubFaceRemove(result_id);
+if (ret != HSUCCEED) {
+    HFLogPrint(HF_LOG_ERROR, "Remove feature error: %d", ret);
+    return ret;
+}
+HFLogPrint(HF_LOG_INFO, "Remove feature result: %d", result_id);
+```
+
+### Update Face Embedding
+
+```C
+// Create HFFaceFeatureIdentity
+HFFaceFeatureIdentity updateIdentity;
+updateIdentity.id = old_id;	
+updateIdentity.feature = &feature;	
+
+// Update feature
+ret = HFFeatureHubFaceUpdate(updateIdentity);
+if (ret != HSUCCEED) {
+    HFLogPrint(HF_LOG_ERROR, "Update feature error: %d", ret);
+    return ret;
+}
+```
+
+### Get Face Embedding from ID
+
+You can quickly obtain FaceFeatureIdentity related information through a face ID.
+
+```c
+// Create HFFaceFeatureIdentity
+HFFaceFeatureIdentity identity;
+auto result = HFFeatureHubGetFaceIdentity(id, &identity);
+if (result != HSUCCEED) {
+    return nullptr;
+}
+```
+
+### Dynamic Search Threshold Adjustment
+
+You can dynamically modify FeatureHub's search threshold in different scenarios.
+
+```c
+HFFeatureHubFaceSearchThresholdSetting(0.5f);
+```
 
 ## Other Feature
 
