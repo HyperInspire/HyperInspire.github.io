@@ -172,9 +172,58 @@ if (ret != HSUCCEED) {
 }
 ```
 
+### Face Landmark
+
+Face landmark prediction can be used in any detection mode state, but it should be noted that if the detection mode is in **TRACK** state, you will get smoother facial landmark points. This is because the internal face tracking state landmark optimization filtering has been integrated. We provide two solutions: 5 basic key points and denser key points (more than 100 points).
+
+![landmark](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/feature/lmk.jpg)
+
+```c
+// Set landmark smoothing ratio (only effective in TRACK mode!)
+HFSessionSetTrackModeSmoothRatio(session, 0.05);
+// Set landmark cache frame count (only effective in TRACK mode!)
+HFSessionSetTrackModeNumSmoothCacheFrame(session, 5);
+
+HInt32 ret = HFExecuteFaceTrack(session, imageHandle, &multipleFaceData);
+if (ret != HSUCCEED) {
+    HFLogPrint(HF_LOG_ERROR, "Execute HFExecuteFaceTrack error: %d", ret);
+    return ret;
+}
+// Get the number of detected faces
+HInt32 faceNum = multipleFaceData.detectedNum;
+
+for (index = 0; index < faceNum; ++index) {
+    HPoint2f* denseLandmarkPoints;
+    HPoint2f fiveKeyPoints[5];
+
+    // Get five basic key points
+    ret = HFGetFaceFiveKeyPointsFromFaceToken(multipleFaceData.tokens[index], fiveKeyPoints, 5);
+    if (ret != HSUCCEED) {
+        HFLogPrint(HF_LOG_ERROR, "HFGetFaceFiveKeyPointsFromFaceToken error!!");
+        return -1;
+    }
+
+    /* Get the number of dense landmark points */
+    HFGetNumOfFaceDenseLandmark(&numOfLmk);
+    denseLandmarkPoints = (HPoint2f*)malloc(sizeof(HPoint2f) * numOfLmk);
+    if (denseLandmarkPoints == NULL) {
+        HFLogPrint(HF_LOG_ERROR, "Memory allocation failed!");
+        return -1;
+    }
+    ret = HFGetFaceDenseLandmarkFromFaceToken(multipleFaceData.tokens[index], denseLandmarkPoints, numOfLmk);
+    if (ret != HSUCCEED) {
+        free(denseLandmarkPoints);
+        HFLogPrint(HF_LOG_ERROR, "HFGetFaceDenseLandmarkFromFaceToken error!!");
+        return -1;
+    }
+}
+```
+
+<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/out-8.gif" width="200" height="200">
+
 ### Face Embeding
 
-Get face Embeding is an important step in face recognition, comparison or face swap, which usually needs to be carried out after face detection or tracking:
+Get face Embeding is an important step in face recognition, comparison or face swap, which usually needs to be carried out after face detection or tracking.
 
 ```c
 // Execute face tracking on the image
@@ -202,159 +251,195 @@ if (ret != HSUCCEED) {
 // Not in use need to release
 HFReleaseFaceFeature(&feature);
 ```
-## Face Embedding Database
 
-We provide a lightweight face embedding vector database (**FeatureHub**) storage solution that includes basic functions such as adding, deleting, modifying, and searching, while supporting both **memory** and **persistent** storage modes.
+## Face Pipeline
 
-Before starting FeatureHub, you need to be familiar with the following parameters:
+If you want to access facial attribute functions such as Anti-Spoofing, mask detection, quality detection, and facial motion recognition, you need to call the Pipeline interface to execute these functions.
 
-- **primaryKeyMode**: Primary key mode, with two modes available. It's recommended to use HF_PK_AUTO_INCREMENT by default
-  - HF_PK_AUTO_INCREMENT: Auto-increment mode for primary keys
-  - HF_PK_MANUAL_INPUT: Manual input mode for primary keys, requiring users to avoid duplicate primary keys themselves
-- **enablePersistence**: Whether to enable persistent database storage mode
-  - If true: The database will write to local files for persistent storage during usage
-  - If false: High-speed memory management mode, dependent on program lifecycle
-- **persistenceDbPath**: Storage path required only for persistent mode, defined by the user. If the input is a folder rather than a file, the system default file naming will be used
-- **searchThreshold**: Face search threshold, using floating-point numbers. During search, only embeddings above the threshold are searched. Different models and scenarios require manual threshold settings
-- **searchMode**: Search mode, **effective only when searching for top-1 face**, with EAGER and EXHAUSTIVE modes (**this feature is temporarily disabled in the current version**)
-  - HF_SEARCH_MODE_EAGER: Complete search immediately upon encountering the first face above the threshold
-  - HF_SEARCH_MODE_EXHAUSTIVE: Search all similar faces and return the one with the highest similarity
+<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/feature/quality.jpg" alt="quality" style="max-width:200px;">
+<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/feature/attribute.jpg" alt="attribute" style="max-width:200px;">
+<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/feature/act.jpg" alt="action" style="max-width:200px;">
 
-### Enable/Disable FeatureHub
+### Execute the Face Pipeline
 
-Using thread-safe singleton pattern design, it has global scope and only needs to be opened once:
+To execute the Pipeline function, you need to first perform face detection or tracking to obtain MultipleFaceData, select the face you want to execute the pipeline on as input parameters, and configure the corresponding Option for the functions you want to call.
+
+All functions require only one pipeline interface call, which simplifies frequent calling scenarios.
+
+::: warning
+Ensure that the Option is included when creating the Session. The executed Option must be a subset of or identical to the Session's Option. If the execution exceeds the configured Session Option functionality scope, it will fail to execute!
+:::
 
 ```c
-// When you need to enable global storage
-HFFeatureHubConfiguration configuration;
-configuration.primaryKeyMode = HF_PK_AUTO_INCREMENT;	// Recommended to use auto increment
-configuration.enablePersistence = 1;		// If the memory mode is set to 0
-configuration.persistenceDbPath = db_path;
-configuration.searchMode = HF_SEARCH_MODE_EXHAUSTIVE;
-configuration.searchThreshold = 0.48f;
-ret = HFFeatureHubDataEnable(configuration);
+/* Run pipeline function */
+/* Select the pipeline function that you want to execute, provided that it is already enabled
+    * when the session is created! */
+pipelineOption = HF_ENABLE_QUALITY | HF_ENABLE_MASK_DETECT | HF_ENABLE_LIVENESS | HF_ENABLE_FACE_EMOTION | HF_ENABLE_INTERACTION;
+/* In this pipeline, all faces are processed */
+ret = HFMultipleFacePipelineProcessOptional(session, imageHandle, &multipleFaceData, pipelineOption);
 if (ret != HSUCCEED) {
-    HFLogPrint(HF_LOG_ERROR, "Enable feature hub error: %d", ret);
-    return ret;
-}
-
-// .....
-
-// You can manually close it when you don't need to use it, or ignore it until the program ends
-HFFeatureHubDataDisable();
-```
-
-### Insert Face Embedding
-
-Insert a face embedding feature vector into FeatureHub. If in HF_PK_AUTO_INCREMENT mode, the input feature.id will be ignored. If in HF_PK_MANUAL_INPUT mode, the input feature.id is the ID the user expects to insert, and the actual inserted face ID is returned through result_id.
-
-```c
-// Insert face feature into the hub
-HFFaceFeatureIdentity featureIdentity;
-featureIdentity.feature = &feature;
-featureIdentity.id = -1;
-HFaceId result_id;
-ret = HFFeatureHubInsertFeature(featureIdentity, &result_id);
-if (ret != HSUCCEED) {
-    HFLogPrint(HF_LOG_ERROR, "Insert feature error: %d", ret);
+    HFLogPrint(HF_LOG_ERROR, "Execute Pipeline error: %d", ret);
     return ret;
 }
 ```
 
-### Search Most Similar Face
+### Face RGB Anti-Spoofing
 
-Input a face embedding to be queried and search for a face ID from FeatureHub that is above the threshold (Cosine similarity).
+When you configure and execute a Pipeline with the Option containing **HF_ENABLE_LIVENESS**, you can obtain the RGB Anti-Spoofing detection confidence through the following method:
+
+<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/feature/liveness.jpg" alt="liveness" style="max-width:512px;">
+
 
 ```c
-// Search face feature
-HFFaceFeatureIdentity query_featureIdentity;
-query_featureIdentity.feature = &query_feature;
-query_featureIdentity.id = -1;
-HFloat confidence;
-ret = HFFeatureHubFaceSearch(query_feature, &confidence, &query_featureIdentity);
-
+HFRGBLivenessConfidence livenessConfidence;
+/* Get RGB liveness detection results from the pipeline cache */
+ret = HFGetRGBLivenessConfidence(session, &livenessConfidence);
 if (ret != HSUCCEED) {
-    HFLogPrint(HF_LOG_ERROR, "Search feature error: %d", ret);
-    return ret;
+    HFLogPrint(HF_LOG_ERROR, "Get RGB liveness result error: %d", ret);
+    return -1;
 }
 ```
 
-### Search Top-K Faces
+### Face Mask Detection
 
-Search for the top K faces with the highest similarity. Note that the data obtained by the `HFFeatureHubFaceSearchTopK` interface is cached data, and you need to retrieve all the result data you need before the next call, otherwise the next call will overwrite the historical data.
+When you configure and execute a Pipeline with the Option containing **HF_ENABLE_MASK_DETECT**, you can obtain the face mask detection confidence through the following method:
 
 ```c
-// Create HFSearchTopKResults to store search results
-HFSearchTopKResults results;
-ret = HFFeatureHubFaceSearchTopK(feature, topK, &results);
+HFFaceMaskConfidence maskConfidence;
+/* Get mask detection results from the pipeline cache */
+ret = HFGetFaceMaskConfidence(session, &maskConfidence);
 if (ret != HSUCCEED) {
-    HFLogPrint(HF_LOG_ERROR, "The search for the top k vectors failed: %d", ret);
-    return ret;
-}
-
-// Get all the results
-for (int i = 0; i < results.size; i++) {
-  	HFloat score = results.confidence[i];
-  	HPFaceId id =  results.ids[i];
+    HFLogPrint(HF_LOG_ERROR, "Get mask detection result error: %d", ret);
+    return -1;
 }
 ```
 
-### Delete Face Embedding
+### Face Quality Prediction
 
-Specify a face ID to delete that face from FeatureHub.
+When you configure and execute a Pipeline with the Option containing **HF_ENABLE_QUALITY**, you can obtain face quality through the following method. This is a comprehensive confidence score based on attributes that affect clarity such as blur, occlusion, and lighting:
 
 ```c
-// Remove face feature
-ret = HFFeatureHubFaceRemove(result_id);
+HFFaceQualityConfidence qualityConfidence;
+/* Get face quality results from the pipeline cache */
+ret = HFGetFaceQualityConfidence(session, &qualityConfidence);
 if (ret != HSUCCEED) {
-    HFLogPrint(HF_LOG_ERROR, "Remove feature error: %d", ret);
-    return ret;
+    HFLogPrint(HF_LOG_ERROR, "Get face quality result error: %d", ret);
+    return -1;
 }
-HFLogPrint(HF_LOG_INFO, "Remove feature result: %d", result_id);
 ```
 
-### Update Face Embedding
+### Eyes State Prediction
 
-```C
-// Create HFFaceFeatureIdentity
-HFFaceFeatureIdentity updateIdentity;
-updateIdentity.id = old_id;	
-updateIdentity.feature = &feature;	
+When you configure and execute a Pipeline with the Option containing **HF_ENABLE_INTERACTION**, you can obtain the static action state of the current frame through the following method (currently only supports eye state):
 
-// Update feature
-ret = HFFeatureHubFaceUpdate(updateIdentity);
+- **leftEyeStatusConfidence**: Left eye state: confidence close to 1 means open, close to 0 means closed.
+- **rightEyeStatusConfidence**: Right eye state: confidence close to 1 means open, close to 0 means closed.
+
+```c
+/* Get the facial interaction status */
+HFFaceInteractionState result;
+ret = HFGetFaceInteractionStateResult(session, &result);
 if (ret != HSUCCEED) {
-    HFLogPrint(HF_LOG_ERROR, "Update feature error: %d", ret);
-    return ret;
+    HFLogPrint(HF_LOG_ERROR, "Get face interaction state result error: %d", ret);
+    return -1;
 }
 ```
 
-### Get Face Embedding from ID
+### Face Interactions Action Detection
 
-You can quickly obtain FaceFeatureIdentity related information through a face ID.
+When you configure and execute a Pipeline with the Option containing **HF_ENABLE_INTERACTION** and are in **TRACK** mode, you can obtain a series of facial actions calculated through consecutive sequence frames through the following method. These are typically used for interactive scenarios such as combining with liveness detection:
+
+- **normal**: Normal state, no special actions
+- **shake**: Head shaking action, moving head left and right
+- **jawOpen**: Mouth opening action, opening the mouth
+- **headRaise**: Head raising action, lifting the head upward
+- **blink**: Blinking action, closing and opening the eyes
 
 ```c
-// Create HFFaceFeatureIdentity
-HFFaceFeatureIdentity identity;
-auto result = HFFeatureHubGetFaceIdentity(id, &identity);
-if (result != HSUCCEED) {
-    return nullptr;
+// Get the interaction results of consecutive frame actions
+HFFaceInteractionsActions result;
+ret = HFGetFaceInteractionActionsResult(session, &result);
+if (ret != HSUCCEED) {
+    HFLogPrint(HF_LOG_ERROR, "Get the interaction results of consecutive frame actions error: %d", ret);
+    return -1;
+}
+
+// Print the detected various action states
+HFLogPrint(HF_LOG_INFO, "Face interactions - Normal: %d, Shake: %d, Jaw Open: %d, Head Raise: %d, Blink: %d",
+           result.normal, result.shake, result.jawOpen, result.headRaise, result.blink);
+```
+
+### Face Emotion Prediction 
+
+When you configure and execute a Pipeline with the Option containing **HF_ENABLE_FACE_EMOTION**, you can obtain facial expression recognition results through the API:
+
+- **emotion**: Detected facial emotion type, returns corresponding integer values:
+  - 0: Neutral
+  - 1: Happy
+  - 2: Sad
+  - 3: Surprise
+  - 4: Fear
+  - 5: Disgust
+  - 6: Anger
+
+```c
+HFFaceEmotionResult faceEmotionResult;
+ret = HFGetFaceEmotionResult(session, &faceEmotionResult);
+if (ret != HSUCCEED) {
+    HFLogPrint(HF_LOG_ERROR, "Get face emotion result error: %d", ret);
+    return -1;
+}
+
+// Print the number of detected faces and emotion results
+HFLogPrint(HF_LOG_INFO, "Number of faces: %d", faceEmotionResult.num);
+for (int i = 0; i < faceEmotionResult.num; i++) {
+    HFLogPrint(HF_LOG_INFO, "Face %d emotion: %d", i, faceEmotionResult.emotion[i]);
 }
 ```
 
-### Dynamic Search Threshold Adjustment
+### Face Attribute Prediction
 
-You can dynamically modify FeatureHub's search threshold in different scenarios.
+When you configure and execute a Pipeline with the Option containing **HF_ENABLE_FACE_ATTRIBUTE**, you can obtain facial attribute recognition results through the API, including race, gender, and age bracket:
+
+- **race**: Detected facial race type, returns corresponding integer values:
+  - 0: Black
+  - 1: Asian
+  - 2: Latino/Hispanic
+  - 3: Middle Eastern
+  - 4: White
+
+- **gender**: Detected facial gender, returns corresponding integer values:
+  - 0: Female
+  - 1: Male
+
+- **ageBracket**: Detected facial age bracket, returns corresponding integer values:
+  - 0: 0-2 years old
+  - 1: 3-9 years old
+  - 2: 10-19 years old
+  - 3: 20-29 years old
+  - 4: 30-39 years old
+  - 5: 40-49 years old
+  - 6: 50-59 years old
+  - 7: 60-69 years old
+  - 8: More than 70 years old
 
 ```c
-HFFeatureHubFaceSearchThresholdSetting(0.5f);
+HFFaceAttributeResult attributeResult;
+ret = HFGetFaceAttributeResult(session, &attributeResult);
+if (ret != HSUCCEED) {
+    HFLogPrint(HF_LOG_ERROR, "Get face attribute result error: %d", ret);
+    return -1;
+}
+
+// Print the number of detected faces and attribute results
+HFLogPrint(HF_LOG_INFO, "Number of faces: %d", attributeResult.num);
+for (int i = 0; i < attributeResult.num; i++) {
+    HFLogPrint(HF_LOG_INFO, "Face %d - Race: %d, Gender: %d, Age Bracket: %d", 
+               i, attributeResult.race[i], attributeResult.gender[i], attributeResult.ageBracket[i]);
+}
 ```
 
-## Other Feature
-
-TODO
-
-## [Example] Face Pipeline
+### [Example] Face Pipeline
 
 Provide a complete example of the program including face detection, landmark location and face attribute recognition:
 
@@ -523,6 +608,152 @@ cleanup:
 }
 ```
 
-## More
 
-TODO
+## Face Embedding Database
+
+We provide a lightweight face embedding vector database (**FeatureHub**) storage solution that includes basic functions such as adding, deleting, modifying, and searching, while supporting both **memory** and **persistent** storage modes.
+
+Before starting FeatureHub, you need to be familiar with the following parameters:
+
+- **primaryKeyMode**: Primary key mode, with two modes available. It's recommended to use HF_PK_AUTO_INCREMENT by default
+  - HF_PK_AUTO_INCREMENT: Auto-increment mode for primary keys
+  - HF_PK_MANUAL_INPUT: Manual input mode for primary keys, requiring users to avoid duplicate primary keys themselves
+- **enablePersistence**: Whether to enable persistent database storage mode
+  - If true: The database will write to local files for persistent storage during usage
+  - If false: High-speed memory management mode, dependent on program lifecycle
+- **persistenceDbPath**: Storage path required only for persistent mode, defined by the user. If the input is a folder rather than a file, the system default file naming will be used
+- **searchThreshold**: Face search threshold, using floating-point numbers. During search, only embeddings above the threshold are searched. Different models and scenarios require manual threshold settings
+- **searchMode**: Search mode, **effective only when searching for top-1 face**, with EAGER and EXHAUSTIVE modes (**this feature is temporarily disabled in the current version**)
+  - HF_SEARCH_MODE_EAGER: Complete search immediately upon encountering the first face above the threshold
+  - HF_SEARCH_MODE_EXHAUSTIVE: Search all similar faces and return the one with the highest similarity
+
+### Enable/Disable FeatureHub
+
+Using thread-safe singleton pattern design, it has global scope and only needs to be opened once:
+
+```c
+// When you need to enable global storage
+HFFeatureHubConfiguration configuration;
+configuration.primaryKeyMode = HF_PK_AUTO_INCREMENT;	// Recommended to use auto increment
+configuration.enablePersistence = 1;		// If the memory mode is set to 0
+configuration.persistenceDbPath = db_path;
+configuration.searchMode = HF_SEARCH_MODE_EXHAUSTIVE;
+configuration.searchThreshold = 0.48f;
+ret = HFFeatureHubDataEnable(configuration);
+if (ret != HSUCCEED) {
+    HFLogPrint(HF_LOG_ERROR, "Enable feature hub error: %d", ret);
+    return ret;
+}
+
+// .....
+
+// You can manually close it when you don't need to use it, or ignore it until the program ends
+HFFeatureHubDataDisable();
+```
+
+### Insert Face Embedding
+
+Insert a face embedding feature vector into FeatureHub. If in HF_PK_AUTO_INCREMENT mode, the input feature.id will be ignored. If in HF_PK_MANUAL_INPUT mode, the input feature.id is the ID the user expects to insert, and the actual inserted face ID is returned through result_id.
+
+```c
+// Insert face feature into the hub
+HFFaceFeatureIdentity featureIdentity;
+featureIdentity.feature = &feature;
+featureIdentity.id = -1;
+HFaceId result_id;
+ret = HFFeatureHubInsertFeature(featureIdentity, &result_id);
+if (ret != HSUCCEED) {
+    HFLogPrint(HF_LOG_ERROR, "Insert feature error: %d", ret);
+    return ret;
+}
+```
+
+### Search Most Similar Face
+
+Input a face embedding to be queried and search for a face ID from FeatureHub that is above the threshold (Cosine similarity).
+
+```c
+// Search face feature
+HFFaceFeatureIdentity query_featureIdentity;
+query_featureIdentity.feature = &query_feature;
+query_featureIdentity.id = -1;
+HFloat confidence;
+ret = HFFeatureHubFaceSearch(query_feature, &confidence, &query_featureIdentity);
+
+if (ret != HSUCCEED) {
+    HFLogPrint(HF_LOG_ERROR, "Search feature error: %d", ret);
+    return ret;
+}
+```
+
+### Search Top-K Faces
+
+Search for the top K faces with the highest similarity. Note that the data obtained by the `HFFeatureHubFaceSearchTopK` interface is cached data, and you need to retrieve all the result data you need before the next call, otherwise the next call will overwrite the historical data.
+
+```c
+// Create HFSearchTopKResults to store search results
+HFSearchTopKResults results;
+ret = HFFeatureHubFaceSearchTopK(feature, topK, &results);
+if (ret != HSUCCEED) {
+    HFLogPrint(HF_LOG_ERROR, "The search for the top k vectors failed: %d", ret);
+    return ret;
+}
+
+// Get all the results
+for (int i = 0; i < results.size; i++) {
+  	HFloat score = results.confidence[i];
+  	HPFaceId id =  results.ids[i];
+}
+```
+
+### Delete Face Embedding
+
+Specify a face ID to delete that face from FeatureHub.
+
+```c
+// Remove face feature
+ret = HFFeatureHubFaceRemove(result_id);
+if (ret != HSUCCEED) {
+    HFLogPrint(HF_LOG_ERROR, "Remove feature error: %d", ret);
+    return ret;
+}
+HFLogPrint(HF_LOG_INFO, "Remove feature result: %d", result_id);
+```
+
+### Update Face Embedding
+
+```C
+// Create HFFaceFeatureIdentity
+HFFaceFeatureIdentity updateIdentity;
+updateIdentity.id = old_id;	
+updateIdentity.feature = &feature;	
+
+// Update feature
+ret = HFFeatureHubFaceUpdate(updateIdentity);
+if (ret != HSUCCEED) {
+    HFLogPrint(HF_LOG_ERROR, "Update feature error: %d", ret);
+    return ret;
+}
+```
+
+### Get Face Embedding from ID
+
+You can quickly obtain FaceFeatureIdentity related information through a face ID.
+
+```c
+// Create HFFaceFeatureIdentity
+HFFaceFeatureIdentity identity;
+auto result = HFFeatureHubGetFaceIdentity(id, &identity);
+if (result != HSUCCEED) {
+    return nullptr;
+}
+```
+
+### Dynamic Search Threshold Adjustment
+
+You can dynamically modify FeatureHub's search threshold in different scenarios.
+
+```c
+HFFeatureHubFaceSearchThresholdSetting(0.5f);
+```
+
