@@ -2,6 +2,7 @@
 
 Whether it is C or C++, we recommend the use of a single CAPI header file + lib, because CAPI long-term maintenance is relatively stable, of course, there are C++ interfaces, specific reference to C++ header files.
 
+
 ## Installation and Setup
 
 You can download the precompiled inspireface library from the [release page](https://github.com/HyperInspire/InspireFace/releases), which includes the dynamic library +CAPI header by default. You need to link and include them in your project, using cmake as an example:
@@ -43,6 +44,8 @@ HFTerminateInspireFace();
 InspireFace's facial analysis algorithms are all concentrated in the session. You can use the session instance to perform **face recognition**, **face embedding extraction**, **face detection**, **face tracking**, **landmark localization**, **liveness detection**, **head pose estimation**, **attribute recognition**, and other functions. 
 
 Since the session contains some cache, **we recommend** using one session within a thread, and **we don't recommend** cross-using internal data from multiple sessions in tracking mode, as this can easily cause confusion. Sessions can be freely created and destroyed anywhere.
+
+<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/pipeline.png">
 
 ### Create Session
 
@@ -94,6 +97,8 @@ if (ret != HSUCCEED) {
 ### Face Detection
 
 Face detection is the first step in the analysis of faces, which requires the input of an image or frame:
+
+![landmark](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/feature/lmk.jpg)
 
 ```c
 // Load a image
@@ -172,11 +177,11 @@ if (ret != HSUCCEED) {
 }
 ```
 
+
 ### Face Landmark
 
 Face landmark prediction can be used in any detection mode state, but it should be noted that if the detection mode is in **TRACK** state, you will get smoother facial landmark points. This is because the internal face tracking state landmark optimization filtering has been integrated. We provide two solutions: 5 basic key points and denser key points (more than 100 points).
 
-![landmark](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/feature/lmk.jpg)
 
 ```c
 // Set landmark smoothing ratio (only effective in TRACK mode!)
@@ -252,13 +257,34 @@ if (ret != HSUCCEED) {
 HFReleaseFaceFeature(&feature);
 ```
 
+### Face Pose Estimation
+
+When you create a session with the **HF_ENABLE_FACE_POSE** option enabled, you can obtain face pose Euler angle values from the returned MultipleFaceData during face detection or tracking:
+
+- **HFFaceEulerAngle**:
+    - **roll**: Head rotation around the Z-axis (tilting left/right)
+    - **yaw**: Head rotation around the Y-axis (turning left/right)  
+    - **pitch**: Head rotation around the X-axis (nodding up/down)
+
+<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/feature/pose.jpg" alt="pose" style="max-width:250px;">
+
+If you don't enable the **HF_ENABLE_FACE_POSE** option, you will get invalid values.
+
+```c
+for (int index = 0; index < multipleFaceData.detectedNum; ++index) {
+    HFloat roll = multipleFaceData.angles.roll[index];
+    HFloat yaw = multipleFaceData.angles.yaw[index];
+    HFloat pitch = multipleFaceData.angles.pitch[index];
+    
+    HFLogPrint(HF_LOG_INFO, "face_index: %d, roll: %f, yaw: %f, pitch: %f", index, roll, yaw, pitch);
+}
+```
+
 ## Face Pipeline
 
 If you want to access facial attribute functions such as Anti-Spoofing, mask detection, quality detection, and facial motion recognition, you need to call the Pipeline interface to execute these functions.
 
-<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/feature/quality.jpg" alt="quality" style="max-width:200px;">
-<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/feature/attribute.jpg" alt="attribute" style="max-width:200px;">
-<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/feature/act.jpg" alt="action" style="max-width:200px;">
+<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/pip_bn.png" alt="quality" style="max-height:200px;">
 
 ### Execute the Face Pipeline
 
@@ -287,9 +313,6 @@ if (ret != HSUCCEED) {
 
 When you configure and execute a Pipeline with the Option containing **HF_ENABLE_LIVENESS**, you can obtain the RGB Anti-Spoofing detection confidence through the following method:
 
-<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/feature/liveness.jpg" alt="liveness" style="max-width:512px;">
-
-
 ```c
 HFRGBLivenessConfidence livenessConfidence;
 /* Get RGB liveness detection results from the pipeline cache */
@@ -299,6 +322,8 @@ if (ret != HSUCCEED) {
     return -1;
 }
 ```
+
+<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/feature/liveness.jpg" alt="liveness" style="max-width:220px;">
 
 ### Face Mask Detection
 
@@ -612,6 +637,10 @@ cleanup:
 ## Face Embedding Database
 
 We provide a lightweight face embedding vector database (**FeatureHub**) storage solution that includes basic functions such as adding, deleting, modifying, and searching, while supporting both **memory** and **persistent** storage modes.
+
+::: tip
+Although we provide a lightweight vector storage and retrieval function, it is not necessary. If it cannot meet your performance requirements, we encourage you to manage the face embeddings yourself.
+:::
 
 Before starting FeatureHub, you need to be familiar with the following parameters:
 
