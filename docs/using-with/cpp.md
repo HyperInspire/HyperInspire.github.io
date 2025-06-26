@@ -295,7 +295,7 @@ Input a face embedding to be queried and search for a face ID from FeatureHub th
 
 ### Search Top-K Faces
 
-Search for the top K faces with the highest similarity. Note that the data obtained by the `HFFeatureHubFaceSearchTopK` interface is cached data, and you need to retrieve all the result data you need before the next call, otherwise the next call will overwrite the historical data.
+Search for the top K faces with the highest similarity. Note that the data obtained by the `SearchFaceFeatureTopK` interface is cached data, and you need to retrieve all the result data you need before the next call, otherwise the next call will overwrite the historical data.
 
 ### Delete Face Embedding
 
