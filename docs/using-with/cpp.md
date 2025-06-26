@@ -272,22 +272,36 @@ Although we provide a lightweight vector storage and retrieval function, it is n
 
 Before starting FeatureHub, you need to be familiar with the following parameters:
 
-- **primary_key_mode**: Primary key mode, with two modes available. It's recommended to use HF_PK_AUTO_INCREMENT by default
-  - HF_PK_AUTO_INCREMENT: Auto-increment mode for primary keys
-  - HF_PK_MANUAL_INPUT: Manual input mode for primary keys, requiring users to avoid duplicate primary keys themselves
+- **primary_key_mode**: Primary key mode, with two modes available. It's recommended to use AUTO_INCREMENT by default
+  - AUTO_INCREMENT: Auto-increment mode for primary keys
+  - MANUAL_INPUT: Manual input mode for primary keys, requiring users to avoid duplicate primary keys themselves
 - **enable_persistence**: Whether to enable persistent database storage mode
   - If true: The database will write to local files for persistent storage during usage
   - If false: High-speed memory management mode, dependent on program lifecycle
 - **persistence_db_path**: Storage path required only for persistent mode, defined by the user. If the input is a folder rather than a file, the system default file naming will be used
 - **recognition_threshold**: Face search threshold, using floating-point numbers. During search, only embeddings above the threshold are searched. Different models and scenarios require manual threshold settings
 - **search_mode**: Search mode, **effective only when searching for top-1 face**, with EAGER and EXHAUSTIVE modes (**this feature is temporarily disabled in the current version**)
-  - HF_SEARCH_MODE_EAGER: Complete search immediately upon encountering the first face above the threshold
-  - HF_SEARCH_MODE_EXHAUSTIVE: Search all similar faces and return the one with the highest similarity
+  - SEARCH_MODE_EAGER: Complete search immediately upon encountering the first face above the threshold
+  - SEARCH_MODE_EXHAUSTIVE: Search all similar faces and return the one with the highest similarity
 
 
 ### Enable/Disable FeatureHub
 
 Using thread-safe singleton pattern design, it has global scope and only needs to be opened once:
+
+```cpp
+// Configuration
+std::string db_path = "case_crud.db";
+inspire::DatabaseConfiguration db_config;
+db_config.enable_persistence = true;
+db_config.persistence_db_path = db_path;
+db_config.search_mode = inspire::SEARCH_MODE_EXHAUSTIVE;
+db_config.recognition_threshold = 0.48f;
+db_config.primary_key_mode = inspire::AUTO_INCREMENT;
+// Enable feature hub
+auto ret = INSPIREFACE_FEATURE_HUB->EnableHub(db_config);
+INSPIREFACE_CHECK_MSG(ret == HSUCCEED, "EnableHub failed");
+```
 
 ### Search Most Similar Face
 
