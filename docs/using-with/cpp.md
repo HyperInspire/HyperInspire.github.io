@@ -147,6 +147,164 @@ float res = -1.0f;
 INSPIREFACE_FEATURE_HUB->CosineSimilarity(feature1.data, feature2.data, feature1.size, res);
 ```
 
-## More
+## Face Pipeline
 
-TODO
+If you want to access facial attribute functions such as Anti-Spoofing, mask detection, quality detection, and facial motion recognition, you need to call the Pipeline interface to execute these functions.
+
+### Execute the Face Pipeline
+
+To execute the Pipeline function, you need to first perform face detection or tracking to obtain **FaceTrackWrap**, select the face you want to execute the pipeline on as input parameters, and configure the corresponding Option for the functions you want to call.
+
+All functions require only one pipeline interface call, which simplifies frequent calling scenarios.
+
+::: warning
+Ensure that the Option is included when creating the Session. The executed Option must be a subset of or identical to the Session's Option. If the execution exceeds the configured Session Option functionality scope, it will fail to execute!
+:::
+
+```cpp
+ret = session->MultipleFacePipelineProcess(process, param, results);
+INSPIREFACE_CHECK_MSG(ret == 0, "MultipleFacePipelineProcess failed");
+```
+
+### Face RGB Anti-Spoofing
+
+When you configure and execute a Pipeline with the Option containing **enable_liveness**, you can obtain the RGB Anti-Spoofing detection confidence through the following method:
+
+```cpp
+std::vector<float> confidence = session->GetRGBLivenessConfidence();
+```
+
+### Face Mask Detection
+
+When you configure and execute a Pipeline with the Option containing **enable_mask_detect**, you can obtain the face mask detection confidence through the following method:
+
+```cpp
+std::vector<float> confidence = session->GetFaceMaskConfidence();
+```
+
+### Face Quality Prediction
+
+When you configure and execute a Pipeline with the Option containing **enable_face_quality**, you can obtain face quality through the following method. This is a comprehensive confidence score based on attributes that affect clarity such as blur, occlusion, and lighting:
+
+```cpp
+std::vector<float> confidence = session->GetFaceQualityConfidence();
+```
+
+### Eyes State Prediction
+
+When you configure and execute a Pipeline with the Option containing **enable_interaction_liveness**, you can obtain the static action state of the current frame through the following method (currently only supports eye state):
+
+- **left_eye_status_confidence**: Left eye state: confidence close to 1 means open, close to 0 means closed.
+- **right_eye_status_confidence**: Right eye state: confidence close to 1 means open, close to 0 means closed.
+
+```cpp
+std::vector<FaceInteractionState> states = session->GetFaceInteractionState();
+```
+
+### Face Interactions Action Detection
+
+When you configure and execute a Pipeline with the Option containing **enable_interaction_liveness** and are in **TRACK** mode, you can obtain a series of facial actions calculated through consecutive sequence frames through the following method. These are typically used for interactive scenarios such as combining with liveness detection:
+
+- **normal**: Normal state, no special actions
+- **shake**: Head shaking action, moving head left and right
+- **jawOpen**: Mouth opening action, opening the mouth
+- **headRaise**: Head raising action, lifting the head upward
+- **blink**: Blinking action, closing and opening the eyes
+
+```cpp
+std::vector<FaceInteractionAction> results = session->GetFaceInteractionAction();
+```
+
+### Face Emotion Prediction 
+
+When you configure and execute a Pipeline with the Option containing **enable_face_emotion**, you can obtain facial expression recognition results through the API:
+
+- **emotion**: Detected facial emotion type, returns corresponding integer values:
+  - 0: Neutral
+  - 1: Happy
+  - 2: Sad
+  - 3: Surprise
+  - 4: Fear
+  - 5: Disgust
+  - 6: Anger
+
+```cpp
+std::vector<FaceEmotionResult> results = session->GetFaceEmotionResult();
+```
+
+### Face Attribute Prediction
+
+When you configure and execute a Pipeline with the Option containing **enable_face_attribute**, you can obtain facial attribute recognition results through the API, including race, gender, and age bracket:
+
+- **race**: Detected facial race type, returns corresponding integer values:
+  - 0: Black
+  - 1: Asian
+  - 2: Latino/Hispanic
+  - 3: Middle Eastern
+  - 4: White
+
+- **gender**: Detected facial gender, returns corresponding integer values:
+  - 0: Female
+  - 1: Male
+
+- **ageBracket**: Detected facial age bracket, returns corresponding integer values:
+  - 0: 0-2 years old
+  - 1: 3-9 years old
+  - 2: 10-19 years old
+  - 3: 20-29 years old
+  - 4: 30-39 years old
+  - 5: 40-49 years old
+  - 6: 50-59 years old
+  - 7: 60-69 years old
+  - 8: More than 70 years old
+
+```cpp
+std::vector<FaceAttributeResult> results = session->GetFaceAttributeResult();
+```
+
+## Face Embedding Database
+
+We provide a lightweight face embedding vector database (**FeatureHub**) storage solution that includes basic functions such as adding, deleting, modifying, and searching, while supporting both **memory** and **persistent** storage modes.
+
+::: tip
+Although we provide a lightweight vector storage and retrieval function, it is not necessary. If it cannot meet your performance requirements, we encourage you to manage the face embeddings yourself.
+:::
+
+Before starting FeatureHub, you need to be familiar with the following parameters:
+
+- **primary_key_mode**: Primary key mode, with two modes available. It's recommended to use HF_PK_AUTO_INCREMENT by default
+  - HF_PK_AUTO_INCREMENT: Auto-increment mode for primary keys
+  - HF_PK_MANUAL_INPUT: Manual input mode for primary keys, requiring users to avoid duplicate primary keys themselves
+- **enable_persistence**: Whether to enable persistent database storage mode
+  - If true: The database will write to local files for persistent storage during usage
+  - If false: High-speed memory management mode, dependent on program lifecycle
+- **persistence_db_path**: Storage path required only for persistent mode, defined by the user. If the input is a folder rather than a file, the system default file naming will be used
+- **recognition_threshold**: Face search threshold, using floating-point numbers. During search, only embeddings above the threshold are searched. Different models and scenarios require manual threshold settings
+- **search_mode**: Search mode, **effective only when searching for top-1 face**, with EAGER and EXHAUSTIVE modes (**this feature is temporarily disabled in the current version**)
+  - HF_SEARCH_MODE_EAGER: Complete search immediately upon encountering the first face above the threshold
+  - HF_SEARCH_MODE_EXHAUSTIVE: Search all similar faces and return the one with the highest similarity
+
+
+### Enable/Disable FeatureHub
+
+Using thread-safe singleton pattern design, it has global scope and only needs to be opened once:
+
+### Search Most Similar Face
+
+Input a face embedding to be queried and search for a face ID from FeatureHub that is above the threshold (Cosine similarity).
+
+### Search Top-K Faces
+
+Search for the top K faces with the highest similarity. Note that the data obtained by the `HFFeatureHubFaceSearchTopK` interface is cached data, and you need to retrieve all the result data you need before the next call, otherwise the next call will overwrite the historical data.
+
+### Delete Face Embedding
+
+Specify a face ID to delete that face from FeatureHub.
+
+### Update Face Embedding
+
+You can replace the existing feature vectors in the database through the update interface.
+
+### Get Face Embedding from ID
+
+You can quickly obtain FaceFeatureIdentity related information through a face ID.

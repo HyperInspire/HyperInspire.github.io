@@ -751,6 +751,8 @@ HFLogPrint(HF_LOG_INFO, "Remove feature result: %d", result_id);
 
 ### Update Face Embedding
 
+You can replace the existing feature vectors in the database through the update interface.
+
 ```C
 // Create HFFaceFeatureIdentity
 HFFaceFeatureIdentity updateIdentity;
