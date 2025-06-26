@@ -303,22 +303,68 @@ auto ret = INSPIREFACE_FEATURE_HUB->EnableHub(db_config);
 INSPIREFACE_CHECK_MSG(ret == HSUCCEED, "EnableHub failed");
 ```
 
+### Insert Face Embedding
+
+Insert a face embedding feature vector into FeatureHub. If in AUTO_INCREMENT mode, the input feature.id will be ignored. If in MANUAL_INPUT mode, the input feature.id is the ID the user expects to insert, and the actual inserted face ID is returned through result_id.
+
+```cpp
+// Insert face feature into the hub, because the id is INSPIRE_INVALID_ID, so input id is ignored
+int64_t result_id;
+INSPIREFACE_FEATURE_HUB->FaceFeatureInsert(feature.embedding, INSPIRE_INVALID_ID, result_id);
+```
+
 ### Search Most Similar Face
 
 Input a face embedding to be queried and search for a face ID from FeatureHub that is above the threshold (Cosine similarity).
+
+```cpp
+// Search face feature
+inspire::FaceSearchResult search_result;
+INSPIREFACE_FEATURE_HUB->SearchFaceFeature(query_feature.embedding, search_result, true);
+```
 
 ### Search Top-K Faces
 
 Search for the top K faces with the highest similarity. Note that the data obtained by the `SearchFaceFeatureTopK` interface is cached data, and you need to retrieve all the result data you need before the next call, otherwise the next call will overwrite the historical data.
 
+```cpp
+// Top-k query
+std::vector<inspire::FaceSearchResult> top_k_results;
+INSPIREFACE_FEATURE_HUB->SearchFaceFeatureTopK(query_feature.embedding, top_k_results, 10, true);
+```
+
 ### Delete Face Embedding
 
 Specify a face ID to delete that face from FeatureHub.
+
+```cpp
+// Remove the face feature
+INSPIREFACE_FEATURE_HUB->FaceFeatureRemove(face_id);
+```
 
 ### Update Face Embedding
 
 You can replace the existing feature vectors in the database through the update interface.
 
+```cpp
+// Update the face feature
+INSPIREFACE_FEATURE_HUB->FaceFeatureUpdate(query_feature.embedding, face_id);
+```
+
 ### Get Face Embedding from ID
 
 You can quickly obtain FaceFeatureIdentity related information through a face ID.
+
+```cpp
+// Get facial features of id
+inspire::FaceEmbedding face_feature;
+INSPIREFACE_FEATURE_HUB->GetFaceFeature(result_id, face_feature);
+```
+
+### Dynamic Search Threshold Adjustment
+
+You can dynamically modify FeatureHub's search threshold in different scenarios.
+
+```c
+SetRecognitionThreshold(0.5f);
+```
