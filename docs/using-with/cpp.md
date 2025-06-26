@@ -109,7 +109,7 @@ image.Write("result.jpg");
 
 Face landmark prediction can be used in any detection mode state, but it should be noted that if the detection mode is in **TRACK** state, you will get smoother facial landmark points. This is because the internal face tracking state landmark optimization filtering has been integrated. We provide two solutions: 5 basic key points and denser key points (more than 100 points).
 
-```c
+```cpp
 inspire::FaceTrackWrap result = results[0];
 std::vector<inspirecv::Point2f> landmark = session->GetFaceDenseLandmark(result);
 ```
@@ -133,7 +133,7 @@ When you create a session with the **enable_face_pose** option enabled, you can 
     - **yaw**: Head rotation around the Y-axis (turning left/right)  
     - **pitch**: Head rotation around the X-axis (nodding up/down)
 
-```c
+```cpp
 std::cout << "yaw: " << result.face3DAngle.yaw << ", pitch: " << result.face3DAngle.pitch << ", roll: " << result.face3DAngle.roll << std::endl;
 ```
 
@@ -365,6 +365,6 @@ INSPIREFACE_FEATURE_HUB->GetFaceFeature(result_id, face_feature);
 
 You can dynamically modify FeatureHub's search threshold in different scenarios.
 
-```c
+```cpp
 SetRecognitionThreshold(0.5f);
 ```
