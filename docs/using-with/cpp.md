@@ -105,6 +105,15 @@ for (auto& result : results) {
 image.Write("result.jpg");
 ```
 
+### Face Landmark
+
+Face landmark prediction can be used in any detection mode state, but it should be noted that if the detection mode is in **TRACK** state, you will get smoother facial landmark points. This is because the internal face tracking state landmark optimization filtering has been integrated. We provide two solutions: 5 basic key points and denser key points (more than 100 points).
+
+```c
+inspire::FaceTrackWrap result = results[0];
+std::vector<inspirecv::Point2f> landmark = session->GetFaceDenseLandmark(result);
+```
+
 ### Face Embeding
 
 Get face Embeding is an important step in face recognition, comparison or face swap, which usually needs to be carried out after face detection or tracking:
@@ -113,6 +122,19 @@ Get face Embeding is an important step in face recognition, comparison or face s
 // Get face embedding
 inspire::FaceEmbedding feature;
 session.FaceFeatureExtract(process, results[0], feature, true);
+```
+
+### Face Pose Estimation
+
+When you create a session with the **enable_face_pose** option enabled, you can obtain face pose Euler angle values from the returned MultipleFaceData during face detection or tracking:
+
+- **HFFaceEulerAngle**:
+    - **roll**: Head rotation around the Z-axis (tilting left/right)
+    - **yaw**: Head rotation around the Y-axis (turning left/right)  
+    - **pitch**: Head rotation around the X-axis (nodding up/down)
+
+```c
+std::cout << "yaw: " << result.face3DAngle.yaw << ", pitch: " << result.face3DAngle.pitch << ", roll: " << result.face3DAngle.roll << std::endl;
 ```
 
 ### Face Comparison
