@@ -23,7 +23,7 @@ allprojects {
 
 ```gradle
 dependencies {
-    implementation 'com.github.HyperInspire:inspireface-android-sdk:1.2.2'
+    implementation 'com.github.HyperInspire:inspireface-android-sdk:1.2.3.post4'
 }
 ```
 
