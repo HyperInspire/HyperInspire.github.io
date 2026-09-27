@@ -1,7 +1,8 @@
 ---
 home: true
 title: Home
-heroImage: https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/isf_view.png
+heroImage: https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/inspireface-doc-images-web/banner.webp
+heroAlt: InspireFace face analysis, recognition, liveness detection, and cross-platform deployment
 actions:
   - text: Get Started
     link: /get-started.html

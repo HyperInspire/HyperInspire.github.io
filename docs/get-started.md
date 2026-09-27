@@ -5,7 +5,7 @@ If you require further information on tracking development branches, CI/CD proce
 
 Please contact [contact@insightface.ai](mailto:contact@insightface.ai?subject=InspireFace) for commercial support, including obtaining and integrating higher accuracy models, as well as custom development.
 
-<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/blogs_box/inspireface-banner.jpg" alt="banner" style="zoom:80%;" />
+<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/inspireface-doc-images-web/banner.webp" alt="InspireFace face analysis, recognition, and liveness detection" width="2172" height="724" style="height: auto;" />
 
 ## Supported
 

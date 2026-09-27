@@ -75,6 +75,10 @@ export default defineUserConfig({
             link: '/guides/dense-landmark',
           },
           {
+            text: 'Liveness Detection',
+            link: '/guides/liveness-detection',
+          },
+          {
             text: 'Lightweight CV library',
             link: '/guides/inspirecv',
           },

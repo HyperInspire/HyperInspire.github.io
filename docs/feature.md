@@ -5,7 +5,7 @@ This system provides a comprehensive set of face recognition features, covering 
 
 With flexible module composition and broad **cross-platform** support, this system is well-suited for a wide range of face recognition applications, including access control, attendance tracking, identity verification, and security surveillance.
 
-![alt text](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/feature/fbanner.jpg)
+<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/inspireface-doc-images-web/banner.webp" alt="InspireFace facial analysis and verification capabilities" width="2172" height="724" style="height: auto;" />
 
 ## Face Tracking
 
@@ -26,38 +26,15 @@ InspireFace SDK offers **Multi-Scale Face Detection** capabilities with input si
 
 ## Face Embedding
 
-
-<div style="display: flex; align-items: flex-start; gap: 20px;">
-
-<div style="flex: 1;">
-
 InspireFace SDK integrates multiple state-of-the-art (SOTA) face recognition models, serving as the core technology foundation for applications such as face verification, face identification, and face swapping. The SDK offers a diverse set of models optimized for a wide range of platforms — from embedded systems and mobile devices to high-performance GPU environments — enabling flexible deployment across various use cases and hardware configurations.
 
-</div>
-
-<div style="flex: 0 0 auto;">
-  <img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/feature/embedding.jpg" alt="embedding" style="max-width:350px;">
-</div>
-
-</div>
-
+<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/inspireface-doc-images-web/feature.webp" alt="Face embeddings and similarity search in a feature space" width="1672" height="941" style="height: auto;" />
 
 ## Face Attribute Analysis
 
-
-<div style="display: flex; align-items: flex-start; gap: 20px;">
-
-<div style="flex: 0 0 auto;">
-  <img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/feature/attribute.jpg" alt="attribute" style="max-width:200px;">
-</div>
-
-<div style="flex: 1;">
-
 InspireFace SDK provides comprehensive facial attribute analysis, including **mask detection**, **ethnicity**, **age**, and **gender classification**. These capabilities enable the extraction of structured, high-level semantic information from faces, supporting advanced filtering, analytics, and decision-making processes in face-related applications.
 
-</div>
-
-</div>
+<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/inspireface-doc-images-web/face_analysis.webp" alt="Face analysis including mask detection, expression, image quality, and head pose" width="1536" height="1024" style="height: auto;" />
 
 ## Face Recognition
 
@@ -94,28 +71,15 @@ We provide a face image quality assessment algorithm that helps automatically fi
 
 ## Face Landmark
 
-<div style="display: flex; align-items: flex-start; gap: 20px;">
-
-
 We offer the latest **HyperLandmark V2**, a high-precision facial landmark detection model optimized for mobile devices. It is designed for seamless integration with AR cameras, beauty filters, and skin analysis applications. On mid-range iOS and Android devices, it achieves an average inference speed of **1ms per frame**, delivering real-time performance without compromising accuracy.
 
-<div style="flex: 0 0 auto;">
-  <img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/feature/landmark.png" alt="landmark" style="max-width:200px;">
-</div>
-
-<div style="flex: 1;">
-
-</div>
-
-</div>
+<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/inspireface-doc-images-web/lmk.webp" alt="Dense facial landmarks driving an animated facial expression" width="1536" height="1024" style="height: auto;" />
 
 ## Silent Liveness
 
 Silent Liveness Detection enables robust anti-spoofing capabilities without requiring user interaction. By analyzing subtle facial cues and texture patterns, it can effectively distinguish between real human faces and presentation attacks such as photos, videos, or masks. This passive liveness detection approach enhances user experience by operating seamlessly in the background, making it ideal for secure, frictionless identity verification in scenarios like mobile onboarding, access control, and payment authentication.
 
-<div style="flex: 0 0 auto;">
-  <img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/feature/liveness.jpg" alt="liveness" style="max-width:512px;">
-</div>
+<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/inspireface-doc-images-web/liveness.webp" alt="Passive face liveness verification on a mobile device" width="1536" height="1024" style="width: 640px; height: auto;" />
 
 ## Head Pose Estimation
 
@@ -136,22 +100,23 @@ High-precision head pose estimation accurately detects **yaw, pitch, and roll an
 
 ## Cooperative Liveness
 
-
-<div style="display: flex; align-items: flex-start; gap: 20px;">
-
-<div style="flex: 0 0 auto;">
-  <img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/feature/act.jpg" alt="action" style="max-width:220px;">
-</div>
-
 Cooperative Liveness Detection uses sequential frame input to recognize facial expressions and head movements—such as blinking, mouth opening, or head turns—for active liveness verification. By guiding users through simple actions, it effectively resists spoofing attacks while ensuring a smooth and user-friendly experience, making it ideal for secure identity verification in scenarios like digital onboarding and access control.
 
-<div style="flex: 1;">
+<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/inspireface-doc-images-web/action_liveness.webp" alt="Cooperative liveness with head shake, blink, mouth opening, and head raise prompts" width="1536" height="1024" style="width: 640px; height: auto;" />
 
-</div>
+## Passive Liveness (PLUS)
 
-</div>
+**Passive Liveness (PLUS)** provides commercial face liveness verification through **InspireFacePlus**. It analyzes a short sequence of RGB face images while the user looks at the camera, without requiring facial actions or screen flashes. This approach offers a simple verification experience for mobile onboarding and remote identity verification.
 
+<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/inspireface-doc-images-web/liveness.webp" alt="Passive Liveness PLUS verification while the user faces the camera" width="1536" height="1024" style="width: 640px; height: auto;" />
 
+## Flash Liveness (PLUS)
+
+**Flash Liveness (PLUS)** provides commercial face liveness verification using controlled screen illumination. The screen displays a sequence of colors while the user keeps their face steady, and **InspireFacePlus** analyzes the captured face images to assess liveness. It supports a guided mobile verification experience without requiring a sequence of facial actions.
+
+<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/inspireface-doc-images-web/light_liveness.webp" alt="Flash Liveness PLUS using colored screen illumination to distinguish a live face from a printed photo" width="1536" height="1024" style="width: 640px; height: auto;" />
+
+Try both PLUS demos in the [Android example app](./introduction.md#try-the-android-example-app). The demos require an internet connection. See the [Liveness Detection guide](./guides/liveness-detection.md) for more details, or [contact us to obtain access to the commercial versions](mailto:contact@insightface.ai?subject=InspireFace%20Commercial%20Liveness).
 
 ## Embedding Management
 
@@ -190,6 +155,8 @@ To maximize performance, the system automatically selects the most efficient com
 | Tracking | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) |
 | Mask Detection | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | - | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | - | - |
 | Silent Liveness | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | - | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | - | - |
+| Passive Liveness<sup>Plus</sup> | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) |
+| Flash Liveness<sup>Plus</sup> | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) |
 | Face Quality | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) |
 | Pose Estimation | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) |
 | Face Attribute | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | - | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) | - | [![](https://img.shields.io/badge/%E2%9C%93-green)](#) |

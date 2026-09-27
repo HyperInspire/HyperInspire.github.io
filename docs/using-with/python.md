@@ -217,7 +217,7 @@ for face in faces:
 
 If you want to access facial attribute functions such as Anti-Spoofing, mask detection, quality detection, and facial motion recognition, you need to call the Pipeline interface to execute these functions.
 
-<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/pip_bn.png" alt="quality" style="max-height:200px;">
+<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/inspireface-doc-images-web/face_analysis.webp" alt="Face analysis including mask detection, expression, image quality, and head pose" width="1536" height="1024" style="width: 640px; height: auto;" />
 
 ### Execute the Face Pipeline
 
@@ -257,7 +257,7 @@ for idx, ext in enumerate(face_extensions):
 
 When you configure and execute a Pipeline with the Option containing **HF_ENABLE_LIVENESS**, you can obtain the RGB Anti-Spoofing detection confidence:
 
-<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/feature/liveness.jpg" alt="liveness" style="max-width:220px;">
+<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/inspireface-doc-images-web/liveness.webp" alt="RGB face liveness verification on a mobile device" width="1536" height="1024" style="width: 640px; height: auto;" />
 
 ```python
 # Enable liveness detection

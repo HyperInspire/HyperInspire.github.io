@@ -2,7 +2,7 @@
 
 We offer the latest **HyperLandmarkV2**, a high-precision facial landmark detection model optimized for mobile devices. It is designed for seamless integration with AR cameras, beauty filters, and skin analysis applications. On mid-range iOS and Android devices, it achieves an average inference speed of **1ms per frame**, delivering real-time performance without compromising accuracy.
 
-![landmark](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/feature/lmk.jpg)
+<img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/inspireface-doc-images-web/lmk.webp" alt="Dense facial landmarks driving an animated facial expression" width="1536" height="1024" style="height: auto;" />
 
 ## Usage
 
