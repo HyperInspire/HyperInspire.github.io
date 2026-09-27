@@ -13,6 +13,8 @@ export default defineUserConfig({
   description: 'A cross-platform high-performance deep learning facial analysis SDK framework.',
 
   theme: defaultTheme({
+    colorMode: 'light',
+
     logo: 'https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/126000993.png',
 
     navbar: ['/', '/get-started'],
