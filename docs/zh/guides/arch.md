@@ -47,6 +47,23 @@ C API 的原始缓冲区图像流借用应用持有的内存。所有消费者�
 直接使用 C API 时，单路视频按顺序跟踪可以读取 `HFExecuteFaceTrack` 返回的借用结果，省去这次复制。需在下一次跟踪前读完；后续调用可能覆盖这些结果，不适合跨帧保留或交叉复用。
 :::
 
+## Apple 对象的生命周期 {#apple-object-lifetimes}
+
+Objective-C 的 `IFSession` 和 Swift 的 `FaceSession` 持有原生 Session 句柄。封装对象销毁时，ARC 会触发资源释放；相机工作线程或单次任务结束后，也可以用 Swift 的 `close()` 或 Objective-C 的 `closeWithError:` 在确定的时机释放资源。对象关闭后，即使仍有其他强引用，原生数据也已失效。
+
+| Object / view | 有效范围 |
+| --- | --- |
+| Raw-buffer image stream | 图像流借用像素，调用方需在处理期间保持内存有效且不被改写。 |
+| `CVPixelBuffer` image stream | 封装保留并锁定缓冲区，直到图像流关闭或替换输入；支持的像素布局必须紧密排列。 |
+| `withUnsafeFaces` / `withBorrowedFacesFromStream` | 在回调内读取结果并完成同帧分析；不保留其中的指针，也不在回调内发起下一次跟踪。 |
+| `FaceSnapshot` / `IFFaceSnapshot` | 持有复制后的人脸检测数据，直到关闭；不保留原图像素。 |
+| `FaceFeatureBuffer` / `IFFeatureBuffer` | 持有特征内存；`borrowedFeature` 指向该内存，关闭后失效。 |
+| Capture and FeatureHub result views | 需要延后使用的值，应在后续操作覆盖底层存储前复制。 |
+
+Swift 的作用域辅助方法返回 `UnsafeBufferPointer` 视图，不会自动分配数组。需要复制值时可以使用 `Array(view)`，但只复制 token 结构体不会复制 token 指向的字节。需要延后处理人脸时，保留 snapshot 和对应帧。位图的 `snapshotStream` 是另一种操作，会复制像素。
+
+每个 Session 与相机队列放在同一个串行工作线程中使用。封装不会让共享的原生状态自动具备线程安全性，进程级运行时和 FeatureHub 的修改也应统一调度。退出时先结束工作线程，再关闭对象和运行时。直接通过暴露的句柄调用 C API，会绕过封装层的作用域访问检查。
+
 ## 工作线程的组织方式 {#a-useful-worker-layout}
 
 ```text

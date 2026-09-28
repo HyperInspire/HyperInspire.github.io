@@ -14,6 +14,8 @@ This page describes the **1.2.4 source wrapper**. Published packages and their d
 
 Complete [source preparation](./source.md), then follow the build chapter for [Linux](./linux.md), [macOS](./macos.md), [NVIDIA](./nvidia.md) or [Rockchip](./rockchip.md). Python needs a **shared library**, built with `ISF_BUILD_SHARED_LIBS=ON`: `libInspireFace.so` on Linux or `libInspireFace.dylib` on macOS.
 
+On Apple platforms, the new Objective-C / Swift frameworks are an additional integration route for native apps. Python still loads the **raw macOS dylib**, not `InspireFace.xcframework`, `InspireFaceSwift.framework` or an iOS static archive. `build_macos_arm64.sh` and `build_macos_x86.sh` produce that dylib. The arm64 CoreML script produces a raw `.a`; use the [custom shared build](./macos.md#set-architecture-and-deployment-target) for Python instead.
+
 The CMake configuration generates `python/version.txt`. If you built the SDK in this checkout, it is already in place. If you are reusing a matching SDK built elsewhere, copy its accompanying `version.txt` into this checkout before installing or packaging the wrapper:
 
 ```bash
@@ -111,7 +113,7 @@ cp "$ISF_NATIVE" "$ISF_BUNDLE_DIR/libInspireFace.so"
 python -m build --wheel --outdir "$PWD/python/dist" "$ISF_WHEEL_STAGE"
 ```
 
-For Linux aarch64, use `arm64` and `linux_aarch64`. For macOS, use `darwin`, the appropriate architecture, a macOS wheel tag and `libInspireFace.dylib` in both the source and destination paths.
+For Linux aarch64, use `arm64` and `linux_aarch64`. For macOS, follow the [complete packaging example](#package-the-current-macos-sdk) below, including its explicit deployment tag.
 
 The wheel version comes from `python/version.txt` plus the suffix in `python/post`. For example, `1.2.4` and an empty suffix produce `inspireface-1.2.4-py3-none-linux_x86_64.whl`.
 
@@ -130,6 +132,50 @@ If unset, `setup.py` chooses directories and tags from the build host. Its Linux
 The 1.2.4 wrapper produces a `py3-none-<platform>` wheel: `ctypes` has no CPython extension ABI dependency, but the wheel contains a native library and is platform-specific. The package declares Python 3.7 or newer. Changing a tag or renaming a library does not change its CPU architecture, libc requirements or backend dependencies.
 
 Cross-packaging can run on a different host after you have built the target library. Set all three variables explicitly, then test the resulting wheel on the actual target. `INSPIREFACE_LIBRARY_PATH` only controls runtime loading; it does **not** select the library bundled by `setup.py`.
+
+### Package the current macOS SDK {#package-the-current-macos-sdk}
+
+Start with the [Develop source](./source.md#develop-source). For Apple Silicon, this complete example builds the CPU library with a macOS 14.0 deployment target and packages it with the corresponding wheel tag. Run it in the activated Python environment from the repository root. Inspect the printed architecture, minimum OS and dependencies before distributing the wheel.
+
+<details>
+<summary>Build and package an arm64 macOS wheel</summary>
+
+```bash
+MACOSX_DEPLOYMENT_TARGET=14.0 VERSION=1.2.4 \
+  bash command/build_macos_arm64.sh --jobs 4
+
+ISF_APPLE_SDK="$PWD/build/inspireface-macos-apple-silicon-arm64-1.2.4"
+ISF_NATIVE="$ISF_APPLE_SDK/InspireFace/lib/libInspireFace.dylib"
+xcrun lipo -info "$ISF_NATIVE"
+xcrun vtool -show-build "$ISF_NATIVE"
+otool -L "$ISF_NATIVE"
+cp "$ISF_APPLE_SDK/version.txt" python/version.txt
+
+python -m pip install build
+export INSPIRE_FACE_TARGET_PLATFORM=darwin
+export INSPIRE_FACE_TARGET_ARCH=arm64
+export INSPIRE_FACE_TARGET_AARCH_MAPPING=macosx_14_0_arm64
+
+ISF_WHEEL_STAGE="$(mktemp -d)"
+cp -R python/inspireface "$ISF_WHEEL_STAGE/"
+cp python/{setup.py,pyproject.toml,README.md,version.txt,post} "$ISF_WHEEL_STAGE/"
+ISF_BUNDLE_DIR="$ISF_WHEEL_STAGE/inspireface/modules/core/libs/darwin/arm64"
+mkdir -p "$ISF_BUNDLE_DIR"
+cp "$ISF_NATIVE" "$ISF_BUNDLE_DIR/libInspireFace.dylib"
+python -m build --wheel --outdir "$PWD/python/dist" "$ISF_WHEEL_STAGE"
+```
+
+</details>
+
+With an empty `python/post`, the result is `inspireface-1.2.4-py3-none-macosx_14_0_arm64.whl`. For Intel, use `build_macos_x86.sh`, its `inspireface-macos-intel-x86-64-1.2.4` output directory, `x64` for the package directory / target architecture variable, and a matching `macosx_<major>_<minor>_x86_64` tag. Set the deployment target for that build explicitly too.
+
+When packaging an existing Apple XCFramework bundle, take the raw dylib from `SDKs/macosx-arm64/InspireFace/lib/` or `SDKs/macosx-x86_64/InspireFace/lib/`, with the `version.txt` from the same slice. Package each architecture separately; including an XCFramework does not make a Python wheel universal.
+
+::: warning Match the wheel tag to the library
+`setup.py` defaults to `macosx_11_0_arm64` or `macosx_12_0_x86_64`. It does not read the binary's minimum OS. Set `INSPIRE_FACE_TARGET_AARCH_MAPPING` to match your actual build; never use an older deployment tag for a newer library. The current Apple CI targets macOS 14.0 on arm64 and 15.0 on x86_64.
+:::
+
+To package CoreML on arm64, first use the [CoreML shared CMake build](./macos.md#set-architecture-and-deployment-target). Its `install/InspireFace/lib/libInspireFace.dylib` can replace `ISF_NATIVE` above. Keep the matching minimum OS, architecture and version file, and deploy an Apple model pack for CoreML inference.
 
 ### Inspect the wheel {#inspect-the-wheel}
 
@@ -181,9 +227,9 @@ The repository also has scripts that compile the SDK and copy its library into t
 | --- | --- |
 | Linux x86_64, manylinux2014 | `docker compose run --rm build-manylinux2014-x86` |
 | Linux aarch64, manylinux2014 | `docker compose run --rm build-manylinux2014-aarch64` |
-| macOS Apple Silicon | `bash command/build_wheel_macos_arm64.sh` |
-| macOS Intel | `bash command/build_wheel_macos_x86.sh` |
 
-Run Linux packaging in the provided Docker environment; the aarch64 container needs an ARM64 host or configured emulation. The macOS scripts run on the corresponding Mac architecture. These scripts write wheels into `python/dist/`; they rebuild the native library as well. For an already compiled TensorRT, CoreML or Rockchip library, use the explicit packaging steps above.
+Run Linux packaging in the provided Docker environment; the aarch64 container needs an ARM64 host or configured emulation. These scripts rebuild the native library and write wheels into `python/dist/`. For an already compiled TensorRT, CoreML or Rockchip library, use the explicit packaging steps above.
 
-The directory selection, tags and runtime override are implemented in [`python/setup.py`](https://github.com/HyperInspire/InspireFace/blob/1cb2c1e44bde56253fe9eb5bbc8e14dc5e72dee9/python/setup.py), [`_library_path.py`](https://github.com/HyperInspire/InspireFace/blob/1cb2c1e44bde56253fe9eb5bbc8e14dc5e72dee9/python/inspireface/modules/core/_library_path.py) and [`_native_loader.py`](https://github.com/HyperInspire/InspireFace/blob/1cb2c1e44bde56253fe9eb5bbc8e14dc5e72dee9/python/inspireface/modules/core/_native_loader.py).
+For macOS, use the [Apple SDK packaging steps](#package-the-current-macos-sdk) on this page. The existing `build_wheel_macos_arm64.sh` and `build_wheel_macos_x86.sh` still invoke a separate direct CMake build: they do not use the new Apple driver, do not explicitly select the target architecture or deployment version, and inherit `setup.py`'s default wheel tag. Their filenames alone do not establish the resulting library's compatibility.
+
+The directory selection, tags and runtime override are implemented in [`python/setup.py`](https://github.com/HyperInspire/InspireFace/blob/8b37a2eb1e2fe61608195a979dda6cadb84f5106/python/setup.py), [`_library_path.py`](https://github.com/HyperInspire/InspireFace/blob/8b37a2eb1e2fe61608195a979dda6cadb84f5106/python/inspireface/modules/core/_library_path.py) and [`_native_loader.py`](https://github.com/HyperInspire/InspireFace/blob/8b37a2eb1e2fe61608195a979dda6cadb84f5106/python/inspireface/modules/core/_native_loader.py).

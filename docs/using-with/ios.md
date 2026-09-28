@@ -1,116 +1,235 @@
-# iOS
+# iOS {#ios}
 
-InspireFace's C API can be called from Objective-C, Objective-C++ or Swift through a small bridge. Start with file or bitmap input, then connect camera frames once model loading and detection work on a device.
+iOS applications can use Objective-C, Swift or the C API. The current Apple build provides paired XCFrameworks for device and simulator targets. Start by detecting a bundled image, then reuse the session for camera frames.
 
-For the full framework build process, dependency versions and binary checks, see [Build for iOS](../build/ios.md).
+The shared [Objective-C and Swift guide](./apple.md) contains a complete detection example, error handling and resource ownership. This page covers Xcode setup and the camera input path.
 
-::: warning iOS APIs
-iOS integration currently requires calling the C/C++ APIs from your app. Dedicated Objective-C and Swift APIs will be available in a future release.
-:::
+## Choose the frameworks {#build-the-frameworks}
 
-## Build the frameworks
-
-Prepare the source and `3rdparty` checkout as described in [Source and common options](../build/source.md). On macOS with the Xcode command-line tools selected, run from the InspireFace root:
-
-```bash
-bash command/build_ios.sh
-```
-
-The current script builds a static `InspireFace.framework` for **iOS devices, arm64**. Its configured deployment target is iOS 11.0 and Bitcode is disabled. It also stages the MNN framework used by that build:
+Build the current SDK with the [iOS build instructions](../build/ios.md), or use a matching Apple package when it is available in the [download list](../build/README.md). The new package contains:
 
 ```text
-build/inspireface-ios/
-  InspireFace.framework/
-  MNN.framework/
+inspireface-apple/
+  InspireFace.xcframework/
+  InspireFaceSwift.xcframework/
+  Frameworks/                 # Frameworks grouped by platform
+  SDKs/                       # Individual architecture SDKs
+  sdk-manifest.json
 ```
 
-Use the SDK version query when recording the runtime version. Set the optional `VERSION` environment variable to add a suffix to the build output directory.
+The default iOS script builds arm64 for devices and arm64 / x86_64 for simulators. Xcode chooses the matching slice when linking an XCFramework. A single-device build or a package made with `--arch` contains fewer slices; inspect its manifest before sharing it with a team.
 
-These frameworks target arm64 devices. For a simulator target, build the SDK and its dependencies for the simulator SDK and architecture. Package device and simulator builds into an XCFramework if your application needs both.
+The script requests iOS 11.0 by default. The arm64 simulator slice has a minimum of iOS 14.0 imposed by that target. Check the package's per-architecture deployment metadata and set the app's deployment target accordingly.
 
-## Add the SDK and model to Xcode
+## Add the SDK and model to Xcode {#add-the-sdk-and-model-to-xcode}
 
-Add both frameworks to the target's link settings and make their locations available through Framework Search Paths. `InspireFace.framework` contains a static library, so it does not need to be embedded as a dynamic framework. Configure the accompanying MNN binary according to the linkage of the package you built.
+Add `InspireFace.xcframework` to the app target. Swift code using `import InspireFaceSwift` also needs `InspireFaceSwift.xcframework` from the same build. The iOS slices are **static**: link them with **Do Not Embed**. Add `-ObjC` to Other Linker Flags so Objective-C wrapper classes are retained.
 
-Add the model resource file to the target's Copy Bundle Resources phase. Keep its filename unchanged, for example `Pikachu`. Resolve an actual filesystem path before calling the launcher:
+The core framework already includes its CPU inference dependency. Do not also link the old `MNN.framework`, a second `libMNN.a`, or the raw `libInspireFace.a` alongside it. The `SDKs/` directory keeps the old raw-library route for existing C/C++ projects; choose one integration route for each target.
+
+### Check the target settings {#check-the-target-settings}
+
+| Xcode setting | Value or action |
+| --- | --- |
+| Frameworks, Libraries, and Embedded Content | Add the core XCFramework; add the Swift XCFramework for Swift. Both use **Do Not Embed** on iOS. |
+| Other Linker Flags | Keep `$(inherited)` and add `-ObjC`. |
+| System libraries | Foundation, CoreVideo and `libc++`; CoreML builds also use CoreML and Accelerate. Module imports supply these links automatically. |
+| Framework Search Paths | For direct `.framework` integration, point to the directory for the selected platform and architecture. |
+| Copy Bundle Resources | Include the model file, for example `Pikachu`, with its original filename. |
+| Info | Add `NSCameraUsageDescription` before requesting camera access. |
+
+![Xcode Build Phases showing where framework dependencies are linked](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/setup_s1.png)
+
+*The screenshot shows the Build Phases location in an older example project. Add the current InspireFace frameworks listed above; its Pods entry is project-specific.*
+
+Resolve the model file once on the SDK worker. The snippets below belong inside the worker's initialization method; imports are shown in the [shared guide](./apple.md#modules-and-types).
+
+::: tabs #api-language
+
+@tab Objective-C
 
 ```objectivec
-#import <InspireFace/inspireface.h>
-
-NSString *pack = [[NSBundle mainBundle] pathForResource:@"Pikachu" ofType:nil];
-if (pack == nil) {
-    // Report a missing bundled resource to the application.
+NSString *modelPath = [[NSBundle mainBundle] pathForResource:@"Pikachu" ofType:nil];
+if (!modelPath) {
+    NSLog(@"Pikachu is missing from the app resources");
     return;
 }
-HResult status = HFLaunchInspireFace(pack.fileSystemRepresentation);
-if (status != HSUCCEED) {
-    NSLog(@"InspireFace launch failed: %ld", (long)status);
+NSError *error = nil;
+if (![IFRuntime launchAtPath:modelPath error:&error]) {
+    NSLog(@"InspireFace launch failed: %@", error);
     return;
 }
 ```
 
-Run initialization off the UI thread and reuse the resulting process-level runtime. Create sessions with `HFCreateInspireFaceSessionOptional` and follow the [complete C detection example](./c-cpp.md#a-complete-detection-program) for error handling and cleanup.
+@tab Swift
 
-For Swift, expose the C header through your target's bridging header or wrap the session in an Objective-C++ class with explicit start, process and close methods. Manage native pointers and frame lifetimes inside that wrapper.
+```swift
+guard let modelPath = Bundle.main.path(forResource: "Pikachu", ofType: nil) else {
+    throw NSError(domain: "App.Model", code: 1,
+                  userInfo: [NSLocalizedDescriptionKey: "Pikachu is missing from the app resources"])
+}
+try InspireFaceRuntime.launch(path: modelPath)
+```
 
-### Check the target settings
-
-1. In **Build Phases → Link Binary With Libraries**, add `InspireFace.framework`, `MNN.framework` and the frameworks required by that build. The current iOS CMake target links Metal, CoreML, Foundation, CoreVideo and CoreMedia; C++ code also needs the C++ runtime. The Apple extension adds Accelerate.
-2. In **Build Settings → Framework Search Paths**, point to the directory holding the frameworks. Use a project-relative path such as `$(PROJECT_DIR)/Frameworks` so another machine can build the project.
-3. In **Copy Bundle Resources**, add the model to the application target so Xcode copies it into the built app.
-4. Select a physical arm64 device and run the model-launch check above before adding camera processing. If the app captures video, add `NSCameraUsageDescription` to its Info settings and handle camera authorization before starting the capture session.
-
-![Xcode Build Phases showing framework link settings](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/setup_s1.png)
-
-*Use Build Phases to add the framework dependencies listed above. The Pods entry belongs to the project shown in the screenshot.*
-
-::: tip Find the failing stage
-For a missing header, check Framework Search Paths. For undefined symbols, check linked libraries and dependencies. For a nil model path, check Copy Bundle Resources and target membership.
 :::
 
-## Camera input and row stride
+For a downloaded model, use Application Support or another app-owned directory. Finish downloading before launch. Bundle resources are read-only, so copy a file into writable storage only if the app needs to replace it later.
 
-For a BGRA `CVPixelBuffer`, lock its base address while reading it. Obtain the real bytes-per-row with `CVPixelBufferGetBytesPerRow`. `HFImageData` has no stride field, so a padded buffer must be copied row by row into tightly packed storage.
+## Camera input and row stride {#camera-input-and-row-stride}
 
-The following helper shows the copy for an already-created BGRA pixel buffer. It belongs in an Objective-C++ `.mm` file and returns `false` for a different format:
+Request camera authorization, configure an `AVCaptureSession`, and add an `AVCaptureVideoDataOutput` whose delegate runs on the same serial queue as the face session. These settings request BGRA and discard late frames:
 
-```cpp
-#import <CoreVideo/CoreVideo.h>
-#include <cstring>
-#include <vector>
+::: tabs #api-language
 
-bool copyBGRA(CVPixelBufferRef buffer, std::vector<unsigned char>& pixels) {
-    if (!buffer || CVPixelBufferGetPixelFormatType(buffer) != kCVPixelFormatType_32BGRA)
-        return false;
-    const size_t width = CVPixelBufferGetWidth(buffer);
-    const size_t height = CVPixelBufferGetHeight(buffer);
-    pixels.resize(width * height * 4);
+@tab Objective-C
+
+```objectivec
+#import <AVFoundation/AVFoundation.h>
+
+AVCaptureVideoDataOutput *output = [[AVCaptureVideoDataOutput alloc] init];
+output.videoSettings = @{
+    (NSString *)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA)
+};
+output.alwaysDiscardsLateVideoFrames = YES;
+dispatch_queue_t analysisQueue = dispatch_queue_create("app.face.analysis", DISPATCH_QUEUE_SERIAL);
+// delegate implements AVCaptureVideoDataOutputSampleBufferDelegate.
+[output setSampleBufferDelegate:delegate queue:analysisQueue];
+```
+
+@tab Swift
+
+```swift
+import AVFoundation
+
+let output = AVCaptureVideoDataOutput()
+output.videoSettings = [
+    kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
+]
+output.alwaysDiscardsLateVideoFrames = true
+let analysisQueue = DispatchQueue(label: "app.face.analysis")
+// delegate implements AVCaptureVideoDataOutputSampleBufferDelegate.
+output.setSampleBufferDelegate(delegate, queue: analysisQueue)
+```
+
+:::
+
+In `captureOutput(_:didOutput:from:)` or its Objective-C equivalent, obtain the frame with `CMSampleBufferGetImageBuffer`. Create a `LIGHT_TRACK` face session before starting capture and reuse it; do not launch the model or create a session for each callback.
+
+The direct `CVPixelBuffer` initializer shown in the [shared input example](./apple.md#pixel-buffers-and-borrowed-bytes) works only with tightly packed storage. Camera buffers often have extra bytes at the end of each row. The following complete helper copies BGRA rows, closes the stream before its storage leaves scope, and returns an owned count.
+
+<details>
+<summary>BGRA input with row padding: Objective-C and Swift</summary>
+
+::: tabs #api-language
+
+@tab Objective-C
+
+```objectivec
+#import <InspireFace/InspireFaceApple.h>
+#include <stdint.h>
+#include <string.h>
+
+BOOL CountPaddedBGRA(IFSession *session, CVPixelBufferRef buffer,
+                     HFRotation rotation, HInt32 *faceCount, NSError **error) {
+    *faceCount = 0;
+    if (!buffer || CVPixelBufferGetPixelFormatType(buffer) != kCVPixelFormatType_32BGRA ||
+        CVPixelBufferIsPlanar(buffer))
+        return IFCheck(HERR_INVALID_IMAGE_STREAM_PARAM, error);
+    size_t width = CVPixelBufferGetWidth(buffer);
+    size_t height = CVPixelBufferGetHeight(buffer);
+    if (!width || !height || width > INT32_MAX || height > INT32_MAX ||
+        width > SIZE_MAX / 4 || height > SIZE_MAX / (width * 4))
+        return IFCheck(HERR_INVALID_IMAGE_STREAM_PARAM, error);
     if (CVPixelBufferLockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly) != kCVReturnSuccess)
-        return false;
-    const auto* source = static_cast<const unsigned char*>(CVPixelBufferGetBaseAddress(buffer));
-    const size_t stride = CVPixelBufferGetBytesPerRow(buffer);
-    const bool valid = source != nullptr && stride >= width * 4;
-    if (valid) {
-        for (size_t y = 0; y < height; ++y)
-            std::memcpy(pixels.data() + y * width * 4, source + y * stride, width * 4);
+        return IFCheck(HERR_INVALID_IMAGE_STREAM_PARAM, error);
+    const uint8_t *source = CVPixelBufferGetBaseAddress(buffer);
+    size_t rowBytes = width * 4;
+    size_t stride = CVPixelBufferGetBytesPerRow(buffer);
+    if (!source || stride < rowBytes) {
+        CVPixelBufferUnlockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
+        return IFCheck(HERR_INVALID_IMAGE_STREAM_PARAM, error);
     }
+    __attribute__((objc_precise_lifetime)) NSMutableData *packed =
+        [NSMutableData dataWithLength:rowBytes * height];
+    uint8_t *destination = packed.mutableBytes;
+    for (size_t row = 0; row < height; ++row)
+        memcpy(destination + row * rowBytes, source + row * stride, rowBytes);
     CVPixelBufferUnlockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
-    return valid;
+    HFImageData input = {destination, (HInt32)width, (HInt32)height,
+                         HF_STREAM_BGRA, rotation};
+    IFImageStream *stream = [[IFImageStream alloc] initWithBorrowedData:input error:error];
+    if (!stream) return NO;
+    HFMultipleFaceData faces = {0};
+    BOOL success = [session trackStream:stream borrowedResult:&faces error:error];
+    if (success) *faceCount = faces.detectedNum;
+    [stream closeWithError:NULL];
+    return success;
 }
 ```
 
-Describe the copied storage as `HF_STREAM_BGRA`, and retain the vector until the stream and all downstream processing are finished. The vector now owns an independent copy, so camera-buffer reuse cannot change the submitted pixels.
+@tab Swift
 
-For NV12 camera output, read the Y and UV planes separately and use each plane's row stride when packing the input. See [image inputs](../guides/image-inputs.md) for format sizes and rotation conventions.
+```swift
+import CoreVideo
+import Foundation
+import InspireFaceSwift
 
-## Session and UI lifetime
+func countPaddedBGRA(session: FaceSession, pixelBuffer: CVPixelBuffer,
+                     rotation: ImageRotation) throws -> Int {
+    func invalidImage() -> NSError {
+        NSError(domain: IFErrorDomain, code: Int(HERR_INVALID_IMAGE_STREAM_PARAM))
+    }
+    guard CVPixelBufferGetPixelFormatType(pixelBuffer) == kCVPixelFormatType_32BGRA,
+          !CVPixelBufferIsPlanar(pixelBuffer) else { throw invalidImage() }
+    let width = CVPixelBufferGetWidth(pixelBuffer)
+    let height = CVPixelBufferGetHeight(pixelBuffer)
+    guard width > 0, height > 0, let w = Int32(exactly: width),
+          let h = Int32(exactly: height) else { throw invalidImage() }
+    let (rowBytes, rowOverflow) = width.multipliedReportingOverflow(by: 4)
+    let (byteCount, countOverflow) = rowBytes.multipliedReportingOverflow(by: height)
+    guard !rowOverflow, !countOverflow, byteCount <= Int(Int32.max),
+          CVPixelBufferLockBaseAddress(pixelBuffer, .readOnly) == kCVReturnSuccess
+    else { throw invalidImage() }
+    var packed = Data(count: byteCount)
+    do {
+        defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, .readOnly) }
+        guard let source = CVPixelBufferGetBaseAddress(pixelBuffer),
+              CVPixelBufferGetBytesPerRow(pixelBuffer) >= rowBytes
+        else { throw invalidImage() }
+        let stride = CVPixelBufferGetBytesPerRow(pixelBuffer)
+        packed.withUnsafeMutableBytes { (bytes: UnsafeMutableRawBufferPointer) in
+            for row in 0..<height {
+                bytes.baseAddress!.advanced(by: row * rowBytes).copyMemory(
+                    from: source.advanced(by: row * stride), byteCount: rowBytes)
+            }
+        }
+    }
+    return try packed.withUnsafeMutableBytes { (bytes: UnsafeMutableRawBufferPointer) in
+        try ImageStream.withBorrowedBytes(
+            bytes, width: w, height: h, format: .bgra, rotation: rotation
+        ) { stream in
+            try session.withUnsafeFaces(in: stream) { $0.count }
+        }
+    }
+}
+```
 
-Use one serial analysis queue for each tracking session. Create the session before starting camera callbacks. On teardown, stop new submissions, finish outstanding work, release streams and sessions, then terminate the SDK when no other screen uses it.
+:::
 
-Apply the preview's crop, scale, orientation and front-camera mirror transform to the detection coordinates before drawing. Send copied geometry to the main queue for UIKit rendering.
+</details>
 
-## Apple acceleration
+Call `CountPaddedBGRA` / `countPaddedBGRA` from the analysis callback with the reused session. The helper allocates one packed buffer per call for clarity; for continuous processing, keep a scratch buffer on the same worker and resize it only when the frame dimensions change. The buffer must remain unchanged until all operations on that frame finish.
 
-The source also provides `command/build_ios_coreml.sh`, which enables `ISF_ENABLE_APPLE_EXTENSION` and writes to `build/inspireface-ios-coreml-arm64`. Use the corresponding Apple resource pack and evaluate on the target device.
+NV12 can use less input bandwidth than BGRA. For direct input, both planes must be tightly packed and contiguous. Otherwise copy Y and UV row by row using their own strides, or convert explicitly to the format chosen by the app. See [image inputs](../guides/image-inputs.md) for rotation and coordinate conventions.
 
-Measure model/session startup and repeated frame processing separately on the target device. Include image conversion in the application timing, and record the resource pack and CoreML configuration with the results.
+## Session and UI lifetime {#session-and-ui-lifetime}
+
+Run tracking, feature extraction and pipeline analysis sequentially for a frame. Copy rectangles and scores before dispatching them to the main queue. Apply the preview's rotation, scaling, crop and front-camera mirroring to those coordinates; the SDK result is not automatically expressed in UIKit view coordinates.
+
+On camera shutdown, stop new callbacks, drain the analysis queue, close any capture policy and session, and then terminate the runtime if nothing else uses it. A `CVPixelBuffer` stream holds the camera buffer locked until it closes, so release it promptly after processing.
+
+## Apple acceleration {#apple-acceleration}
+
+CPU and CoreML are separate build packages with the same module names. Choose one package for the target. The CoreML build also needs the corresponding Apple model resources; simply switching frameworks does not convert a CPU model pack.
+
+Use `IFRuntime` / `InspireFaceRuntime` to select the CoreML mode before creating sessions. See [CoreML runtime modes](./apple.md#coreml-runtime-modes) for CPU, GPU and Neural Engine configuration. Measure on physical devices: simulator compatibility checks do not represent camera latency, power use or Neural Engine performance.

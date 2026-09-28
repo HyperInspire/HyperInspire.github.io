@@ -79,6 +79,93 @@ float threshold = SIMILARITY_CONVERTER_GET_RECOMMENDED_COSINE_THRESHOLD();
 std::cout << score << " " << (score >= threshold) << '\n';
 ```
 
+@tab Objective-C
+
+Create `IFSession` with `HF_ENABLE_FACE_RECOGNITION` and `HF_DETECT_MODE_ALWAYS_DETECT`. This helper requires one face in each input, writes into two separately owned buffers, and closes both buffers. The caller owns the session and image streams; check the returned `BOOL` and `NSError`.
+
+<details>
+<summary>Objective-C — Complete example</summary>
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static BOOL ExtractOne(IFSession *session, IFImageStream *stream,
+                       IFFeatureBuffer *output, NSError **error) {
+    HFMultipleFaceData faces = {0};
+    if (![session trackStream:stream borrowedResult:&faces error:error]) return NO;
+    if (faces.detectedNum != 1) return IFCheck(HERR_INVALID_PARAM, error);
+    return [session extractFeatureFromStream:stream token:faces.tokens[0]
+        into:output.borrowedFeature error:error];
+}
+
+static BOOL CompareImages(IFSession *session, IFImageStream *first,
+                          IFImageStream *second, float *score,
+                          float *threshold, NSError **error) {
+    IFFeatureBuffer *enrolled = [[IFFeatureBuffer alloc] initWithError:error];
+    if (enrolled == nil) return NO;
+    IFFeatureBuffer *query = [[IFFeatureBuffer alloc] initWithError:error];
+    if (query == nil) {
+        [enrolled closeWithError:NULL];
+        return NO;
+    }
+    @try {
+        return ExtractOne(session, first, enrolled, error) &&
+            ExtractOne(session, second, query, error) &&
+            [IFFeatureBuffer compare:enrolled.borrowedFeature with:query.borrowedFeature
+                similarity:score error:error] &&
+            [IFFeatureBuffer getRecommendedThreshold:threshold error:error];
+    } @finally {
+        [query closeWithError:NULL];
+        [enrolled closeWithError:NULL];
+    }
+}
+```
+
+</details>
+
+@tab Swift
+
+Create `FaceSession` with `SessionConfiguration(features: [.recognition], maximumFaces: 10, pixelLevel: 320)`. Pass two open streams; the default mode is `.alwaysDetect`. Each feature buffer owns its storage, so extracting the second face does not overwrite the first. All SDK failures throw.
+
+<details>
+<summary>Swift — Complete example</summary>
+
+```swift
+import InspireFaceSwift
+
+func extractOne(session: FaceSession, stream: ImageStream,
+                into output: FaceFeatureBuffer) throws {
+    try session.withUnsafeFaces(in: stream) { faces in
+        guard faces.count == 1 else {
+            throw NSError(domain: IFErrorDomain, code: Int(HERR_INVALID_PARAM),
+                          userInfo: [NSLocalizedDescriptionKey: "Expected exactly one face"])
+        }
+        try output.withUnsafeMutableBufferPointer { buffer in
+            try session.extractFeature(from: stream, token: faces.tokens[0], into: buffer)
+        }
+    }
+}
+
+func compareImages(session: FaceSession, first: ImageStream,
+                   second: ImageStream) throws -> Float {
+    let enrolled = try FaceFeatureBuffer()
+    defer { try? enrolled.close() }
+    let query = try FaceFeatureBuffer()
+    defer { try? query.close() }
+    try extractOne(session: session, stream: first, into: enrolled)
+    try extractOne(session: session, stream: second, into: query)
+    var score: Float = 0
+    var threshold: Float = 0
+    try FaceFeatureBuffer.compare(enrolled.borrowedFeature,
+                                  with: query.borrowedFeature, similarity: &score)
+    try FaceFeatureBuffer.getRecommendedThreshold(&threshold)
+    print("similarity=\(score), match=\(score >= threshold)")
+    return score
+}
+```
+
+</details>
+
 @tab Android
 
 Create a session with `InspireFace.CreateCustomParameter().enableRecognition(true)`. The helper receives an open stream and returns an owned Java feature. Read the feature before releasing the stream; release the session when finished.
@@ -245,7 +332,7 @@ Before enrollment, check image quality, face size and pose. A higher-quality enr
 
 FeatureHub stores embeddings with integer IDs. Keep names, account records and other application data in your own database, keyed by that ID.
 
-The following examples assume the SDK is launched and `enrolled` and `query` are embeddings extracted with the corresponding interface. C, C++, Python and HarmonyOS use the 1.2.4 APIs; Android uses the 1.2.0 Java package.
+The following examples assume the SDK is launched and `enrolled` and `query` are embeddings extracted with the corresponding interface. C, C++, Objective-C, Swift, Python and HarmonyOS use the 1.2.4 APIs; Android uses the 1.2.0 Java package.
 
 ::: tabs #api-language
 
@@ -310,6 +397,66 @@ try {
     throw;
 }
 if (hub->DisableHub() != 0) throw std::runtime_error("Cannot close FeatureHub");
+```
+
+@tab Objective-C
+
+Pass two open, populated `IFFeatureBuffer` objects. This example enables an in-memory gallery and closes it on return. In an application, configure the process-wide hub once and serialize its operations. Read borrowed search data before another search on the same thread.
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static BOOL SearchGallery(IFFeatureBuffer *enrolled, IFFeatureBuffer *query,
+                          NSError **error) {
+    HFFeatureHubConfiguration config = {0};
+    config.primaryKeyMode = HF_PK_MANUAL_INPUT;
+    config.searchMode = HF_SEARCH_MODE_EXHAUSTIVE;
+    if (![IFFeatureBuffer getRecommendedThreshold:&config.searchThreshold error:error]) return NO;
+    if (![IFFeatureHub enableWithConfiguration:config error:error]) return NO;
+    @try {
+        HFFaceFeature feature = enrolled.borrowedFeature;
+        HFFaceFeatureIdentity identity = {1001, &feature};
+        HFaceId storedID = HF_INVALID_FACE_ID;
+        if (![IFFeatureHub insert:identity allocatedID:&storedID error:error]) return NO;
+        HFFeatureHubSearchResultV2 result = {0};
+        if (![IFFeatureHub search:query.borrowedFeature borrowedResult:&result error:error]) return NO;
+        if (result.found) NSLog(@"id=%lld score=%.4f", (long long)result.id, result.confidence);
+        else NSLog(@"No gallery entry passed the threshold");
+        return YES;
+    } @finally {
+        [IFFeatureHub disableWithError:NULL];
+    }
+}
+```
+
+@tab Swift
+
+Use two populated `FaceFeatureBuffer` objects and keep them open for this call. The pointer to the identity feature is scoped to insertion. `found == 0` is a normal non-match; a failed API call throws.
+
+```swift
+import InspireFaceSwift
+
+func searchGallery(enrolled: FaceFeatureBuffer, query: FaceFeatureBuffer) throws {
+    var config = HFFeatureHubConfiguration()
+    config.primaryKeyMode = HF_PK_MANUAL_INPUT
+    config.searchMode = HF_SEARCH_MODE_EXHAUSTIVE
+    try FaceFeatureBuffer.getRecommendedThreshold(&config.searchThreshold)
+    try FeatureHub.enable(configuration: config)
+    defer { try? FeatureHub.disable() }
+    var feature = enrolled.borrowedFeature
+    try withUnsafeMutablePointer(to: &feature) { pointer in
+        let identity = HFFaceFeatureIdentity(id: 1001, feature: pointer)
+        var storedID: Int64 = -1
+        try FeatureHub.insert(identity, allocatedID: &storedID)
+    }
+    var result = HFFeatureHubSearchResultV2()
+    try FeatureHub.search(query.borrowedFeature, borrowedResult: &result)
+    if result.found != 0 {
+        print("id=\(result.id), score=\(result.confidence)")
+    } else {
+        print("No gallery entry passed the threshold")
+    }
+}
 ```
 
 @tab Android
@@ -412,7 +559,7 @@ finally:
 
 :::
 
-An empty gallery or no qualifying entry is a normal search outcome. Check the match indicator before using the identity: `found` in C/C++ and ArkTS, `matched` in Python, and a non-null result with `id != -1` in Java 1.2.0. Top-k search also applies the configured threshold, so it may return fewer than `k` entries.
+An empty gallery or no qualifying entry is a normal search outcome. Check the match indicator before using the identity: `found` in C/C++, Objective-C, Swift and ArkTS, `matched` in Python, and a non-null result with `id != -1` in Java 1.2.0. Top-k search also applies the configured threshold, so it may return fewer than `k` entries.
 
 | Choice | Behavior |
 | --- | --- |
@@ -479,6 +626,54 @@ if (hub->FaceFeatureRemove(int64_t{1001}) != 0) {
 }
 ```
 
+@tab Objective-C
+
+Call while the hub is enabled and ID 1001 exists, using open feature buffers. The final call removes that entry. Consume top-k arrays before another top-k search on the same thread.
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static BOOL MaintainGallery(IFFeatureBuffer *replacement, IFFeatureBuffer *query,
+                            NSError **error) {
+    HFFaceFeature feature = replacement.borrowedFeature;
+    HFFaceFeatureIdentity identity = {1001, &feature};
+    if (![IFFeatureHub updateIdentity:identity error:error]) return NO;
+    HFSearchTopKResults top = {0};
+    if (![IFFeatureHub search:query.borrowedFeature topK:5 borrowedResults:&top error:error]) return NO;
+    for (HInt32 i = 0; i < top.size; ++i) {
+        NSLog(@"id=%lld score=%.4f", (long long)top.ids[i], top.confidence[i]);
+    }
+    HInt32 count = 0;
+    if (![IFFeatureHub getIdentityCount:&count error:error]) return NO;
+    NSLog(@"entries=%d", count);
+    return [IFFeatureHub removeIdentityWithID:1001 error:error];
+}
+```
+
+@tab Swift
+
+Run before the hub shutdown step, with ID 1001 present. The result descriptors borrow native storage; the loop reads them immediately, and the last call removes the entry.
+
+```swift
+import InspireFaceSwift
+
+func maintainGallery(replacement: FaceFeatureBuffer, query: FaceFeatureBuffer) throws {
+    var feature = replacement.borrowedFeature
+    try withUnsafeMutablePointer(to: &feature) { pointer in
+        try FeatureHub.updateIdentity(HFFaceFeatureIdentity(id: 1001, feature: pointer))
+    }
+    var top = HFSearchTopKResults()
+    try FeatureHub.search(query.borrowedFeature, topK: 5, borrowedResults: &top)
+    for i in 0..<Int(top.size) {
+        print("id=\(top.ids[i]), score=\(top.confidence[i])")
+    }
+    var count: Int32 = 0
+    try FeatureHub.getIdentityCount(&count)
+    print("entries=\(count)")
+    try FeatureHub.removeIdentity(id: 1001)
+}
+```
+
 @tab Android
 
 The Java 1.2.0 wrapper returns `SearchTopKResults`. A zero `num` is valid; a null object indicates a failed call.
@@ -541,6 +736,8 @@ if not isf.feature_hub_face_remove(1001):
 
 For a persistent gallery, set `enable_persistence=True` and provide a writable database **file** path such as `/var/lib/my-app/faces.db`. In ArkTS, use `enablePersistence: true` and `persistenceDbPath` with a writable file path in the app's files directory. Create its parent directory first. Closing FeatureHub releases its resources; reopening the same database restores stored entries.
 
+On Apple, configure `HFFeatureHubConfiguration.enablePersistence` and `persistenceDbPath` before enabling the hub. Use a database file in the app’s writable Application Support directory. In Swift, keep the path’s C string inside `withCString` until `FeatureHub.enable(configuration:)` returns. The enable call consumes the path synchronously.
+
 Sessions in one process share FeatureHub. Initialize it once, reuse it across frame processing and close it after the workers using it have stopped.
 
 Store the recognition model identity and SDK version with the enrollment metadata. Keep each gallery’s enrollment and query vectors on the same model. When changing models, re-extract the enrollment images and evaluate the threshold again.
@@ -550,5 +747,7 @@ Store the recognition model identity and SDK version with the enrollment metadat
 `HFFaceFeatureExtract` returns a view into session-owned storage. Another extraction can replace that buffer. For two features that must coexist, allocate each with `HFCreateFaceFeature`, fill it with `HFFaceFeatureExtractTo`, then release it with `HFReleaseFaceFeature`.
 
 `HFFeatureHubFaceSearchV2` reports an explicit `found` flag. Its returned feature data is a borrowed cache valid until the next single-face search on the same thread. Copy it if you need to retain it. The current Python wrapper copies native feature arrays into Python-owned memory.
+
+On Apple, `IFFeatureBuffer` / `FaceFeatureBuffer` owns an independent feature allocation. Its `borrowedFeature` property only returns a view; keep the owner open while that view is used. `IFSession` feature getters and Swift `withUnsafeFeature(in:token:)` borrow the session’s extraction cache. Use separate feature buffers for enrollment and query vectors that must coexist. ARC releases wrapper objects, but does not extend the validity of a borrowed pointer after a later extraction or explicit `close()`.
 
 See the [C ownership table](../using-with/c-cpp.md#image-buffers-and-ownership) before combining extraction, search and asynchronous processing.

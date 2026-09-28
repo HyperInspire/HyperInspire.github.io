@@ -104,7 +104,12 @@
   }
 
   .api-coverage-table table {
-    min-width: 44rem;
+    min-width: 50rem;
+    font-size: 0.875rem;
+
+    th, td {
+      padding: 0.625rem 0.5rem;
+    }
   }
 
   .api-coverage-table:focus-visible {

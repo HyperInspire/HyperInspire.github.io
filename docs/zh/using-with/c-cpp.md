@@ -4,6 +4,8 @@ C API 为原生应用和语言绑定提供检测、跟踪、识别与分析功�
 
 SDK 版本、下载链接和各平台编译方法见[获取和编译](../build/README.md)。
 
+使用 Objective-C 或 Swift 开发 iOS、macOS 应用时，可以从 [Apple API 指南](./apple.md)开始。下面的 C/C++ 接入方式仍可使用，头文件与库需来自同一构建。
+
 ## 链接 SDK {#link-the-sdk}
 
 从[发布页](https://github.com/HyperInspire/InspireFace/releases)下载匹配的 SDK，或[自行构建](../build/source.md)。找到包含 `include/inspireface.h` 和 `lib/libInspireFace.so` 的目录，macOS 对应 `.dylib`。

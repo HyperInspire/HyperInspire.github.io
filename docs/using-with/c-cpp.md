@@ -4,6 +4,8 @@ The C API provides detection, tracking, recognition and analysis for native appl
 
 SDK versions, downloads and platform build instructions are listed in [Get and build the SDK](../build/README.md).
 
+For an iOS or macOS app written in Objective-C or Swift, see the [Apple API guide](./apple.md). The native C/C++ integration below remains available with the headers and libraries from the same build.
+
 ## Link the SDK
 
 Download a matching SDK from the [release page](https://github.com/HyperInspire/InspireFace/releases), or [build it yourself](../build/source.md). Locate the directory containing `include/inspireface.h` and `lib/libInspireFace.so` (or the macOS `.dylib`).

@@ -1,6 +1,6 @@
 # API recipes
 
-These examples cover aligned face images, similarity display, runtime diagnostics and resource cleanup. Initialize a session and prepare an input image using the [language guides](../using-with/c-cpp.md) first. Native, Python and [HarmonyOS](../using-with/harmonyos.md) examples use 1.2.4; Android examples use Java SDK 1.2.0.
+These examples cover aligned face images, similarity display, runtime diagnostics and resource cleanup. Initialize a session and prepare an input image using the [language guides](../using-with/c-cpp.md) first. Native, [Objective-C / Swift](../using-with/apple.md), Python and [HarmonyOS](../using-with/harmonyos.md) examples use 1.2.4; Android examples use Java SDK 1.2.0.
 
 ## Get an aligned face image
 
@@ -57,6 +57,48 @@ int32_t extract_aligned(inspire::Session& session,
 
 The image and embedding own their storage. `GetFaceAlignmentImage` returns `void`, so check the output image before passing it to extraction.
 
+@tab Objective-C
+
+Enable recognition on the session first. Pass a valid token from this source image and an open `IFFeatureBuffer`; the caller owns both. The helper closes its crop and temporary stream and reports errors through `BOOL`/`NSError`. To save the crop, call `[crop writeToFile:path error:&error]` before closing it.
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static BOOL ExtractAligned(IFSession *session, IFImageStream *source,
+                           HFFaceBasicToken token, IFFeatureBuffer *output,
+                           NSError **error) {
+    IFImageBitmap *crop = [session alignmentBitmapFromStream:source token:token error:error];
+    if (crop == nil) return NO;
+    IFImageStream *aligned = nil;
+    @try {
+        aligned = [crop snapshotStreamWithRotation:HF_CAMERA_ROTATION_0 error:error];
+        if (aligned == nil) return NO;
+        return [session extractAlignedFeatureFromStream:aligned
+            into:output.borrowedFeature error:error];
+    } @finally {
+        if (aligned != nil) [aligned closeWithError:NULL];
+        [crop closeWithError:NULL];
+    }
+}
+```
+
+@tab Swift
+
+Use a session with `.recognition`, a token from the current source image and an open `FaceFeatureBuffer`. `snapshotStream` explicitly copies the crop’s pixels. The helper closes temporary resources even when extraction throws; the caller closes the output buffer later. Use `try crop.write(toFile: path)` to save the crop before closing it.
+
+```swift
+import InspireFaceSwift
+
+func extractAligned(session: FaceSession, source: ImageStream,
+                    token: FaceToken, into output: FaceFeatureBuffer) throws {
+    let crop = try session.alignmentBitmap(from: source, token: token)
+    defer { try? crop.close() }
+    let aligned = try crop.snapshotStream(rotation: .degrees0)
+    defer { try? aligned.close() }
+    try session.extractAlignedFeature(from: aligned, into: output.borrowedFeature)
+}
+```
+
 @tab Android
 
 ```java
@@ -104,7 +146,7 @@ Use `crop.getData()` before closing the bitmap to read its pixels, dimensions an
 
 @tab Python
 
-Use `session.face_feature_extract(image, face)` for recognition; it handles alignment and extraction together. For a diagnostic overlay, obtain five-point landmarks with `get_face_five_key_points`. To save the aligned image itself, use the C, C++ or Android examples above.
+Use `session.face_feature_extract(image, face)` for recognition; it handles alignment and extraction together. For a diagnostic overlay, obtain five-point landmarks with `get_face_five_key_points`. To save the aligned image itself, use the C, C++, Objective-C, Swift or Android examples above.
 
 :::
 
@@ -153,6 +195,40 @@ void print_display_score(float cosine) {
 }
 ```
 
+@tab Objective-C
+
+Pass the raw cosine result from comparison. Check `BOOL`/`NSError` before using the converted display value. Configure the shared curve with `setSimilarityConverter:error:` during application setup.
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static BOOL PrintDisplayScore(float cosine, NSError **error) {
+    HFSimilarityConverterConfig config = {0};
+    float display = 0;
+    if (![IFFeatureBuffer getSimilarityConverter:&config error:error] ||
+        ![IFFeatureBuffer convertSimilarity:cosine percentage:&display error:error]) return NO;
+    NSLog(@"cosine=%.4f display=%.4f range=[%.2f, %.2f]",
+        cosine, display, config.outputMin, config.outputMax);
+    return YES;
+}
+```
+
+@tab Swift
+
+This function throws on failure. Use `FaceFeatureBuffer.setSimilarityConverter(_:)` to change the shared curve during application setup; keep the raw cosine value for matching.
+
+```swift
+import InspireFaceSwift
+
+func printDisplayScore(cosine: Float) throws {
+    var config = HFSimilarityConverterConfig()
+    var display: Float = 0
+    try FaceFeatureBuffer.getSimilarityConverter(&config)
+    try FaceFeatureBuffer.convert(similarity: cosine, percentage: &display)
+    print("cosine=\(cosine) display=\(display) range=[\(config.outputMin), \(config.outputMax)]")
+}
+```
+
 @tab Android
 
 ```java
@@ -197,7 +273,7 @@ def print_display_score(cosine):
 
 :::
 
-The curve can be configured through `HFUpdateCosineSimilarityConverter`, C++ `SimilarityConverter::updateConfig`, Java `UpdateCosineSimilarityConverter`, ArkTS `InspireFace.updateSimilarityConverter` or Python `set_similarity_converter_config`. The fields are `threshold`, `middleScore`, `steepness`, `outputMin` and `outputMax`. Configure it once during application setup. Choose the recognition threshold separately using representative matching and non-matching image pairs.
+The curve can be configured through `HFUpdateCosineSimilarityConverter`, C++ `SimilarityConverter::updateConfig`, Objective-C `setSimilarityConverter:error:`, Swift `FaceFeatureBuffer.setSimilarityConverter(_:)`, Java `UpdateCosineSimilarityConverter`, ArkTS `InspireFace.updateSimilarityConverter` or Python `set_similarity_converter_config`. The fields are `threshold`, `middleScore`, `steepness`, `outputMin` and `outputMax`. Configure it once during application setup. Choose the recognition threshold separately using representative matching and non-matching image pairs.
 
 ## Inspect the loaded runtime and errors
 
@@ -255,6 +331,62 @@ void print_diagnostics() {
 ```
 
 For a numeric status from a C++ operation, the C `HFGetErrorMessage` helper is also available to C++ callers by including `<inspireface.h>`.
+
+@tab Objective-C
+
+Queries work before model launch. First read the required buffer capacity, including the null terminator. On an SDK failure, `NSError.domain` is `IFErrorDomain`, `code` preserves the C `HResult`. Record both fields and include `localizedDescription` when diagnostic text is available. Check `BOOL` or `nil` at each call site.
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+#include <stdlib.h>
+
+static BOOL PrintDiagnostics(NSError **error) {
+    HInt32 required = 0;
+    if (![IFDiagnostics getDiagnosticInformation:NULL capacity:0
+        requiredSize:&required error:error]) return NO;
+    if (required <= 0) return IFCheck(HERR_INVALID_PARAM, error);
+    char *buffer = calloc((size_t)required, 1);
+    if (buffer == NULL) return IFCheck(HERR_INVALID_PARAM, error);
+    BOOL ok = [IFDiagnostics getDiagnosticInformation:buffer capacity:required
+        requiredSize:&required error:error];
+    if (ok) NSLog(@"%s", buffer);
+    free(buffer);
+    return ok;
+}
+
+static void LogSDKError(NSError *error) {
+    NSLog(@"%@ code=%ld: %@", error.domain, (long)error.code, error.localizedDescription);
+}
+// NSError *error = nil;
+// if (!PrintDiagnostics(&error)) LogSDKError(error);
+```
+
+@tab Swift
+
+The Swift methods throw the same SDK errors as `NSError`. Query buffer size before allocation and log the domain, numeric code and description at the application boundary. A successful tracking result with zero faces is a normal result, not an exception.
+
+```swift
+import InspireFaceSwift
+
+func printDiagnostics() throws {
+    var required: Int32 = 0
+    try InspireFaceDiagnostics.getDiagnosticInformation(nil, capacity: 0, requiredSize: &required)
+    guard required > 0 else {
+        throw NSError(domain: IFErrorDomain, code: Int(HERR_INVALID_PARAM))
+    }
+    let buffer = UnsafeMutablePointer<CChar>.allocate(capacity: Int(required))
+    defer { buffer.deallocate() }
+    try InspireFaceDiagnostics.getDiagnosticInformation(buffer, capacity: required,
+                                                        requiredSize: &required)
+    print(String(cString: buffer))
+}
+
+func logSDKError(_ error: Error) {
+    let failure = error as NSError
+    print("\(failure.domain) code=\(failure.code): \(failure.localizedDescription)")
+}
+// do { try printDiagnostics() } catch { logSDKError(error) }
+```
 
 @tab Android
 
@@ -349,6 +481,39 @@ HResult print_open_handles(void) {
 @tab C++
 
 C++ `Session`, `Image` and the capture selector release their owned state when their scope ends. In an application that also uses the C API, the diagnostics above count active C session and stream handles. Use a memory profiler to inspect native C++ objects and GPU allocations.
+
+@tab Objective-C
+
+Call before and after the workload on a quiet processing queue. Explicit `closeWithError:` releases a wrapper’s native handle immediately; ARC also releases owned handles when the object is destroyed. Close capture before its parent session and close streams before freeing borrowed input pixels. These counters cover sessions and streams, not every allocation.
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static BOOL PrintOpenHandles(NSError **error) {
+    HInt32 sessions = 0, streams = 0;
+    if (![IFDiagnostics getLiveSessionCount:&sessions error:error] ||
+        ![IFDiagnostics getLiveStreamCount:&streams error:error]) return NO;
+    NSLog(@"open sessions=%d streams=%d", sessions, streams);
+    return [IFDiagnostics printResourceStatisticsWithError:error];
+}
+```
+
+@tab Swift
+
+Use `defer { try? resource.close() }` for function-scoped resources, placing the defer immediately after successful creation. For long-lived camera objects, close them after their serial worker stops. The Swift closure helpers bound borrowed access; they do not make saved pointers valid after close or a later processing call.
+
+```swift
+import InspireFaceSwift
+
+func printOpenHandles() throws {
+    var sessions: Int32 = 0
+    var streams: Int32 = 0
+    try InspireFaceDiagnostics.getLiveSessionCount(&sessions)
+    try InspireFaceDiagnostics.getLiveStreamCount(&streams)
+    print("open sessions=\(sessions) streams=\(streams)")
+    try InspireFaceDiagnostics.printResourceStatistics()
+}
+```
 
 @tab Android
 

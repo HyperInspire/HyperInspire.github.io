@@ -2,7 +2,7 @@
 
 InspireFace is a C/C++ SDK for processing faces in images and video. It detects faces, follows them between frames, extracts landmarks and embeddings, and runs optional analysis such as pose, quality and RGB liveness. Your application supplies the images, manages the camera and UI, and uses the returned results.
 
-The same processing flow is available through the C API, Python, Android Java and HarmonyOS ArkTS wrappers. There is also a C++ interface for applications already using InspireCV.
+The same processing flow is available through C, C++, Python, Android Java, HarmonyOS ArkTS, Objective-C and Swift. The Apple interfaces cover iOS and macOS, including image buffers, tracking, analysis, recognition and capture.
 
 <figure>
 <img class="doc-banner" src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/inspireface-doc-images-web/banner.webp" alt="InspireFace detection, landmarks, recognition, liveness and deployment overview" width="2048" height="683" />
@@ -82,7 +82,9 @@ The Android demos above currently use an online service for verification. Try th
 | [Python](./using-with/python.md) | Prototyping, scripts and services. NumPy arrays can be passed directly. |
 | [C++](./using-with/cpp.md) | Applications that want `Session`, `Image` and `FrameProcess` objects. Build headers and libraries from the same version. |
 | [Android](./using-with/android.md) | Java or Kotlin applications using the JNI wrapper. |
-| [iOS](./using-with/ios.md) | C or Objective-C++ integration in an iOS app. |
+| [Objective-C / Swift](./using-with/apple.md) | Native Apple interfaces with NSError / throws, scoped buffer access and explicit cleanup. |
+| [iOS](./using-with/ios.md) | Xcode integration, device and simulator builds, camera pixel buffers. |
+| [macOS](./using-with/macos.md) | Intel and Apple Silicon apps, dynamic frameworks and native tools. |
 | [HarmonyOS](./using-with/harmonyos.md) | ArkTS applications using the Node-API adapter in the source tree. |
 
 ## SDK, models and backends

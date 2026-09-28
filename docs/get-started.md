@@ -1,23 +1,12 @@
 # Get started
 
-This example reads one image, detects faces and writes an annotated copy. Start here to check that the runtime and model pack work before adding a camera, tracking or recognition.
+Install the SDK with one command, then use the Python example below to detect faces in an image and save the annotated result.
 
 ## Install Python dependencies
 
-Use a virtual environment so the SDK and its dependencies stay with the project:
-
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
 python -m pip install inspireface opencv-python
 ```
-
-The available wheels depend on Python version, operating system and CPU architecture. If pip reports “No matching distribution,” check the [published wheel files](https://pypi.org/project/inspireface/#files). For a server without a display, install `opencv-python-headless` instead of `opencv-python`; the example only writes an image.
-
-::: tip Example versions
-The example below uses the basic detection API. Snapshot and face-capture examples require a matching 1.2.4 wrapper and native library; see [Python setup](./using-with/python.md#use-a-local-native-build).
-:::
 
 ## Detect faces in an image
 
@@ -151,6 +140,7 @@ Keep the session alive across frames in a real application. Creating a new sessi
 
 - [Python](./using-with/python.md): run optional analysis, handle raw image streams and manage resources.
 - [C API](./using-with/c-cpp.md): compile a complete native example without OpenCV.
+- [Objective-C and Swift](./using-with/apple.md): build an Apple app with the iOS or macOS frameworks.
 - [Tracking](./guides/tracking.md): use a video sequence and tune detection work.
 - [Recognition](./guides/recognition.md): compare two faces and add a gallery.
 - [Troubleshooting](./guides/troubleshooting.md): diagnose model, library and image-format problems.

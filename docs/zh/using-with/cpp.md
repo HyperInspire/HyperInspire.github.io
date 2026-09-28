@@ -4,6 +4,8 @@ C++ 应用可以使用 [C API](./c-cpp.md) 或 `inspire::Session` 接口。需�
 
 SDK 编译从[源码准备与通用选项](../build/source.md)开始，再选择 [Linux](../build/linux.md) 或 [macOS](../build/macos.md)。本页介绍应用链接和 C++ API 用法。
 
+使用 Objective-C 或 Swift 开发 iOS、macOS 应用时，可以从 [Apple API 指南](./apple.md)开始。下面的 C/C++ 接入方式仍可使用，头文件与库需来自同一构建。
+
 ## 构建示例 {#build-the-example}
 
 SDK 需要包含 `include/inspireface/` 和 `include/inspirecv/`。源码构建设置 `ISF_INSTALL_CPP_HEADER=ON` 时会安装这些头文件。

@@ -39,6 +39,60 @@ for (const auto& face : faces) {
 }
 ```
 
+@tab Objective-C
+
+Pass a token from the current `HFMultipleFaceData` before the next tracking call, or from an open `IFFaceSnapshot`. The methods write into the provided arrays. Check the returned `BOOL` and `NSError`.
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+#include <stdlib.h>
+
+static BOOL ReadLandmarks(HFFaceBasicToken token, NSError **error) {
+    HInt32 count = 0;
+    if (![IFFaceToken getDenseLandmarkCount:&count error:error]) return NO;
+    if (count <= 0) return IFCheck(HERR_INVALID_PARAM, error);
+    HPoint2f five[5];
+    HPoint2f *dense = calloc((size_t)count, sizeof(*dense));
+    if (dense == NULL) return IFCheck(HERR_INVALID_PARAM, error);
+    BOOL ok = [IFFaceToken getFiveKeyPoints:token into:five capacity:5 error:error] &&
+        [IFFaceToken getDenseLandmarks:token into:dense capacity:count error:error];
+    if (ok) {
+        for (HInt32 i = 0; i < count; ++i) {
+            NSLog(@"%d: %.2f, %.2f", i, dense[i].x, dense[i].y);
+        }
+    }
+    free(dense);
+    return ok;
+}
+```
+
+@tab Swift
+
+Call with `faces.tokens[i]` inside `session.withUnsafeFaces(in:)`, or while the owning snapshot stays open. The output arrays own the copied coordinates. For a video loop, allocate them once and reuse them after querying the point count.
+
+```swift
+import InspireFaceSwift
+
+func readLandmarks(token: FaceToken) throws {
+    var count: Int32 = 0
+    try FaceTokenUtilities.getDenseLandmarkCount(&count)
+    guard count > 0 else {
+        throw NSError(domain: IFErrorDomain, code: Int(HERR_INVALID_PARAM))
+    }
+    var five = [HPoint2f](repeating: HPoint2f(), count: 5)
+    var dense = [HPoint2f](repeating: HPoint2f(), count: Int(count))
+    try five.withUnsafeMutableBufferPointer {
+        try FaceTokenUtilities.getFiveKeyPoints(token, into: $0)
+    }
+    try dense.withUnsafeMutableBufferPointer {
+        try FaceTokenUtilities.getDenseLandmarks(token, into: $0)
+    }
+    for (index, point) in dense.enumerated() {
+        print("\(index): \(point.x), \(point.y)")
+    }
+}
+```
+
 @tab Android
 
 The 1.2.0 Java package provides dense landmarks through a `DETECT_MODE_LIGHT_TRACK` session. For unrelated still images, create a fresh session for each image. For five-point alignment data, use the C, C++ or Python tab.
@@ -143,7 +197,7 @@ Available landmark engines:
 | HyperLandmarkV2 0.50 | `HF_LANDMARK_HYPLMV2_0_50` |
 | InsightFace 2D106 tracking | `HF_LANDMARK_INSIGHTFACE_2D106_TRACK` |
 
-Use `HFSwitchLandmarkEngine` in C, `InspireFace.switchLandmarkEngine` in HarmonyOS or `isf.switch_landmark_engine` in Python **before creating the session**. The selection applies to newly created sessions. Use a resource pack containing the selected model.
+Select the engine **before creating the session**: `HFSwitchLandmarkEngine` in C, `[IFRuntime setLandmarkEngine:HF_LANDMARK_HYPLMV2_0_25 error:&error]` in Objective-C, `try InspireFaceRuntime.setLandmarkEngine(.hyperLandmark025)` in Swift, `InspireFace.switchLandmarkEngine` in HarmonyOS or `isf.switch_landmark_engine` in Python. The selection applies to newly created sessions. Use a resource pack containing the selected model.
 
 Start video integration with the default engine, then compare landmark stability and processing time on representative clips when choosing an engine.
 

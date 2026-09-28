@@ -79,6 +79,93 @@ float threshold = SIMILARITY_CONVERTER_GET_RECOMMENDED_COSINE_THRESHOLD();
 std::cout << score << " " << (score >= threshold) << '\n';
 ```
 
+@tab Objective-C
+
+用 `HF_ENABLE_FACE_RECOGNITION` 和 `HF_DETECT_MODE_ALWAYS_DETECT` 创建 `IFSession`。函数要求每张图恰好一张脸，将特征写入两份独立缓冲区，结束时关闭它们。会话和图像流由调用方管理；检查返回的 `BOOL` 和 `NSError`。
+
+<details>
+<summary>Objective-C — 完整示例</summary>
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static BOOL ExtractOne(IFSession *session, IFImageStream *stream,
+                       IFFeatureBuffer *output, NSError **error) {
+    HFMultipleFaceData faces = {0};
+    if (![session trackStream:stream borrowedResult:&faces error:error]) return NO;
+    if (faces.detectedNum != 1) return IFCheck(HERR_INVALID_PARAM, error);
+    return [session extractFeatureFromStream:stream token:faces.tokens[0]
+        into:output.borrowedFeature error:error];
+}
+
+static BOOL CompareImages(IFSession *session, IFImageStream *first,
+                          IFImageStream *second, float *score,
+                          float *threshold, NSError **error) {
+    IFFeatureBuffer *enrolled = [[IFFeatureBuffer alloc] initWithError:error];
+    if (enrolled == nil) return NO;
+    IFFeatureBuffer *query = [[IFFeatureBuffer alloc] initWithError:error];
+    if (query == nil) {
+        [enrolled closeWithError:NULL];
+        return NO;
+    }
+    @try {
+        return ExtractOne(session, first, enrolled, error) &&
+            ExtractOne(session, second, query, error) &&
+            [IFFeatureBuffer compare:enrolled.borrowedFeature with:query.borrowedFeature
+                similarity:score error:error] &&
+            [IFFeatureBuffer getRecommendedThreshold:threshold error:error];
+    } @finally {
+        [query closeWithError:NULL];
+        [enrolled closeWithError:NULL];
+    }
+}
+```
+
+</details>
+
+@tab Swift
+
+使用 `SessionConfiguration(features: [.recognition], maximumFaces: 10, pixelLevel: 320)` 创建 `FaceSession`，传入两个有效的图像流；默认模式为 `.alwaysDetect`。每份特征缓冲区拥有独立内存，提取第二张脸不会覆盖第一份结果。SDK 调用失败时抛出错误。
+
+<details>
+<summary>Swift — 完整示例</summary>
+
+```swift
+import InspireFaceSwift
+
+func extractOne(session: FaceSession, stream: ImageStream,
+                into output: FaceFeatureBuffer) throws {
+    try session.withUnsafeFaces(in: stream) { faces in
+        guard faces.count == 1 else {
+            throw NSError(domain: IFErrorDomain, code: Int(HERR_INVALID_PARAM),
+                          userInfo: [NSLocalizedDescriptionKey: "Expected exactly one face"])
+        }
+        try output.withUnsafeMutableBufferPointer { buffer in
+            try session.extractFeature(from: stream, token: faces.tokens[0], into: buffer)
+        }
+    }
+}
+
+func compareImages(session: FaceSession, first: ImageStream,
+                   second: ImageStream) throws -> Float {
+    let enrolled = try FaceFeatureBuffer()
+    defer { try? enrolled.close() }
+    let query = try FaceFeatureBuffer()
+    defer { try? query.close() }
+    try extractOne(session: session, stream: first, into: enrolled)
+    try extractOne(session: session, stream: second, into: query)
+    var score: Float = 0
+    var threshold: Float = 0
+    try FaceFeatureBuffer.compare(enrolled.borrowedFeature,
+                                  with: query.borrowedFeature, similarity: &score)
+    try FaceFeatureBuffer.getRecommendedThreshold(&threshold)
+    print("similarity=\(score), match=\(score >= threshold)")
+    return score
+}
+```
+
+</details>
+
 @tab Android
 
 创建会话时传入 `InspireFace.CreateCustomParameter().enableRecognition(true)`。辅助方法接收有效的图像流，返回 Java 持有的特征。先完成提取，再释放图像流；全部使用结束后释放会话。
@@ -245,7 +332,7 @@ python compare.py enrollment.jpg query.jpg --model /path/to/Pikachu
 
 FeatureHub 用整数 ID 关联特征向量。姓名、账户等应用信息放在自己的数据库中，通过该 ID 关联。
 
-下面假设 SDK 已启动，`enrolled` 和 `query` 是用对应接口提取的特征。C、C++、Python 和 HarmonyOS 使用 1.2.4 接口，Android 使用 Java 1.2.0 包。
+下面假设 SDK 已启动，`enrolled` 和 `query` 是用对应接口提取的特征。C、C++、Objective-C、Swift、Python 和 HarmonyOS 使用 1.2.4 接口，Android 使用 Java 1.2.0 包。
 
 ::: tabs #api-language
 
@@ -310,6 +397,66 @@ try {
     throw;
 }
 if (hub->DisableHub() != 0) throw std::runtime_error("Cannot close FeatureHub");
+```
+
+@tab Objective-C
+
+传入两份尚未关闭、已写入特征的 `IFFeatureBuffer`。示例创建内存特征库，并在返回前关闭。实际应用中，整个进程初始化一次 FeatureHub，串行执行相关操作；借用的搜索结果应在同线程下一次搜索前读取完。
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static BOOL SearchGallery(IFFeatureBuffer *enrolled, IFFeatureBuffer *query,
+                          NSError **error) {
+    HFFeatureHubConfiguration config = {0};
+    config.primaryKeyMode = HF_PK_MANUAL_INPUT;
+    config.searchMode = HF_SEARCH_MODE_EXHAUSTIVE;
+    if (![IFFeatureBuffer getRecommendedThreshold:&config.searchThreshold error:error]) return NO;
+    if (![IFFeatureHub enableWithConfiguration:config error:error]) return NO;
+    @try {
+        HFFaceFeature feature = enrolled.borrowedFeature;
+        HFFaceFeatureIdentity identity = {1001, &feature};
+        HFaceId storedID = HF_INVALID_FACE_ID;
+        if (![IFFeatureHub insert:identity allocatedID:&storedID error:error]) return NO;
+        HFFeatureHubSearchResultV2 result = {0};
+        if (![IFFeatureHub search:query.borrowedFeature borrowedResult:&result error:error]) return NO;
+        if (result.found) NSLog(@"id=%lld score=%.4f", (long long)result.id, result.confidence);
+        else NSLog(@"No gallery entry passed the threshold");
+        return YES;
+    } @finally {
+        [IFFeatureHub disableWithError:NULL];
+    }
+}
+```
+
+@tab Swift
+
+传入两份已写入特征的 `FaceFeatureBuffer`，调用期间保持打开。插入时使用的特征指针只在闭包内有效。`found == 0` 表示正常的未匹配结果；API 调用失败则抛出错误。
+
+```swift
+import InspireFaceSwift
+
+func searchGallery(enrolled: FaceFeatureBuffer, query: FaceFeatureBuffer) throws {
+    var config = HFFeatureHubConfiguration()
+    config.primaryKeyMode = HF_PK_MANUAL_INPUT
+    config.searchMode = HF_SEARCH_MODE_EXHAUSTIVE
+    try FaceFeatureBuffer.getRecommendedThreshold(&config.searchThreshold)
+    try FeatureHub.enable(configuration: config)
+    defer { try? FeatureHub.disable() }
+    var feature = enrolled.borrowedFeature
+    try withUnsafeMutablePointer(to: &feature) { pointer in
+        let identity = HFFaceFeatureIdentity(id: 1001, feature: pointer)
+        var storedID: Int64 = -1
+        try FeatureHub.insert(identity, allocatedID: &storedID)
+    }
+    var result = HFFeatureHubSearchResultV2()
+    try FeatureHub.search(query.borrowedFeature, borrowedResult: &result)
+    if result.found != 0 {
+        print("id=\(result.id), score=\(result.confidence)")
+    } else {
+        print("No gallery entry passed the threshold")
+    }
+}
 ```
 
 @tab Android
@@ -412,7 +559,7 @@ finally:
 
 :::
 
-空库和没有符合条件的记录都是正常结果。使用结果前先检查匹配标志：C/C++ 和 ArkTS 的 `found`、Python 的 `matched`；Java 1.2.0 则检查结果非 null 且 `id != -1`。Top-k 搜索同样应用配置的阈值，因此返回数量可能少于 `k`。
+空库和没有符合条件的记录都是正常结果。使用结果前先检查匹配标志：C/C++、Objective-C、Swift 和 ArkTS 的 `found`、Python 的 `matched`；Java 1.2.0 则检查结果非 null 且 `id != -1`。Top-k 搜索同样应用配置的阈值，因此返回数量可能少于 `k`。
 
 | Option | 行为说明 |
 | --- | --- |
@@ -476,6 +623,54 @@ if (hub->GetFaceFeatureCount(count) != 0) throw std::runtime_error("Count failed
 std::cout << "entries=" << count << '\n';
 if (hub->FaceFeatureRemove(int64_t{1001}) != 0) {
     throw std::runtime_error("Cannot remove feature");
+}
+```
+
+@tab Objective-C
+
+在 FeatureHub 已启用、ID 1001 已存在且特征缓冲区仍有效时调用。最后一步会删除该条目。Top-k 数组应在同线程下一次 top-k 搜索前读取完。
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static BOOL MaintainGallery(IFFeatureBuffer *replacement, IFFeatureBuffer *query,
+                            NSError **error) {
+    HFFaceFeature feature = replacement.borrowedFeature;
+    HFFaceFeatureIdentity identity = {1001, &feature};
+    if (![IFFeatureHub updateIdentity:identity error:error]) return NO;
+    HFSearchTopKResults top = {0};
+    if (![IFFeatureHub search:query.borrowedFeature topK:5 borrowedResults:&top error:error]) return NO;
+    for (HInt32 i = 0; i < top.size; ++i) {
+        NSLog(@"id=%lld score=%.4f", (long long)top.ids[i], top.confidence[i]);
+    }
+    HInt32 count = 0;
+    if (![IFFeatureHub getIdentityCount:&count error:error]) return NO;
+    NSLog(@"entries=%d", count);
+    return [IFFeatureHub removeIdentityWithID:1001 error:error];
+}
+```
+
+@tab Swift
+
+在 FeatureHub 关闭前调用，且 ID 1001 已存在。返回的描述符借用原生存储，示例立即读取，最后删除该条目。
+
+```swift
+import InspireFaceSwift
+
+func maintainGallery(replacement: FaceFeatureBuffer, query: FaceFeatureBuffer) throws {
+    var feature = replacement.borrowedFeature
+    try withUnsafeMutablePointer(to: &feature) { pointer in
+        try FeatureHub.updateIdentity(HFFaceFeatureIdentity(id: 1001, feature: pointer))
+    }
+    var top = HFSearchTopKResults()
+    try FeatureHub.search(query.borrowedFeature, topK: 5, borrowedResults: &top)
+    for i in 0..<Int(top.size) {
+        print("id=\(top.ids[i]), score=\(top.confidence[i])")
+    }
+    var count: Int32 = 0
+    try FeatureHub.getIdentityCount(&count)
+    print("entries=\(count)")
+    try FeatureHub.removeIdentity(id: 1001)
 }
 ```
 
@@ -543,6 +738,8 @@ ArkTS 使用 `enablePersistence: true`，并将 `persistenceDbPath` 设为应用
 
 需要持久化时，设置 `enable_persistence=True`，并提供可写的数据库**文件**路径，例如 `/var/lib/my-app/faces.db`。先创建父目录。关闭 FeatureHub 会释放资源，再次打开同一数据库可以恢复已保存的记录。
 
+Apple 接入时，在启用前设置 `HFFeatureHubConfiguration.enablePersistence` 和 `persistenceDbPath`，数据库文件放在应用可写的 Application Support 目录中。Swift 使用 `withCString` 保持路径的 C 字符串有效，直到 `FeatureHub.enable(configuration:)` 返回；启用调用会同步读取路径。
+
 同一进程中的会话共享 FeatureHub。初始化一次后，在连续帧处理中复用；使用它的工作线程结束后再关闭。
 
 在录入元数据中保存识别模型标识和 SDK 版本，录入向量与查询向量使用同一模型。更换模型时，重新提取录入图像并评估阈值。
@@ -552,5 +749,7 @@ ArkTS 使用 `enablePersistence: true`，并将 `persistenceDbPath` 设为应用
 `HFFaceFeatureExtract` 返回会话内部存储的视图，下一次提取可能覆盖这块内存。需要同时保留两份特征时，分别用 `HFCreateFaceFeature` 分配，通过 `HFFaceFeatureExtractTo` 写入，最后调用 `HFReleaseFaceFeature` 释放。
 
 `HFFeatureHubFaceSearchV2` 通过 `found` 明确报告是否找到匹配。它返回的特征数据是借用的缓存，在同一线程的下一次单人脸搜索前有效；需要长期保留时应复制。当前 Python 封装会将原生特征数组复制到由 Python 持有的内存中。
+
+Apple 的 `IFFeatureBuffer` / `FaceFeatureBuffer` 拥有独立的特征内存，但 `borrowedFeature` 只返回视图，使用期间应保持缓冲区打开。`IFSession` 的特征 getter 和 Swift 的 `withUnsafeFeature(in:token:)` 借用会话提取缓存；录入与查询向量需要同时保留时，使用两份独立的特征缓冲区。ARC 会释放封装对象，但不会让借用指针在下一次提取或显式 `close()` 后继续有效。
 
 组合特征提取、检索与异步处理前，可先查看 [C 接口的内存归属表](../using-with/c-cpp.md#image-buffers-and-ownership)。

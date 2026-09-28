@@ -1,116 +1,235 @@
 # iOS {#ios}
 
-InspireFace 的 C API 可以直接从 Objective-C、Objective-C++ 调用，也可通过简单的桥接供 Swift 使用。先在真机上用文件或位图跑通模型加载和检测，再连接摄像头帧。
+iOS 应用可以使用 Objective-C、Swift 或 C API。当前 Apple 构建提供成对的 XCFramework，覆盖真机和模拟器。先检测一张 App 内的图片，再复用会话处理摄像头帧。
 
-Framework 的完整构建流程、依赖版本和库文件检查见 [iOS 构建](../build/ios.md)。
+[Objective-C 与 Swift 接入](./apple.md)提供完整检测示例、错误处理和资源管理说明。本页介绍 Xcode 配置与摄像头输入。
 
-::: warning iOS 接口
-目前在 iOS 上接入需要混合调用 C/C++ 接口。后续会推出 Objective-C 和 Swift 接口。
-:::
+## 选择 Framework {#build-the-frameworks}
 
-## 构建 Framework {#build-the-frameworks}
-
-按[源码准备与通用选项](../build/source.md)准备源码和 `3rdparty`。在已选择 Xcode 命令行工具的 macOS 上，从 InspireFace 根目录运行：
-
-```bash
-bash command/build_ios.sh
-```
-
-当前脚本构建用于 **iOS arm64 真机**的静态 `InspireFace.framework`，部署目标为 iOS 11.0，关闭 Bitcode。同时准备该构建使用的 MNN Framework：
+按 [iOS 构建](../build/ios.md)生成当前 SDK，也可以在[下载列表](../build/README.md)提供对应 Apple 包后直接使用。新版包的目录如下：
 
 ```text
-build/inspireface-ios/
-  InspireFace.framework/
-  MNN.framework/
+inspireface-apple/
+  InspireFace.xcframework/
+  InspireFaceSwift.xcframework/
+  Frameworks/                 # Frameworks grouped by platform
+  SDKs/                       # Individual architecture SDKs
+  sdk-manifest.json
 ```
 
-使用 SDK 版本查询接口记录运行库版本。设置可选的 `VERSION` 环境变量，可以为构建输出目录添加后缀。
+默认 iOS 脚本会构建真机 arm64，以及模拟器 arm64 / x86_64。链接 XCFramework 时，Xcode 会选择对应切片。只构建真机或使用 `--arch` 限定架构时，产物包含的切片更少；分发给团队前先检查 manifest。
 
-这里生成的是 arm64 真机 Framework。需要模拟器目标时，按模拟器 SDK 与架构分别构建 InspireFace 和依赖；应用同时需要真机与模拟器时，再将两套产物打包为 XCFramework。
+脚本默认请求 iOS 11.0；arm64 模拟器目标的实际最低版本为 iOS 14.0。以包中各架构的部署元数据为准，设置应用的 deployment target。
 
 ## 将 SDK 和模型加入 Xcode {#add-the-sdk-and-model-to-xcode}
 
-将两个 Framework 加入目标的链接设置，并通过 Framework Search Paths 指定目录。`InspireFace.framework` 内含静态库，无需按动态 Framework 嵌入；MNN 则按实际构建包的链接方式配置。
+将 `InspireFace.xcframework` 加入 App Target。Swift 代码使用 `import InspireFaceSwift` 时，还要加入同一次构建的 `InspireFaceSwift.xcframework`。iOS 切片是**静态库**，链接设置选择 **Do Not Embed**。在 Other Linker Flags 中加入 `-ObjC`，保留 Objective-C 包装类。
 
-将模型文件加入目标的 Copy Bundle Resources，保持文件名不变，例如 `Pikachu`。调用启动接口前，取得实际文件系统路径：
-
-```objectivec
-#import <InspireFace/inspireface.h>
-
-NSString *pack = [[NSBundle mainBundle] pathForResource:@"Pikachu" ofType:nil];
-if (pack == nil) {
-    // Report a missing bundled resource to the application.
-    return;
-}
-HResult status = HFLaunchInspireFace(pack.fileSystemRepresentation);
-if (status != HSUCCEED) {
-    NSLog(@"InspireFace launch failed: %ld", (long)status);
-    return;
-}
-```
-
-在 UI 线程之外初始化，并复用进程级运行环境。使用 `HFCreateInspireFaceSessionOptional` 创建会话，错误处理和清理方式参考[完整 C 检测示例](./c-cpp.md#a-complete-detection-program)。
-
-Swift 可以通过目标的 bridging header 暴露 C 头文件，也可以用 Objective-C++ 类包装会话，提供启动、处理和关闭方法。在封装内管理原生指针与帧的生命周期。
+核心 Framework 已合并 CPU 推理依赖，不要再同时链接旧的 `MNN.framework`、另一份 `libMNN.a` 或原始 `libInspireFace.a`。`SDKs/` 目录保留了旧的原始库接入方式，供已有 C/C++ 工程使用；同一个 Target 选择其中一种方式即可。
 
 ### 检查 Target 设置 {#check-the-target-settings}
 
-1. 在 **Build Phases → Link Binary With Libraries** 中添加 `InspireFace.framework`、`MNN.framework` 及当前构建需要的系统 Framework。当前 iOS CMake 目标链接 Metal、CoreML、Foundation、CoreVideo 和 CoreMedia；C++ 代码还需要 C++ 运行库。Apple 扩展额外使用 Accelerate。
-2. 在 **Build Settings → Framework Search Paths** 中填写 Framework 所在目录。建议使用 `$(PROJECT_DIR)/Frameworks` 这类项目相对路径，方便其他机器构建。
-3. 在 **Copy Bundle Resources** 中将模型加入应用 Target，让 Xcode 把它复制进 App。
-4. 选择 arm64 真机，先运行上面的模型启动检查，再接入摄像头。需要采集视频时，在 Info 设置中加入 `NSCameraUsageDescription`，并在启动采集前处理相机授权。
+| Xcode setting | 配置 |
+| --- | --- |
+| Frameworks, Libraries, and Embedded Content | 添加核心 XCFramework；Swift 工程再添加 Swift XCFramework。iOS 上都选择 **Do Not Embed**。 |
+| Other Linker Flags | 保留 `$(inherited)`，加入 `-ObjC`。 |
+| System libraries | Foundation、CoreVideo 和 `libc++`；CoreML 构建还使用 CoreML 与 Accelerate。模块导入会自动提供这些链接声明。 |
+| Framework Search Paths | 直接使用 `.framework` 时，指向相应平台和架构的目录。 |
+| Copy Bundle Resources | 加入模型文件，如 `Pikachu`，保持原文件名。 |
+| Info | 请求相机授权前，添加 `NSCameraUsageDescription`。 |
 
-![Xcode Build Phases 中添加 Framework 链接的入口](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/setup_s1.png)
+![Xcode Build Phases 中添加 Framework 链接的位置](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/setup_s1.png)
 
-*在图示的 Build Phases 中添加上文列出的 Framework 依赖。Pods 条目属于截图中的示例工程。*
+*截图来自较早的示例工程，用于说明 Build Phases 的位置。请按上文添加当前版本的 InspireFace Framework；Pods 条目属于截图中的工程。*
 
-::: tip 按出错阶段排查
-找不到头文件时，检查 Framework Search Paths；出现 undefined symbols 时，检查链接库和依赖；模型路径为 nil 时，检查 Copy Bundle Resources 与 Target membership。
-:::
+在 SDK 工作队列初始化时取得模型路径。下面的片段放在初始化方法内部，导入语句见[共享接入页](./apple.md#modules-and-types)。
 
-## 摄像头输入与行步长 {#camera-input-and-row-stride}
+::: tabs #api-language
 
-读取 BGRA `CVPixelBuffer` 时，先锁定基地址，通过 `CVPixelBufferGetBytesPerRow` 获取实际行字节数。`HFImageData` 没有步长字段，因此带行填充的缓冲区需要逐行复制到紧密排列的内存。
+@tab Objective-C
 
-下面的辅助函数复制已有的 BGRA 像素缓冲区，应放在 Objective-C++ `.mm` 文件中；遇到其他格式时返回 `false`：
-
-```cpp
-#import <CoreVideo/CoreVideo.h>
-#include <cstring>
-#include <vector>
-
-bool copyBGRA(CVPixelBufferRef buffer, std::vector<unsigned char>& pixels) {
-    if (!buffer || CVPixelBufferGetPixelFormatType(buffer) != kCVPixelFormatType_32BGRA)
-        return false;
-    const size_t width = CVPixelBufferGetWidth(buffer);
-    const size_t height = CVPixelBufferGetHeight(buffer);
-    pixels.resize(width * height * 4);
-    if (CVPixelBufferLockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly) != kCVReturnSuccess)
-        return false;
-    const auto* source = static_cast<const unsigned char*>(CVPixelBufferGetBaseAddress(buffer));
-    const size_t stride = CVPixelBufferGetBytesPerRow(buffer);
-    const bool valid = source != nullptr && stride >= width * 4;
-    if (valid) {
-        for (size_t y = 0; y < height; ++y)
-            std::memcpy(pixels.data() + y * width * 4, source + y * stride, width * 4);
-    }
-    CVPixelBufferUnlockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
-    return valid;
+```objectivec
+NSString *modelPath = [[NSBundle mainBundle] pathForResource:@"Pikachu" ofType:nil];
+if (!modelPath) {
+    NSLog(@"Pikachu is missing from the app resources");
+    return;
+}
+NSError *error = nil;
+if (![IFRuntime launchAtPath:modelPath error:&error]) {
+    NSLog(@"InspireFace launch failed: %@", error);
+    return;
 }
 ```
 
-将复制后的存储声明为 `HF_STREAM_BGRA`，并保留 vector，直到图像流及所有后续处理结束。此时 vector 持有独立副本，摄像头复用原缓冲区不会改变已提交像素。
+@tab Swift
 
-NV12 摄像头输出需要分别读取 Y 和 UV 平面，并按各平面的行步长整理输入。格式大小与旋转约定见[图像输入](../guides/image-inputs.md)。
+```swift
+guard let modelPath = Bundle.main.path(forResource: "Pikachu", ofType: nil) else {
+    throw NSError(domain: "App.Model", code: 1,
+                  userInfo: [NSLocalizedDescriptionKey: "Pikachu is missing from the app resources"])
+}
+try InspireFaceRuntime.launch(path: modelPath)
+```
+
+:::
+
+下载的模型可以放在 Application Support 等应用自己的目录，文件写入完成后再加载。Bundle 内的资源是只读的；只有需要后续替换模型时，才需要将其复制到可写目录。
+
+## 摄像头输入与行步长 {#camera-input-and-row-stride}
+
+取得相机授权后，配置 `AVCaptureSession`，添加 `AVCaptureVideoDataOutput`，让 delegate 与人脸会话使用同一个串行队列。下面的设置请求 BGRA 输出，并丢弃来不及处理的帧：
+
+::: tabs #api-language
+
+@tab Objective-C
+
+```objectivec
+#import <AVFoundation/AVFoundation.h>
+
+AVCaptureVideoDataOutput *output = [[AVCaptureVideoDataOutput alloc] init];
+output.videoSettings = @{
+    (NSString *)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA)
+};
+output.alwaysDiscardsLateVideoFrames = YES;
+dispatch_queue_t analysisQueue = dispatch_queue_create("app.face.analysis", DISPATCH_QUEUE_SERIAL);
+// delegate implements AVCaptureVideoDataOutputSampleBufferDelegate.
+[output setSampleBufferDelegate:delegate queue:analysisQueue];
+```
+
+@tab Swift
+
+```swift
+import AVFoundation
+
+let output = AVCaptureVideoDataOutput()
+output.videoSettings = [
+    kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
+]
+output.alwaysDiscardsLateVideoFrames = true
+let analysisQueue = DispatchQueue(label: "app.face.analysis")
+// delegate implements AVCaptureVideoDataOutputSampleBufferDelegate.
+output.setSampleBufferDelegate(delegate, queue: analysisQueue)
+```
+
+:::
+
+在 `captureOutput(_:didOutput:from:)` 或对应的 Objective-C 回调中，通过 `CMSampleBufferGetImageBuffer` 取得当前帧。开始采集前创建 `LIGHT_TRACK` 会话并持续复用，不要每帧加载模型或创建会话。
+
+[共享输入示例](./apple.md#pixel-buffers-and-borrowed-bytes)中的 `CVPixelBuffer` 构造方法只接受紧密排列的存储。摄像头缓冲区常在行末增加填充。下面的完整函数逐行复制 BGRA，在存储离开作用域前关闭图像流，最后返回独立的人脸数量。
+
+<details>
+<summary>展开带行填充 BGRA 的 Objective-C、Swift 输入代码</summary>
+
+::: tabs #api-language
+
+@tab Objective-C
+
+```objectivec
+#import <InspireFace/InspireFaceApple.h>
+#include <stdint.h>
+#include <string.h>
+
+BOOL CountPaddedBGRA(IFSession *session, CVPixelBufferRef buffer,
+                     HFRotation rotation, HInt32 *faceCount, NSError **error) {
+    *faceCount = 0;
+    if (!buffer || CVPixelBufferGetPixelFormatType(buffer) != kCVPixelFormatType_32BGRA ||
+        CVPixelBufferIsPlanar(buffer))
+        return IFCheck(HERR_INVALID_IMAGE_STREAM_PARAM, error);
+    size_t width = CVPixelBufferGetWidth(buffer);
+    size_t height = CVPixelBufferGetHeight(buffer);
+    if (!width || !height || width > INT32_MAX || height > INT32_MAX ||
+        width > SIZE_MAX / 4 || height > SIZE_MAX / (width * 4))
+        return IFCheck(HERR_INVALID_IMAGE_STREAM_PARAM, error);
+    if (CVPixelBufferLockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly) != kCVReturnSuccess)
+        return IFCheck(HERR_INVALID_IMAGE_STREAM_PARAM, error);
+    const uint8_t *source = CVPixelBufferGetBaseAddress(buffer);
+    size_t rowBytes = width * 4;
+    size_t stride = CVPixelBufferGetBytesPerRow(buffer);
+    if (!source || stride < rowBytes) {
+        CVPixelBufferUnlockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
+        return IFCheck(HERR_INVALID_IMAGE_STREAM_PARAM, error);
+    }
+    __attribute__((objc_precise_lifetime)) NSMutableData *packed =
+        [NSMutableData dataWithLength:rowBytes * height];
+    uint8_t *destination = packed.mutableBytes;
+    for (size_t row = 0; row < height; ++row)
+        memcpy(destination + row * rowBytes, source + row * stride, rowBytes);
+    CVPixelBufferUnlockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
+    HFImageData input = {destination, (HInt32)width, (HInt32)height,
+                         HF_STREAM_BGRA, rotation};
+    IFImageStream *stream = [[IFImageStream alloc] initWithBorrowedData:input error:error];
+    if (!stream) return NO;
+    HFMultipleFaceData faces = {0};
+    BOOL success = [session trackStream:stream borrowedResult:&faces error:error];
+    if (success) *faceCount = faces.detectedNum;
+    [stream closeWithError:NULL];
+    return success;
+}
+```
+
+@tab Swift
+
+```swift
+import CoreVideo
+import Foundation
+import InspireFaceSwift
+
+func countPaddedBGRA(session: FaceSession, pixelBuffer: CVPixelBuffer,
+                     rotation: ImageRotation) throws -> Int {
+    func invalidImage() -> NSError {
+        NSError(domain: IFErrorDomain, code: Int(HERR_INVALID_IMAGE_STREAM_PARAM))
+    }
+    guard CVPixelBufferGetPixelFormatType(pixelBuffer) == kCVPixelFormatType_32BGRA,
+          !CVPixelBufferIsPlanar(pixelBuffer) else { throw invalidImage() }
+    let width = CVPixelBufferGetWidth(pixelBuffer)
+    let height = CVPixelBufferGetHeight(pixelBuffer)
+    guard width > 0, height > 0, let w = Int32(exactly: width),
+          let h = Int32(exactly: height) else { throw invalidImage() }
+    let (rowBytes, rowOverflow) = width.multipliedReportingOverflow(by: 4)
+    let (byteCount, countOverflow) = rowBytes.multipliedReportingOverflow(by: height)
+    guard !rowOverflow, !countOverflow, byteCount <= Int(Int32.max),
+          CVPixelBufferLockBaseAddress(pixelBuffer, .readOnly) == kCVReturnSuccess
+    else { throw invalidImage() }
+    var packed = Data(count: byteCount)
+    do {
+        defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, .readOnly) }
+        guard let source = CVPixelBufferGetBaseAddress(pixelBuffer),
+              CVPixelBufferGetBytesPerRow(pixelBuffer) >= rowBytes
+        else { throw invalidImage() }
+        let stride = CVPixelBufferGetBytesPerRow(pixelBuffer)
+        packed.withUnsafeMutableBytes { (bytes: UnsafeMutableRawBufferPointer) in
+            for row in 0..<height {
+                bytes.baseAddress!.advanced(by: row * rowBytes).copyMemory(
+                    from: source.advanced(by: row * stride), byteCount: rowBytes)
+            }
+        }
+    }
+    return try packed.withUnsafeMutableBytes { (bytes: UnsafeMutableRawBufferPointer) in
+        try ImageStream.withBorrowedBytes(
+            bytes, width: w, height: h, format: .bgra, rotation: rotation
+        ) { stream in
+            try session.withUnsafeFaces(in: stream) { $0.count }
+        }
+    }
+}
+```
+
+:::
+
+</details>
+
+在分析回调中，将复用的会话传给 `CountPaddedBGRA` / `countPaddedBGRA`。示例为了便于阅读，每次分配一个连续缓冲区；持续处理视频时，可在同一工作队列保留这块存储，只在尺寸改变时调整大小。本帧的全部操作完成前，不要覆盖其中的像素。
+
+NV12 的输入带宽通常低于 BGRA。直接传入时，两个平面都必须紧密排列且内存连续；不符合时，分别按 Y、UV 的步长逐行复制，或显式转换为应用选定的格式。旋转与坐标约定见[图像输入](../guides/image-inputs.md)。
 
 ## 会话与界面生命周期 {#session-and-ui-lifetime}
 
-每个跟踪会话使用一个串行分析队列，在启动摄像头回调前创建会话。退出时先停止新任务，等待已有任务结束，释放图像流和会话；没有其他页面使用 SDK 后，再终止运行环境。
+每帧顺序完成跟踪、特征提取和 pipeline 分析。向主队列传递结果前，先复制矩形和分数；绘制时再应用预览的旋转、缩放、裁剪及前置镜像变换。SDK 输出不是 UIKit 视图坐标。
 
-绘制前，将预览的裁剪、缩放、方向和前置镜像变换应用到检测坐标。向主队列传递复制后的几何信息，再通过 UIKit 绘制。
+关闭摄像头时，先停止提交新帧，等待分析队列处理完已有任务，再关闭抓拍对象和会话；没有其他模块使用 SDK 后，终止运行环境。`CVPixelBuffer` 图像流会一直锁定摄像头缓冲区，处理完成后应及时关闭。
 
 ## Apple 加速 {#apple-acceleration}
 
-源码还提供 `command/build_ios_coreml.sh`，启用 `ISF_ENABLE_APPLE_EXTENSION`，输出到 `build/inspireface-ios-coreml-arm64`。搭配对应的 Apple 模型包，在目标设备上评估。
+CPU 与 CoreML 是两个独立构建包，模块名相同，一个 Target 选择其中一套。CoreML 构建还需要对应的 Apple 模型资源，只更换 Framework 不会将 CPU 模型包转换成 CoreML 模型。
 
-在目标设备上分别测量模型与会话启动、连续帧处理的耗时。应用计时包含图像转换，并与结果一起记录资源包和 CoreML 配置。
+创建会话前，通过 `IFRuntime` / `InspireFaceRuntime` 选择 CoreML 模式。CPU、GPU 与 Neural Engine 的设置见 [CoreML 运行模式](./apple.md#coreml-runtime-modes)。延时、功耗和 Neural Engine 性能应在真机测量，模拟器只适合检查接入是否正常。

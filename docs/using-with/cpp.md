@@ -4,6 +4,8 @@ C++ applications can use either the [C API](./c-cpp.md) or the `inspire::Session
 
 For SDK compilation, see [source preparation and options](../build/source.md), then choose [Linux](../build/linux.md) or [macOS](../build/macos.md). This page covers linking and using the C++ API.
 
+For an iOS or macOS app written in Objective-C or Swift, see the [Apple API guide](./apple.md). The native C/C++ integration below remains available with the headers and libraries from the same build.
+
 ## Build the example
 
 The SDK must include `include/inspireface/` and `include/inspirecv/`. Source builds install these when `ISF_INSTALL_CPP_HEADER=ON`.

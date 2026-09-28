@@ -21,6 +21,8 @@ bash command/download_models_general.sh Pikachu
 
 This writes `test_res/pack/Pikachu`, which is enough for the first CPU example. To download every listed pack, run the script without an argument.
 
+For iOS and macOS CPU frameworks, start with `Pikachu` as well. A CoreML build needs a compatible CoreML pack; changing the build flag or renaming a general pack does not convert its models. The general download script above does not provide a CoreML pack.
+
 A pack is a file, sometimes without an extension. If you downloaded a ZIP archive, extract it first. Pass the pack file to `HFLaunchInspireFace` or `launch(resource_path=...)`.
 
 ## Validate before creating sessions
@@ -37,6 +39,38 @@ isf.launch(resource_path="/path/to/Pikachu")
 
 In C, use `HFValidateResourcePack` with `HFResourcePackInfo` as declared in the matching header. This checks the resource format. Install backend runtime dependencies using the target platform's guide below.
 
+On Apple platforms, pass a local filesystem path to the pack, such as the path of a resource included in the application bundle. Validate it before creating sessions:
+
+::: tabs #api-language
+
+@tab Objective-C
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+BOOL LaunchValidatedPack(NSString *path, NSError **error) {
+    HFResourcePackInfo info = {0};
+    if (![IFRuntime validateResourcePackAtPath:path info:&info error:error]) {
+        return NO;
+    }
+    return [IFRuntime launchAtPath:path error:error];
+}
+```
+
+@tab Swift
+
+```swift
+import InspireFaceSwift
+
+func launchValidatedPack(path: String) throws {
+    var info = HFResourcePackInfo()
+    try InspireFaceRuntime.validateResourcePack(path: path, info: &info)
+    try InspireFaceRuntime.launch(path: path)
+}
+```
+
+:::
+
 Record the SDK version, pack file and checksum with your application release. When changing the recognition model, regenerate gallery embeddings and reevaluate the comparison threshold.
 
 ## Change the loaded pack
@@ -47,6 +81,8 @@ Use the reload entry point when an already initialized process needs a different
 | --- | --- | --- |
 | C API | `HFReloadInspireFace(pack_path)` | Return code `HSUCCEED`. |
 | C++ | `inspire::Launch::GetInstance()->Reload(pack_path)` | Return code `0`. |
+| Objective-C | `[IFRuntime reloadAtPath:path error:&error]` | Returns `YES`; failures return `NO` with an `NSError`. |
+| Swift | `try InspireFaceRuntime.reload(path: path)` | Returns normally; failures throw. |
 | Python | `isf.reload(resource_path=pack_path)` | Returns `True`; failures raise an exception. |
 
 In 1.2.4, existing sessions retain the resources they were created with. To switch the whole application, stop submitting frames, release the old sessions, validate and reload the new pack, then create new sessions after loading succeeds. Handle any loading error before resuming processing. Rebuild the gallery when the recognition model changes.
@@ -73,7 +109,8 @@ With Android Java SDK 1.2.0, choose the pack before initialization and restart t
 ## Target-specific builds
 
 - [Android](../build/android.md): NDK, ABIs, JNI and AAR packaging.
-- [iOS](../build/ios.md): device frameworks and CoreML.
+- [iOS](../build/ios.md): device / simulator slices, XCFrameworks and CoreML.
+- [macOS](../build/macos.md): Intel / Apple Silicon frameworks, Swift modules and native libraries.
 - [HarmonyOS](../build/harmonyos.md): native SDK and ArkTS HAR project.
 - [NVIDIA TensorRT](../build/nvidia.md): CUDA/TensorRT dependencies and build environments.
 - [Rockchip NPU](../build/rockchip.md): board toolchains, RKNN and RGA.

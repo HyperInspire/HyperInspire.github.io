@@ -4,7 +4,7 @@
 
 ## 预编译 SDK {#prebuilt-sdks}
 
-下面按 **2026 年 9 月 28 日**的 [GitHub Releases](https://github.com/HyperInspire/InspireFace/releases) 整理。目前公开的原生 SDK 最新版本为 **v1.2.3**，下载链接固定到该版本，便于接入时选用一致的产物。
+下面按 **2026 年 9 月 29 日**的 [GitHub Releases](https://github.com/HyperInspire/InspireFace/releases) 整理。目前公开的原生 SDK 最新版本为 **v1.2.3**，下载链接固定到该版本，便于接入时选用一致的产物。
 
 ::: warning 注意接口版本
 本文档的原生接口和 Python 示例使用 **1.2.4 源码接口**，其中包含较新的 snapshot、抓拍和诊断接口。运行这些示例时，请从配套源码构建原生库，并使用同版本的头文件或语言封装。v1.2.3 预编译包并不包含这里展示的全部接口。
@@ -33,15 +33,30 @@
 
 按**应用进程**选择架构和 C 运行库。64 位设备上的应用也可能是 32 位进程。使用同一压缩包中的头文件和库；静态 Framework、GPU / NPU 库的链接方式见对应平台章节。
 
+## Apple SDK 产物 {#apple-sdk-packaging}
+
+1.2.4 源码加入了 Objective-C、Swift 接口、iOS 模拟器构建和配套的 XCFramework。上面的 v1.2.3 下载包仍采用旧产物结构；运行本文档的 Apple 示例时，请按 [Develop 版本的获取方式](./source.md#develop-source)拉取源码并构建。
+
+| Application | 需要添加的库 | 接入指南 |
+| --- | --- | --- |
+| Objective-C | `InspireFace.xcframework` | [Apple API](../using-with/apple.md) |
+| Swift | `InspireFace.xcframework` + `InspireFaceSwift.xcframework` | [Apple API](../using-with/apple.md) |
+| Native C / C++ | 对应架构 `InspireFace/` 目录下的头文件与库 | [C](../using-with/c-cpp.md)、[C++](../using-with/cpp.md) |
+| macOS Python | 配套的 `libInspireFace.dylib` 和 Python 封装 | [Python 打包](./python.md) |
+
+`InspireFace.framework` 包含 C 与 Objective-C 接口，`InspireFaceSwift.framework` 提供 Swift 配置类型和限定作用域的缓冲区辅助方法。两个 Framework 应来自同一次构建。打包结果还包含各平台合并后的 Framework、原生 SDK 目录，以及用于核对架构和最低系统版本的元数据。
+
+真机与模拟器的构建见 [iOS](./ios.md)，Intel、Apple Silicon 与通用架构的构建见 [macOS](./macos.md)。iOS Framework 是静态库，macOS Framework 是动态库，在 Xcode 中采用不同的嵌入设置。新版 iOS Framework 已合入推理依赖，应用 target 无需再添加 `MNN.framework`。
+
+Apple 发布工作流生成的 CPU 压缩包名为 `inspireface-apple-<version>.zip`；截至上述检查日期，发布页还没有该文件。CoreML 产物可以通过同一构建脚本在本地生成，运行时需搭配兼容的 CoreML 模型资源包。
+
 ## Python 与 Android 包 {#python-and-android-packages}
 
-目前 [PyPI 包](https://pypi.org/project/inspireface/)为 **1.2.3.post5**。其 wheel 提供 Linux x86_64 / aarch64 的 CPython 3.8–3.12 版本，以及若干 macOS Python / 平台组合。由 `pip` 选择匹配的 wheel，具体取决于解释器版本和平台标签。它与 1.2.4 源码封装属于不同版本。
-
 ```bash
-python -m pip install "inspireface==1.2.3.post5"
+python -m pip install inspireface opencv-python
 ```
 
-需要运行 1.2.4 示例或使用自定义后端时，参照 [Python 打包与原生库替换](./python.md)。其中包含本地 `.so` / `.dylib` 的切换、wheel 打包，以及安装后的检查步骤。
+需要替换原生库或制作 wheel 时，参照 [Python 打包与原生库替换](./python.md)。
 
 Android 示例使用 JitPack 依赖 `com.github.HyperInspire:inspireface-android-sdk:1.2.0`，仓库地址和 Gradle 配置见 [Android 接入](../using-with/android.md#choose-a-package-or-source-build)。Android 原生构建生成 JNI 库；将 Java 类与原生库组成 AAR 的步骤见 [Android 构建](./android.md)。
 
@@ -57,9 +72,9 @@ SDK 和 Python wheel 运行时还需要模型资源包。通过[模型发布页]
 | --- | --- |
 | [源码准备与通用选项](./source.md) | 获取源码、准备依赖、CMake 选项和产物结构。 |
 | [Linux](./linux.md) | CPU 本机构建、ARM 交叉编译、Ubuntu 与 manylinux。 |
-| [macOS](./macos.md) | Intel、Apple Silicon 和 CoreML。 |
+| [macOS](./macos.md) | Intel、Apple Silicon、通用 Framework、Swift 模块与 CoreML。 |
 | [Android](./android.md) | NDK、ABI、JNI 库与 AAR 打包。 |
-| [iOS](./ios.md) | 真机 Framework、CoreML 和 Xcode 接入。 |
+| [iOS](./ios.md) | 真机与模拟器切片、XCFramework 打包和 CoreML。 |
 | [HarmonyOS](./harmonyos.md) | Native SDK、Node-API 适配层和 HAR 工程。 |
 | [NVIDIA TensorRT](./nvidia.md) | CUDA / TensorRT 依赖和 Linux 构建。 |
 | [Rockchip NPU](./rockchip.md) | 板端工具链、RKNN / RGA 与 Android NPU 构建。 |

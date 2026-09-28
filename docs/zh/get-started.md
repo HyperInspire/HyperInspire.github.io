@@ -1,23 +1,12 @@
 # 快速开始 {#get-started}
 
-这个示例读取一张图片，检测人脸，并保存一份画好人脸框的副本。可以先用它确认运行时和模型包正常，再加入相机、跟踪或识别功能。
+一条命令安装 SDK，再用下面的 Python 示例检测图片中的人脸，并保存标注结果。
 
 ## 安装 Python 依赖 {#install-python-dependencies}
 
-建议使用虚拟环境，把 SDK 及其依赖放在项目自己的环境里：
-
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
 python -m pip install inspireface opencv-python
 ```
-
-可用的 wheel 取决于 Python 版本、操作系统和 CPU 架构。如果 pip 提示“No matching distribution”，先检查[已发布的 wheel 文件](https://pypi.org/project/inspireface/#files)。没有显示界面的服务器可以将 `opencv-python` 替换为 `opencv-python-headless`；本示例只写入图片文件。
-
-::: tip 示例版本
-下面的示例使用基础检测接口。快照和人脸抓拍示例需要配套的 1.2.4 封装与原生库，配置方法见 [Python 接入](./using-with/python.md#use-a-local-native-build)。
-:::
 
 ## 检测图片中的人脸 {#detect-faces-in-an-image}
 
@@ -151,6 +140,7 @@ python detect.py face.jpg --model /path/to/Pikachu --output detected.jpg
 
 - [Python](./using-with/python.md)：执行可选分析、处理原始图像流和管理资源。
 - [C API](./using-with/c-cpp.md)：编译不依赖 OpenCV 的完整原生示例。
+- [Objective-C 与 Swift](./using-with/apple.md)：通过 iOS 或 macOS Framework 接入 Apple 应用。
 - [会话与跟踪](./guides/tracking.md)：处理视频序列并调整检测开销。
 - [人脸识别](./guides/recognition.md)：比对两张人脸并接入特征库。
 - [常见问题](./guides/troubleshooting.md)：排查模型、动态库和图像格式问题。

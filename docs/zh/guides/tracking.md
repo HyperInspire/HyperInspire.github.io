@@ -33,7 +33,7 @@ track ID 用于连接同一段序列中的观测结果，不代表识别出的�
 
 ## 视频处理循环 {#a-video-loop}
 
-下面按接入语言切换示例，每种写法都在连续帧间复用会话。原生、HarmonyOS 和 Python 示例使用 1.2.4 接口，Android 使用 Java 1.2.0 包。
+下面按接入语言切换示例，每种写法都在连续帧间复用会话。原生、Objective-C、Swift、HarmonyOS 和 Python 示例使用 1.2.4 接口，Android 使用 Java 1.2.0 包。Objective-C 与 Swift 示例需搭配包含这两种接口的 Apple framework。
 
 ::: tabs #api-language
 
@@ -78,6 +78,52 @@ auto trackFrame = [&](inspirecv::FrameProcess& frame) {
         std::cout << face.trackId << " " << face.trackCount << '\n';
     }
 };
+```
+
+@tab Objective-C
+
+先完成 [Apple 接入](../using-with/apple.md)，为整个相机序列创建一个 tracker。在串行相机工作队列中调用 `TrackFrame` 并检查 `BOOL`，失败原因由 `NSError` 返回。回调只在执行期间借用人脸数组；调用方需保持图像流和像素有效，直到处理完成。
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static IFSession *CreateTracker(NSError **error) {
+    return [[IFSession alloc] initWithOptions:HF_ENABLE_NONE
+        mode:HF_DETECT_MODE_LIGHT_TRACK maximumFaces:5 pixelLevel:320
+        framesPerSecond:-1 error:error];
+}
+
+static BOOL TrackFrame(IFSession *session, IFImageStream *stream, NSError **error) {
+    return [session withBorrowedFacesFromStream:stream
+        body:^(HFMultipleFaceData faces) {
+            for (HInt32 i = 0; i < faces.detectedNum; ++i) {
+                NSLog(@"track=%d observations=%d", faces.trackIds[i], faces.trackCounts[i]);
+            }
+        } error:error];
+}
+// After the camera worker stops: [session closeWithError:&error];
+```
+
+@tab Swift
+
+链接两份 Apple framework 并 `import InspireFaceSwift`。运行时启动后创建一次会话，再按帧顺序调用 `trackFrame`。SDK 失败会抛出错误。借用视图在闭包内用完，不保存其中的指针，也不在闭包内再次跟踪、重置或关闭会话。
+
+```swift
+import InspireFaceSwift
+
+func createTracker() throws -> FaceSession {
+    try FaceSession(configuration: SessionConfiguration(
+        detectionMode: .lightTracking, maximumFaces: 5, pixelLevel: 320))
+}
+
+func trackFrame(session: FaceSession, stream: ImageStream) throws {
+    try session.withUnsafeFaces(in: stream) { faces in
+        for i in 0..<faces.count {
+            print("track=\(faces.trackIDs[i]) observations=\(faces.trackCounts[i])")
+        }
+    }
+}
+// After the camera worker stops: try session.close()
 ```
 
 @tab Android
@@ -181,7 +227,7 @@ finally:
 | Detector interval | 控制跟踪期间运行检测的频率。 | 间隔越短，通常越容易及时发现新出现的人脸，但检测开销也更高。 |
 | Landmark smoothing | 平滑连续帧中的关键点位置。 | 增强平滑可以减少抖动，也可能增加响应延迟。 |
 
-支持的检测输入档位由模型包决定。C 接口通过 `HFQuerySupportedPixelLevelsForFaceDetection` 查询可用档位，再从中选择会话使用的值。
+支持的检测输入档位由模型包决定。C 使用 `HFQuerySupportedPixelLevelsForFaceDetection`，Objective-C 使用 `IFRuntime.getSupportedDetectionPixelLevels:error:`，Swift 使用 `InspireFaceRuntime.getSupportedDetectionPixelLevels(_:)` 查询可用档位，再从中选择会话使用的值。
 
 各接口对应的设置方法如下：
 
@@ -218,6 +264,40 @@ session.SetTrackPreviewSize(320);
 session.SetTrackModeDetectInterval(20);
 session.SetTrackModeSmoothRatio(0.05f);
 session.SetTrackModeNumSmoothCacheFrame(5);
+```
+
+@tab Objective-C
+
+在会话的处理队列上调用这些 setter。任一设置失败后返回 `NO`，不再继续修改后续参数。
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static BOOL TuneTracking(IFSession *session, NSError **error) {
+    return [session setDetectionThreshold:0.5f error:error] &&
+        [session setMinimumFacePixelSize:32 error:error] &&
+        [session setTrackPreviewSize:320 error:error] &&
+        [session setDetectionInterval:20 error:error] &&
+        [session setTrackingSmoothRatio:0.05f error:error] &&
+        [session setTrackingSmoothCacheFrames:5 error:error];
+}
+```
+
+@tab Swift
+
+对已有 `FaceSession` 调用。每个 setter 失败时都会抛出错误；在帧循环开始前，或一帧处理完成后调整参数。
+
+```swift
+import InspireFaceSwift
+
+func tuneTracking(session: FaceSession) throws {
+    try session.setDetectionThreshold(0.5)
+    try session.setMinimumFacePixelSize(32)
+    try session.setTrackPreviewSize(320)
+    try session.setDetectionInterval(20)
+    try session.setTrackingSmoothRatio(0.05)
+    try session.setTrackingSmoothCacheFrames(5)
+}
 ```
 
 @tab Android
@@ -270,6 +350,6 @@ session.set_track_mode_num_smooth_cache_frame(5)
 
 ## 重置跟踪序列 {#resetting-a-sequence}
 
-切换摄像头、跳转视频位置或改变输入方向后，应重置跟踪历史。C 提供 `HFSessionClearTrackingFace`，C++ 提供 `Session::ClearTrackingFace`，HarmonyOS 提供 `session.clearTracking()`。使用 Python 高层接口或 Java 1.2.0 包时，重新创建会话开始新序列。
+切换摄像头、跳转视频位置或改变输入方向后，应重置跟踪历史。C 提供 `HFSessionClearTrackingFace`，C++ 提供 `Session::ClearTrackingFace`，Objective-C 使用 `[session clearTrackingWithError:&error]`，Swift 使用 `try session.clearTracking()`，HarmonyOS 使用 `session.clearTracking()`。使用 Python 高层接口或 Java 1.2.0 包时，重新创建会话开始新序列。
 
 按应用需要的输出启用姿态、质量、识别和其他分析模型。优化整个循环之前，先[分别测量检测、跟踪和分析的耗时](./benchmark-remark(updating).md)。

@@ -1,35 +1,32 @@
 # Source and common options {#source-and-common-options}
 
-Prepare one source checkout and its dependencies, then choose a platform build. All commands in this section start in the InspireFace repository root unless a block explicitly changes directory.
+Get the SDK source and its dependencies, then choose a platform build. Run subsequent build commands from the SDK directory entered below unless a block explicitly changes directory.
 
 ## Get the source {#get-the-source}
 
-The commands below use the develop repository and pin both the SDK and its dependency checkout to the revisions used by these **1.2.4** examples. Start in an empty parent directory:
+Choose one of the following sources.
+
+### Release version (recommended) {#release-source}
+
+For regular integration, start with the Release version in [InsightFace](https://github.com/deepinsight/insightface/tree/master/cpp-package/inspireface). Enter `cpp-package/inspireface` before downloading the dependencies:
+
+```bash
+git clone https://github.com/deepinsight/insightface.git
+cd insightface/cpp-package/inspireface
+git clone --recurse-submodules https://github.com/tunmx/inspireface-3rdparty.git 3rdparty
+```
+
+### Develop version {#develop-source}
+
+Use the [Develop repository](https://github.com/HyperInspire/InspireFace) for the latest features, more frequent updates and faster bug-fix follow-up:
 
 ```bash
 git clone https://github.com/HyperInspire/InspireFace.git
 cd InspireFace
-git checkout 1cb2c1e44bde56253fe9eb5bbc8e14dc5e72dee9
-git clone https://github.com/tunmx/inspireface-3rdparty.git 3rdparty
-git -C 3rdparty checkout dfb1f29c511954bc0764c232ed62e713d972844d
-git -C 3rdparty submodule update --init --recursive
+git clone --recurse-submodules https://github.com/tunmx/inspireface-3rdparty.git 3rdparty
 ```
 
-If you already have `3rdparty`, initialize its nested dependencies instead of cloning over it:
-
-```bash
-git -C 3rdparty submodule update --init --recursive
-```
-
-Record both revisions with your build. The dependency repository changes independently of the SDK:
-
-```bash
-git rev-parse HEAD
-git -C 3rdparty rev-parse HEAD
-git -C 3rdparty submodule status --recursive
-```
-
-To follow subsequent development, select a newer SDK revision and update the headers, language wrapper and native library together. The build’s `VERSION` environment variable only labels output directories; it does not change the runtime API version.
+Continue with the build guide for your target platform.
 
 ## Prepare the build tools {#prepare-the-build-tools}
 
@@ -41,7 +38,7 @@ To follow subsequent development, select a newer SDK revision and update the hea
 | Build tool | Make or Ninja for direct CMake builds; most `command/` scripts call Make. |
 | Platform SDK | Android NDK, Xcode, OpenHarmony Native SDK or board toolchain as applicable. |
 
-Some bundled dependencies use older CMake policy settings. The direct CMake commands here pass `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` for CMake 4 compatibility. Several platform scripts use the same setting; the iOS and HarmonyOS HAR scripts do not, so run those scripts with CMake 3.20–3.x.
+Some bundled dependencies use older CMake policy settings. The direct CMake commands here pass `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` for CMake 4 compatibility. The unified Apple builder also passes this setting. The HarmonyOS HAR script does not, so use CMake 3.20–3.x for that script.
 
 ## Build a CPU SDK {#build-a-cpu-sdk}
 
@@ -58,6 +55,8 @@ cmake -S . -B build/local-cpu \
 cmake --build build/local-cpu --parallel 4
 cmake --install build/local-cpu
 ```
+
+This direct build produces the native C/C++ library. For Objective-C and Swift frameworks, use the unified Apple builder in the [iOS](./ios.md) or [macOS](./macos.md) chapter.
 
 Use a separate build directory for each architecture and backend. The [Linux](./linux.md) and [macOS](./macos.md) chapters add platform-specific settings and binary inspection commands.
 
@@ -83,6 +82,8 @@ Set `INSPIREFACE_ROOT` to `build/local-cpu/install/InspireFace` when using the [
 
 ::: warning Release scripts reorganize their output
 Many scripts under `command/` move installed files to the top of their own build directory and delete intermediate compilation files. Their final paths therefore differ from a direct CMake build. Keep application files outside those directories, and use each platform page’s stated output path.
+
+The Apple builder keeps reusable dependency caches under `build/apple-cache` and stages SDK outputs separately; see the [macOS](./macos.md) and [iOS](./ios.md) guides.
 :::
 
 ## Common CMake options {#common-cmake-options}
@@ -98,6 +99,8 @@ Many scripts under `command/` move installed files to the top of their own build
 | `ISF_ENABLE_RKNN` | `OFF` | Enable the Rockchip NPU backend. |
 | `ISF_ENABLE_RGA` | `OFF` | Enable Rockchip preprocessing with a supported RKNPU2 configuration. |
 | `ISF_ENABLE_APPLE_EXTENSION` | `OFF` | Enable Apple extensions, including CoreML support. |
+| `ISF_BUILD_APPLE_FRAMEWORK` | `OFF` | Build the Objective-C framework and Swift overlay on Apple platforms. |
+| `ISF_BUILD_APPLE_TESTS` | `OFF` | Build Apple API contract tests. |
 | `ISF_ENABLE_INSPIRECV_TASK_PREPROCESS` | `OFF` | Use the Task preprocessing path. |
 
 These are the top-level defaults. Platform scripts override them, particularly shared/static linkage, samples, tests and hardware backends. `ISF_INSPIRECV_SOURCE_DIR` can select another image-processing source checkout; rebuild the native SDK and keep its installed headers together after changing it.

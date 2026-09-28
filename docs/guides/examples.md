@@ -2,11 +2,13 @@
 
 Copy the code below into files with the names shown, then run the matching command. Each program reads local images or video. The full source is in a collapsed panel so you can open and copy the file you need.
 
-For individual features, the [API index](./api-coverage.md) links to tabbed C API, C++, Android, Python and HarmonyOS examples for tracking, analysis, landmarks, recognition, liveness and capture. [Additional recipes](./api-recipes.md) cover alignment, score formatting and diagnostics.
+For individual features, the [API index](./api-coverage.md) links to tabbed C API, C++, Android, Python, HarmonyOS, Objective-C and Swift examples for tracking, analysis, landmarks, recognition, liveness and capture. [Additional recipes](./api-recipes.md) cover alignment, score formatting and diagnostics.
 
 ## Python {#python}
 
-Install `inspireface` and an OpenCV package in a virtual environment. Use `opencv-python-headless` for these file-based examples if you do not need GUI windows. Capture and the benchmark's context-manager setup use the 1.2.4 wrapper with a matching native library; see [Python setup](../using-with/python.md#use-a-local-native-build).
+```bash
+python -m pip install inspireface opencv-python
+```
 
 | File | Purpose |
 | --- | --- |
@@ -14,6 +16,8 @@ Install `inspireface` and an OpenCV package in a virtual environment. Use `openc
 | [compare.py](#python-comparison) | Require one face in each image; print similarity and the model threshold. |
 | [capture.py](#python-capture) | Save a selected full frame after capture is ready. |
 | [benchmark.py](#python-benchmark) | Report warmed still-image detection latency. |
+
+Capture and benchmark examples use the 1.2.4 wrapper with a matching native library; see [custom library setup](../using-with/python.md#use-a-local-native-build).
 
 Detection can download the default `Pikachu` pack if `--model` is omitted. The other commands below use an explicit resource path. A missing image is an error; a readable image with no detected faces is a normal detection result.
 
@@ -548,12 +552,159 @@ target_link_libraries(preprocess PRIVATE InspireCV::inspirecv)
 
 </details>
 
+## Apple: Objective-C and Swift {#apple-command-line}
+
+These complete macOS command-line programs load one image, print its face boxes, and clean up on failure. Save them under `apple/` using the filenames below. Use a 1.2.4 CPU framework build and a `Pikachu` model file. Each program owns the runtime for its entire execution; an app instead keeps its runtime and session alive across frames.
+
+::: tabs #api-language
+
+@tab Objective-C
+
+<details>
+<summary>apple/detect.m — Expand complete code</summary>
+
+```objectivec
+#import <InspireFace/InspireFaceApple.h>
+
+BOOL DetectFile(NSString *modelPath, NSString *imagePath,
+                HInt32 *faceCount, NSError **error) {
+    *faceCount = 0;
+    if (![IFRuntime launchAtPath:modelPath error:error]) return NO;
+    IFSession *session = nil;
+    IFImageBitmap *bitmap = nil;
+    IFImageStream *stream = nil;
+    BOOL success = NO;
+    do {
+        session = [[IFSession alloc] initWithOptions:0
+                                               mode:HF_DETECT_MODE_ALWAYS_DETECT
+                                       maximumFaces:10
+                                         pixelLevel:320
+                                    framesPerSecond:-1
+                                              error:error];
+        if (!session) break;
+        bitmap = [[IFImageBitmap alloc] initWithContentsOfFile:imagePath
+                                                     channels:3 error:error];
+        if (!bitmap) break;
+        HFImageBitmapData pixels = {0};
+        if (![bitmap getBorrowedData:&pixels error:error]) break;
+        HFImageData input = {pixels.data, pixels.width, pixels.height,
+                             HF_STREAM_BGR, HF_CAMERA_ROTATION_0};
+        stream = [[IFImageStream alloc] initWithBorrowedData:input error:error];
+        if (!stream) break;
+        HFMultipleFaceData faces = {0};
+        if (![session trackStream:stream borrowedResult:&faces error:error]) break;
+        for (HInt32 i = 0; i < faces.detectedNum; ++i) {
+            HFaceRect rect = faces.rects[i];
+            NSLog(@"face %d: x=%d y=%d width=%d height=%d", i,
+                  rect.x, rect.y, rect.width, rect.height);
+        }
+        *faceCount = faces.detectedNum;
+        success = YES;
+    } while (NO);
+    [stream closeWithError:NULL];
+    [bitmap closeWithError:NULL];
+    [session closeWithError:NULL];
+    [IFRuntime terminateWithError:NULL];
+    return success;
+}
+
+#include <stdio.h>
+int main(int argc, const char *argv[]) {
+    @autoreleasepool {
+        if (argc != 3) { fprintf(stderr, "Usage: detect MODEL IMAGE\n"); return 2; }
+        NSError *error = nil;
+        HInt32 count = 0;
+        if (!DetectFile([NSString stringWithUTF8String:argv[1]],
+                        [NSString stringWithUTF8String:argv[2]], &count, &error)) {
+            NSLog(@"%@ (%ld): %@", error.domain, (long)error.code, error.localizedDescription);
+            return 1;
+        }
+        printf("Detected %d faces\n", count);
+        return 0;
+    }
+}
+```
+
+</details>
+
+@tab Swift
+
+<details>
+<summary>apple/detect.swift — Expand complete code</summary>
+
+```swift
+import Foundation
+import InspireFaceSwift
+
+func detectFile(modelPath: String, imagePath: String) throws -> Int {
+    try InspireFaceRuntime.launch(path: modelPath)
+    defer { try? InspireFaceRuntime.terminate() }
+    let session = try FaceSession(configuration: SessionConfiguration(
+        detectionMode: .alwaysDetect, maximumFaces: 10, pixelLevel: 320))
+    defer { try? session.close() }
+    let bitmap = try ImageBitmap(contentsOfFile: imagePath, channels: 3)
+    defer { try? bitmap.close() }
+    return try bitmap.withUnsafeMutablePixels { bytes, pixels in
+        try ImageStream.withBorrowedBytes(
+            bytes, width: pixels.width, height: pixels.height, format: .bgr
+        ) { stream in
+            try session.withUnsafeFaces(in: stream) { faces in
+                for (index, rect) in faces.rectangles.enumerated() {
+                    print("face \(index): x=\(rect.x) y=\(rect.y) " +
+                          "width=\(rect.width) height=\(rect.height)")
+                }
+                return faces.count
+            }
+        }
+    }
+}
+
+guard CommandLine.arguments.count == 3 else {
+    print("Usage: detect MODEL IMAGE")
+    exit(2)
+}
+do {
+    let count = try detectFile(modelPath: CommandLine.arguments[1], imagePath: CommandLine.arguments[2])
+    print("Detected \(count) faces")
+} catch {
+    let failure = error as NSError
+    print("\(failure.domain) (\(failure.code)): \(failure.localizedDescription)")
+    exit(1)
+}
+```
+
+</details>
+
+:::
+
+### Compile and run {#compile-apple-examples}
+
+Point `APPLE_SDK_DIR` to the directory containing both frameworks, either a single-architecture SDK directory or `Frameworks/macosx/` in the combined package. This example targets Apple Silicon and macOS 14, matching a build made with `MACOSX_DEPLOYMENT_TARGET=14.0`. For Intel, select `x86_64` and the minimum macOS version recorded for that SDK. The application target must be at least as new as the frameworks’ deployment target.
+
+```bash
+APPLE_SDK_DIR="/absolute/path/to/inspireface-apple-1.2.4/Frameworks/macosx"
+APPLE_TARGET="arm64-apple-macosx14.0"
+xcrun clang -target "$APPLE_TARGET" -fobjc-arc -fmodules apple/detect.m \
+  -F "$APPLE_SDK_DIR" -framework InspireFace -framework Foundation \
+  -framework CoreVideo -lc++ -Wl,-ObjC \
+  -Wl,-rpath,"$APPLE_SDK_DIR" -o detect-objc
+xcrun swiftc -target "$APPLE_TARGET" apple/detect.swift \
+  -F "$APPLE_SDK_DIR" -framework InspireFace -framework InspireFaceSwift \
+  -Xlinker -ObjC -Xlinker -rpath -Xlinker "$APPLE_SDK_DIR" \
+  -o detect-swift
+./detect-objc /path/to/Pikachu face.jpg
+./detect-swift /path/to/Pikachu face.jpg
+```
+
+For an iOS or macOS application target, the [shared Apple guide](../using-with/apple.md#a-complete-detection-example) presents the same detection path as a function. Use the [iOS](../using-with/ios.md) or [macOS](../using-with/macos.md) guide to configure Xcode, model resources and camera input.
+
 ## Platform setup {#platform-projects}
 
 The platform guides include dependency setup and code for their own input and resource handling:
 
 - [Android](../using-with/android.md): Gradle dependencies, image input, camera frames and Java resource management.
-- [iOS](../using-with/ios.md): framework setup and image-buffer conversion.
+- [iOS](../using-with/ios.md): device / simulator setup, Objective-C / Swift and camera buffers.
+- [macOS](../using-with/macos.md): framework embedding, application resources and native libraries.
 - [HarmonyOS](../using-with/harmonyos.md): ArkTS setup, image input and detection.
 - [C](../using-with/c-cpp.md) and [C++](../using-with/cpp.md): SDK linking and native resource lifetime.
 - [Python](../using-with/python.md): environment setup, detection and a local native build.

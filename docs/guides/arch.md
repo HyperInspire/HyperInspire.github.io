@@ -47,6 +47,23 @@ Snapshots copy detection results into owned storage. Their explicit lifetime mak
 When using the C API directly, a single video stream processed in order can use the borrowed results from `HFExecuteFaceTrack` to avoid this copy. Finish reading them before the next tracking call. Later calls may overwrite these results, so do not retain them across frames or reuse them between interleaved calls.
 :::
 
+## Apple object lifetimes {#apple-object-lifetimes}
+
+Objective-C `IFSession` and Swift `FaceSession` own native session handles. ARC releases them when the wrapper is deallocated; call `close()` in Swift or `closeWithError:` in Objective-C when a camera worker or operation ends so resources are released at a known point. Closing an object invalidates its native storage even if another strong reference still points to the wrapper.
+
+| Object / view | What stays valid |
+| --- | --- |
+| Raw-buffer image stream | The stream borrows pixels. The caller keeps the allocation alive and unchanged throughout processing. |
+| `CVPixelBuffer` image stream | The wrapper retains and locks the buffer until the stream closes or replaces its input. Supported layouts must be tightly packed. |
+| `withUnsafeFaces` / `withBorrowedFacesFromStream` | Read faces and run same-frame analysis inside the callback. Do not retain its pointers or start another tracking call there. |
+| `FaceSnapshot` / `IFFaceSnapshot` | Owns copied detection data until closed; it does not retain the source image pixels. |
+| `FaceFeatureBuffer` / `IFFeatureBuffer` | Owns the feature allocation. `borrowedFeature` points into it and expires on close. |
+| Capture and FeatureHub result views | Copy values needed later before another operation can replace their underlying storage. |
+
+Swift's scoped helpers expose `UnsafeBufferPointer` views without allocating arrays. Use `Array(view)` when a value copy is needed; copying token structs alone does not copy the token bytes. For deferred face processing, retain a snapshot and its matching frame. An image bitmap's `snapshotStream` is a separate operation that copies pixels.
+
+Keep a session and its camera queue on one serial worker. The wrapper does not make shared native state thread-safe; coordinate process-wide runtime and FeatureHub changes as well. Finish workers before closing their objects or terminating the runtime. Direct C calls using exposed handles bypass the wrapper's scoped-access checks.
+
 ## A useful worker layout
 
 ```text

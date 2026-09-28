@@ -21,6 +21,8 @@ bash command/download_models_general.sh Pikachu
 
 文件会保存为 `test_res/pack/Pikachu`，首次运行 CPU 示例使用这个包即可。需要下载脚本列出的全部模型包时，不传参数运行脚本。
 
+iOS 和 macOS 的 CPU Framework 同样可以从 `Pikachu` 开始。CoreML 构建需配套兼容的 CoreML 模型包；修改编译选项或重命名通用包都不会转换模型格式。上面的通用下载脚本不提供 CoreML 包。
+
 模型包是一个文件，有时没有扩展名。如果下载的是 ZIP 压缩包，先解压，再将模型包文件传给 `HFLaunchInspireFace` 或 `launch(resource_path=...)`。
 
 ## 创建会话前验证模型包 {#validate-before-creating-sessions}
@@ -37,6 +39,38 @@ isf.launch(resource_path="/path/to/Pikachu")
 
 C 中使用 `HFValidateResourcePack` 和配套头文件声明的 `HFResourcePackInfo` 检查资源格式。后端所需的运行库按下方对应平台指南安装。
 
+在 Apple 平台传入模型包的本地文件路径，例如应用 bundle 中资源的路径。创建会话前可以这样验证并加载：
+
+::: tabs #api-language
+
+@tab Objective-C
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+BOOL LaunchValidatedPack(NSString *path, NSError **error) {
+    HFResourcePackInfo info = {0};
+    if (![IFRuntime validateResourcePackAtPath:path info:&info error:error]) {
+        return NO;
+    }
+    return [IFRuntime launchAtPath:path error:error];
+}
+```
+
+@tab Swift
+
+```swift
+import InspireFaceSwift
+
+func launchValidatedPack(path: String) throws {
+    var info = HFResourcePackInfo()
+    try InspireFaceRuntime.validateResourcePack(path: path, info: &info)
+    try InspireFaceRuntime.launch(path: path)
+}
+```
+
+:::
+
 发布应用时，记录 SDK 版本、模型包文件及其校验值。更换识别模型后，重新生成特征库中的向量，并重新评估比对阈值。
 
 ## 切换已加载的模型包 {#change-the-loaded-pack}
@@ -47,6 +81,8 @@ C 中使用 `HFValidateResourcePack` 和配套头文件声明的 `HFResourcePack
 | --- | --- | --- |
 | C API | `HFReloadInspireFace(pack_path)` | 返回 `HSUCCEED`。 |
 | C++ | `inspire::Launch::GetInstance()->Reload(pack_path)` | 返回 `0`。 |
+| Objective-C | `[IFRuntime reloadAtPath:path error:&error]` | 返回 `YES`；失败时返回 `NO` 并提供 `NSError`。 |
+| Swift | `try InspireFaceRuntime.reload(path: path)` | 正常返回；失败时抛出错误。 |
 | Python | `isf.reload(resource_path=pack_path)` | 返回 `True`；失败时抛出异常。 |
 
 1.2.4 中，已有 Session 会继续持有创建时的资源。整个应用切换时，先停止提交帧，释放旧 Session，验证并重新加载模型包，成功后再创建新 Session。加载失败时先处理错误，再恢复图像处理。识别模型发生变化后，还需要重建特征库。
@@ -73,7 +109,8 @@ C 中使用 `HFValidateResourcePack` 和配套头文件声明的 `HFResourcePack
 ## 各平台的构建方式 {#target-specific-builds}
 
 - [Android](../build/android.md)：NDK、ABI、JNI 与 AAR 打包。
-- [iOS](../build/ios.md)：真机 Framework 与 CoreML。
+- [iOS](../build/ios.md)：真机与模拟器切片、XCFramework 和 CoreML。
+- [macOS](../build/macos.md)：Intel / Apple Silicon Framework、Swift 模块和原生库。
 - [HarmonyOS](../build/harmonyos.md)：原生 SDK 和 ArkTS HAR 工程。
 - [NVIDIA TensorRT](../build/nvidia.md)：CUDA / TensorRT 依赖和构建环境。
 - [Rockchip NPU](../build/rockchip.md)：板端工具链、RKNN 与 RGA。

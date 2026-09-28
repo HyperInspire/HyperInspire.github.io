@@ -33,7 +33,7 @@ For a live camera, measure both SDK processing time and the age of the displayed
 
 ## A video loop
 
-Choose your integration below. Each example reuses one session across frames. The native, HarmonyOS and Python examples use the 1.2.4 APIs; Android uses the Java 1.2.0 package.
+Choose your integration below. Each example reuses one session across frames. The native, Objective-C, Swift, HarmonyOS and Python examples use the 1.2.4 APIs; Android uses the Java 1.2.0 package. Use the matching Apple framework build for the Objective-C and Swift tabs.
 
 ::: tabs #api-language
 
@@ -78,6 +78,52 @@ auto trackFrame = [&](inspirecv::FrameProcess& frame) {
         std::cout << face.trackId << " " << face.trackCount << '\n';
     }
 };
+```
+
+@tab Objective-C
+
+After [Apple setup](../using-with/apple.md), create the tracker once. Call `TrackFrame` on a serial camera worker and check its `BOOL` result; failures populate the supplied `NSError`. The callback borrows the face arrays only for its duration. The caller keeps each stream and its pixels alive until processing completes.
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static IFSession *CreateTracker(NSError **error) {
+    return [[IFSession alloc] initWithOptions:HF_ENABLE_NONE
+        mode:HF_DETECT_MODE_LIGHT_TRACK maximumFaces:5 pixelLevel:320
+        framesPerSecond:-1 error:error];
+}
+
+static BOOL TrackFrame(IFSession *session, IFImageStream *stream, NSError **error) {
+    return [session withBorrowedFacesFromStream:stream
+        body:^(HFMultipleFaceData faces) {
+            for (HInt32 i = 0; i < faces.detectedNum; ++i) {
+                NSLog(@"track=%d observations=%d", faces.trackIds[i], faces.trackCounts[i]);
+            }
+        } error:error];
+}
+// After the camera worker stops: [session closeWithError:&error];
+```
+
+@tab Swift
+
+Link both Apple frameworks and `import InspireFaceSwift`. Create the session once after runtime launch, then call `trackFrame` in frame order. SDK failures throw. Consume the borrowed view inside the closure; do not save its pointers or track/reset/close the session from that closure.
+
+```swift
+import InspireFaceSwift
+
+func createTracker() throws -> FaceSession {
+    try FaceSession(configuration: SessionConfiguration(
+        detectionMode: .lightTracking, maximumFaces: 5, pixelLevel: 320))
+}
+
+func trackFrame(session: FaceSession, stream: ImageStream) throws {
+    try session.withUnsafeFaces(in: stream) { faces in
+        for i in 0..<faces.count {
+            print("track=\(faces.trackIDs[i]) observations=\(faces.trackCounts[i])")
+        }
+    }
+}
+// After the camera worker stops: try session.close()
 ```
 
 @tab Android
@@ -181,7 +227,7 @@ finally:
 | Detector interval | Detector cadence in tracking | Balance new-face recovery with per-frame work. |
 | Landmark smoothing | Temporal stability of points | More smoothing can make overlays steadier but slower to respond. |
 
-Supported detector levels come from the loaded pack. Use `HFQuerySupportedPixelLevelsForFaceDetection` in C to read the available levels, then choose one for the session.
+Supported detector levels come from the loaded pack. Use `HFQuerySupportedPixelLevelsForFaceDetection` in C, `IFRuntime.getSupportedDetectionPixelLevels:error:` in Objective-C or `InspireFaceRuntime.getSupportedDetectionPixelLevels(_:)` in Swift to read the available levels, then choose one for the session.
 
 The equivalent settings in each interface:
 
@@ -218,6 +264,40 @@ session.SetTrackPreviewSize(320);
 session.SetTrackModeDetectInterval(20);
 session.SetTrackModeSmoothRatio(0.05f);
 session.SetTrackModeNumSmoothCacheFrame(5);
+```
+
+@tab Objective-C
+
+Apply these setters to the existing `IFSession` on its processing queue. A failed call returns `NO` and stops the remaining settings.
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static BOOL TuneTracking(IFSession *session, NSError **error) {
+    return [session setDetectionThreshold:0.5f error:error] &&
+        [session setMinimumFacePixelSize:32 error:error] &&
+        [session setTrackPreviewSize:320 error:error] &&
+        [session setDetectionInterval:20 error:error] &&
+        [session setTrackingSmoothRatio:0.05f error:error] &&
+        [session setTrackingSmoothCacheFrames:5 error:error];
+}
+```
+
+@tab Swift
+
+Use the existing `FaceSession`. Each setter throws on failure; configure it before the frame loop or between completed frames.
+
+```swift
+import InspireFaceSwift
+
+func tuneTracking(session: FaceSession) throws {
+    try session.setDetectionThreshold(0.5)
+    try session.setMinimumFacePixelSize(32)
+    try session.setTrackPreviewSize(320)
+    try session.setDetectionInterval(20)
+    try session.setTrackingSmoothRatio(0.05)
+    try session.setTrackingSmoothCacheFrames(5)
+}
 ```
 
 @tab Android
@@ -270,6 +350,6 @@ Adjust these example values using representative video from the target camera. T
 
 ## Resetting a sequence
 
-If a camera switches, a video seeks or the input orientation changes, reset the temporal history. The C API has `HFSessionClearTrackingFace`; C++ has `Session::ClearTrackingFace`; HarmonyOS has `session.clearTracking()`. With the Python high-level wrapper or Java 1.2.0 package, recreate the session to begin a fresh sequence.
+If a camera switches, a video seeks or the input orientation changes, reset the temporal history. The C API has `HFSessionClearTrackingFace`; C++ has `Session::ClearTrackingFace`; Objective-C has `[session clearTrackingWithError:&error]`; Swift has `try session.clearTracking()`; HarmonyOS has `session.clearTracking()`. With the Python high-level wrapper or Java 1.2.0 package, recreate the session to begin a fresh sequence.
 
 Enable pose, quality, recognition and pipeline models according to the outputs the application uses. Profile [detection, tracking and analysis separately](./benchmark-remark(updating).md) before optimizing the complete loop.

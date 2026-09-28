@@ -78,9 +78,9 @@ CPU SDK 使用 `Pikachu`、`Megatron` 等 CPU 模型包，下载入口见[概述
 | --- | --- | --- |
 | Linux | ARM64 `aarch64`；ARMv7 hard-float | [构建](../build/linux.md#cross-compile-for-arm) · [C API](./c-cpp.md) · [Python 打包](../build/python.md) |
 | Android | `arm64-v8a`；`armeabi-v7a` | [构建](../build/android.md) · [摄像头接入](./android.md#process-camera-frames) |
-| iOS | 真机 `arm64` | [构建](../build/ios.md) · [C/C++ 接入](./ios.md) |
+| iOS | 真机 `arm64`；Apple Silicon 上的模拟器 `arm64` | [构建](../build/ios.md) · [Objective-C / Swift 接入](./ios.md) |
 | HarmonyOS | `arm64-v8a` | [构建](../build/harmonyos.md) · [ArkTS 接入](./harmonyos.md) |
-| macOS Apple Silicon | 原生 `arm64` 进程 | [构建](../build/macos.md) · [C++](./cpp.md) · [Python](./python.md) |
+| macOS Apple Silicon | 原生 `arm64` 进程 | [构建](../build/macos.md) · [macOS](./macos.md) · [C++](./cpp.md) · [Python](./python.md) |
 
 Linux 上还需要让 glibc / uClibc 和编译器运行库与板端系统匹配。Apple Silicon 上通过 Rosetta 运行的 x86_64 进程，需要使用 x86_64 SDK。使用 Rockchip NPU 时，按[对应部署章节](./rknpu.md)准备 SDK、模型与驱动。
 

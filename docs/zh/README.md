@@ -16,7 +16,7 @@ features:
   - title: 图片与视频
     details: 检测照片中的人脸，在视频中持续跟踪，并通过同一个会话获取关键点、姿态和质量结果。
   - title: 按需接入
-    details: 使用 C、C++、Python、Android Java 或 HarmonyOS ArkTS，按应用需要启用额外模型。
+    details: 使用 C、C++、Python、Android Java、HarmonyOS ArkTS、Objective-C 或 Swift，按应用需要启用额外模型。
   - title: 选择部署环境
     details: 先在 CPU 上跑通，再为 Apple CoreML、Rockchip NPU 或 NVIDIA TensorRT 选择匹配的 SDK 和模型包。
 footerHtml: true
@@ -66,6 +66,16 @@ footer: |
   <a class="home-guide-card" href="./build/python.html">
     <strong>Python 打包</strong>
     <span>替换原生库，并制作自己的 wheel 安装包。</span>
+    <span class="home-guide-card-arrow" aria-hidden="true">→</span>
+  </a>
+  <a class="home-guide-card" href="./using-with/apple.html">
+    <strong>Apple 应用</strong>
+    <span>在 iOS 和 macOS 中使用 Objective-C 或 Swift。</span>
+    <span class="home-guide-card-arrow" aria-hidden="true">→</span>
+  </a>
+  <a class="home-guide-card" href="./guides/api-coverage.html">
+    <strong>API 功能索引</strong>
+    <span>按功能与语言查找对应的接口示例。</span>
     <span class="home-guide-card-arrow" aria-hidden="true">→</span>
   </a>
 </div>

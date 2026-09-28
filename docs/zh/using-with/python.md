@@ -1,48 +1,12 @@
 # Python {#python}
 
-Python 包通过 `ctypes` 调用原生 SDK。图像可以是 NumPy 数组，人脸和分析结果以 Python 对象返回。安装和单图示例可从[快速开始](../get-started.md)入手。
+Python 接口可直接处理 NumPy 图像，完成人脸检测、特征提取和可选分析。[快速开始示例](../get-started.md)演示如何读取图片并保存检测结果。
 
-替换原生库、制作和验证 wheel 的完整步骤见 [Python 打包](../build/python.md)。本页介绍安装后的 API 用法。
-
-本页生命周期示例使用 1.2.4 源码封装。请与同一次构建的原生库配套，尤其是 FeatureHub、快照、抓拍和诊断接口。
-
-## 使用本地原生构建 {#use-a-local-native-build}
-
-wheel 自带原生库。使用 1.2.4 封装加载本地构建时，在**导入** `inspireface` **之前**设置 `INSPIREFACE_LIBRARY_PATH`：
+## 安装 {#install}
 
 ```bash
-# Run from an InspireFace checkout, inside your virtual environment.
-python -m pip install -e ./python
-export INSPIREFACE_LIBRARY_PATH=/absolute/path/to/libInspireFace.so
-python -c 'import inspireface as isf; print(isf.version())'
+python -m pip install inspireface opencv-python
 ```
-
-macOS 使用 `libInspireFace.dylib`。库架构必须与运行中的 Python 进程一致；即使设备是 Apple Silicon，通过 Rosetta 运行的 Intel Python 仍需 Intel 库。
-
-安装原生库时，一并准备对应后端的运行依赖。具体步骤见 [Rockchip Python](../guides/python-rockchip-device.md) 和 [TensorRT](./cuda.md)。
-
-### 固定可以复现的运行环境 {#prepare-a-reproducible-environment}
-
-记录可用环境时，把解释器、Python 封装、原生库和模型包一起记录。可以先运行：
-
-```bash
-python -c 'import platform, sys; print(sys.executable); print(platform.machine())'
-python -m pip show inspireface
-python -c 'import inspireface as isf; print(isf.version())'
-```
-
-包元数据给出 Python 发行包版本，`isf.version()` 返回实际加载的原生运行库版本。使用自定义构建时两者都应记录。在 Notebook 中，库路径环境变量需要在首次导入前设置；更换原生库后重启 kernel。
-
-| Deployment item | 用途 |
-| --- | --- |
-| Virtual environment | 将封装与 NumPy 依赖同其他应用隔离。 |
-| Native library and dependencies | 与 Python 进程架构及所选后端匹配。 |
-| Model pack | 作为 `resource_path` 传入的可读本地文件。 |
-| Input assets | 接入摄像头前，用格式与方向明确的图片验证流程。 |
-
-::: tip 离线部署
-离线部署时，提前将 Python 包和模型包复制到目标设备，再向 `launch` 传入本地模型路径。保存识别数据库时，一并记录模型包名称与版本。
-:::
 
 ## 初始化一次，复用会话 {#initialize-once-and-reuse-the-session}
 
@@ -54,23 +18,25 @@ image = cv2.imread("face.jpg")
 if image is None:
     raise FileNotFoundError("face.jpg")
 
-isf.launch(resource_path="/path/to/Pikachu")
+isf.launch("Pikachu")  # Downloads the model on first use.
+session = None
 try:
-    with isf.InspireFaceSession(
+    session = isf.InspireFaceSession(
         isf.HF_ENABLE_FACE_RECOGNITION | isf.HF_ENABLE_QUALITY,
         isf.HF_DETECT_MODE_ALWAYS_DETECT,
         max_detect_num=10,
         detect_pixel_level=320,
-        auto_launch=False,
-    ) as session:
-        faces = session.face_detection(image)
-        for face in faces:
-            print(face.location, face.detection_confidence)
+    )
+    faces = session.face_detection(image)
+    for face in faces:
+        print(face.location, face.detection_confidence)
 finally:
+    if session is not None:
+        session.release()
     isf.terminate()
 ```
 
-使用 `auto_launch=False` 时，先调用 `launch`，再创建会话。上下文管理器在代码块结束或发生异常时释放会话；自行管理生命周期时，调用 `session.release()`。
+首次调用 `launch("Pikachu")` 时会按需下载模型。已有本地模型时，使用 `launch(resource_path="/path/to/Pikachu")`。`finally` 保证处理失败时也会释放会话。
 
 摄像头应用在帧循环外创建会话。每个独立序列或工作线程使用一个会话，并保持该会话中的处理顺序。
 
@@ -106,12 +72,15 @@ finally:
 
 ```python
 options = isf.HF_ENABLE_QUALITY | isf.HF_ENABLE_MASK_DETECT
-with isf.InspireFaceSession(options, auto_launch=False) as session:
+session = isf.InspireFaceSession(options)
+try:
     faces = session.face_detection(image)
     if faces:
         results = session.face_pipeline(image, faces, options)
         for face, result in zip(faces, results):
             print(face.location, result.quality_confidence, result.mask_confidence)
+finally:
+    session.release()
 ```
 
 此代码使用已启动的 SDK，`image` 是 BGR 数组。请求会话已启用的部分或全部选项，再按输入人脸顺序读取返回列表中的对应字段。
@@ -169,6 +138,8 @@ if len(faces) == 1:
 
 ## 原始缓冲区与 ImageStream {#raw-buffers-and-imagestream}
 
+下文的上下文管理器和快照示例使用 1.2.4 封装与配套原生库。如果已安装的包尚未包含这些接口，按[本地构建接入](#use-a-local-native-build)准备。
+
 直接传入三通道 `uint8` 数组时，按 BGR 处理，与 `cv2.imread` 的输出一致。四通道数组按 BGRA 处理。使用其他像素格式时，在创建图像流时指定：
 
 ```python
@@ -218,6 +189,46 @@ except isf.InspireFaceError as error:
 ```
 
 将空人脸列表作为正常检测结果处理，处理异常则单独报告。错误日志中记录模型包、原生版本、输入形状和启用选项。
+
+## 使用本地原生构建 {#use-a-local-native-build}
+
+替换原生库、制作和验证 wheel 的完整步骤见 [Python 打包](../build/python.md)。使用快照、抓拍等开发版接口时，Python 封装与原生库应来自同一次构建。
+
+wheel 自带原生库。使用 1.2.4 封装加载本地构建时，在**导入** `inspireface` **之前**设置 `INSPIREFACE_LIBRARY_PATH`：
+
+```bash
+# Run from an InspireFace checkout, inside your virtual environment.
+python -m pip install -e ./python
+export INSPIREFACE_LIBRARY_PATH=/absolute/path/to/libInspireFace.so
+python -c 'import inspireface as isf; print(isf.version())'
+```
+
+macOS 使用 SDK 中 `InspireFace/lib/` 下的原生 `libInspireFace.dylib`，也可以按 [macOS 构建指南](../build/macos.md)生成动态库。Objective-C 和 Swift Framework 用于 Apple 应用 target，不能直接替换 Python 加载的这个库文件。库架构必须与运行中的 Python 进程一致；即使设备是 Apple Silicon，通过 Rosetta 运行的 Intel Python 仍需 Intel 库。
+
+安装原生库时，一并准备对应后端的运行依赖。具体步骤见 [Rockchip Python](../guides/python-rockchip-device.md) 和 [TensorRT](./cuda.md)。
+
+### 固定可以复现的运行环境 {#prepare-a-reproducible-environment}
+
+记录可用环境时，把解释器、Python 封装、原生库和模型包一起记录。可以先运行：
+
+```bash
+python -c 'import platform, sys; print(sys.executable); print(platform.machine())'
+python -m pip show inspireface
+python -c 'import inspireface as isf; print(isf.version())'
+```
+
+包元数据给出 Python 发行包版本，`isf.version()` 返回实际加载的原生运行库版本。使用自定义构建时两者都应记录。在 Notebook 中，库路径环境变量需要在首次导入前设置；更换原生库后重启 kernel。
+
+| Deployment item | 用途 |
+| --- | --- |
+| Virtual environment | 将封装与 NumPy 依赖同其他应用隔离。 |
+| Native library and dependencies | 与 Python 进程架构及所选后端匹配。 |
+| Model pack | 作为 `resource_path` 传入的可读本地文件。 |
+| Input assets | 接入摄像头前，用格式与方向明确的图片验证流程。 |
+
+::: tip 离线部署
+离线部署时，提前将 Python 包和模型包复制到目标设备，再向 `launch` 传入本地模型路径。保存识别数据库时，一并记录模型包名称与版本。
+:::
 
 ## 完整的命令行示例 {#further-examples}
 

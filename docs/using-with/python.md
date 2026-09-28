@@ -1,48 +1,12 @@
 # Python
 
-The Python package calls the native SDK through `ctypes`. Images can be NumPy arrays; faces and pipeline outputs are returned as Python objects. Start with [Get started](../get-started.md) for installation and a single-image example.
+Use NumPy images with the Python API to detect faces, extract features and run optional analysis. The [Get started example](../get-started.md) reads an image and saves the detection result.
 
-For native library replacement and wheel creation, see [Python packaging](../build/python.md). This page covers using the installed API.
-
-The lifecycle examples on this page use the 1.2.4 source wrapper. Keep it paired with the native library from the same build, especially for FeatureHub, snapshots, capture and diagnostics.
-
-## Use a local native build
-
-A wheel includes its native library. To use a local build with the 1.2.4 wrapper, set `INSPIREFACE_LIBRARY_PATH` **before importing** `inspireface`:
+## Install {#install}
 
 ```bash
-# Run from an InspireFace checkout, inside your virtual environment.
-python -m pip install -e ./python
-export INSPIREFACE_LIBRARY_PATH=/absolute/path/to/libInspireFace.so
-python -c 'import inspireface as isf; print(isf.version())'
+python -m pip install inspireface opencv-python
 ```
-
-On macOS, use `libInspireFace.dylib`. The library architecture must match the running Python process. An Intel Python running under Rosetta needs an Intel library even on an Apple Silicon machine.
-
-Install the backend's runtime dependencies along with the native library. Target-specific setup is covered in [Rockchip Python](../guides/python-rockchip-device.md) and [TensorRT](./cuda.md).
-
-### Prepare a reproducible environment
-
-Keep the interpreter, Python wrapper, native library and model pack together when recording a working setup. A useful first check is:
-
-```bash
-python -c 'import platform, sys; print(sys.executable); print(platform.machine())'
-python -m pip show inspireface
-python -c 'import inspireface as isf; print(isf.version())'
-```
-
-The package metadata reports the Python distribution version; `isf.version()` reports the loaded native runtime. Record both for a custom build. In notebooks, set the library environment variable before the first import and restart the kernel after changing the selected native library.
-
-| Deployment item | Purpose |
-| --- | --- |
-| Virtual environment | Keeps the wrapper and NumPy dependencies separate from other applications. |
-| Native library and dependencies | Must match the process architecture and selected backend. |
-| Model pack | A readable local file passed as `resource_path`. |
-| Input assets | Test images with a known format and orientation before camera integration. |
-
-::: tip Offline deployment
-Copy both the Python package and model pack onto an offline target, then pass the local pack path to `launch`. Keep the pack name and version alongside any saved recognition database.
-:::
 
 ## Initialize once and reuse the session
 
@@ -54,23 +18,25 @@ image = cv2.imread("face.jpg")
 if image is None:
     raise FileNotFoundError("face.jpg")
 
-isf.launch(resource_path="/path/to/Pikachu")
+isf.launch("Pikachu")  # Downloads the model on first use.
+session = None
 try:
-    with isf.InspireFaceSession(
+    session = isf.InspireFaceSession(
         isf.HF_ENABLE_FACE_RECOGNITION | isf.HF_ENABLE_QUALITY,
         isf.HF_DETECT_MODE_ALWAYS_DETECT,
         max_detect_num=10,
         detect_pixel_level=320,
-        auto_launch=False,
-    ) as session:
-        faces = session.face_detection(image)
-        for face in faces:
-            print(face.location, face.detection_confidence)
+    )
+    faces = session.face_detection(image)
+    for face in faces:
+        print(face.location, face.detection_confidence)
 finally:
+    if session is not None:
+        session.release()
     isf.terminate()
 ```
 
-With `auto_launch=False`, call `launch` before creating the session. The context manager releases the session when the block ends, including on errors. Use `session.release()` when managing the session lifetime explicitly.
+The first `launch("Pikachu")` downloads the model if needed. For a model already on disk, use `launch(resource_path="/path/to/Pikachu")`. The `finally` block releases the session even when processing fails.
 
 For a camera, create the session outside the frame loop. Use one session per independent sequence or worker and keep processing on that session ordered.
 
@@ -106,12 +72,15 @@ Enable an option at session creation and request it again when running the pipel
 
 ```python
 options = isf.HF_ENABLE_QUALITY | isf.HF_ENABLE_MASK_DETECT
-with isf.InspireFaceSession(options, auto_launch=False) as session:
+session = isf.InspireFaceSession(options)
+try:
     faces = session.face_detection(image)
     if faces:
         results = session.face_pipeline(image, faces, options)
         for face, result in zip(faces, results):
             print(face.location, result.quality_confidence, result.mask_confidence)
+finally:
+    session.release()
 ```
 
 The SDK is already launched in this block, and `image` is a BGR array. Request a subset of the session's enabled options, then read those fields from the returned list in input-face order.
@@ -169,6 +138,8 @@ Landmarks are arrays of point coordinates. Embeddings are copied NumPy arrays; s
 
 ## Raw buffers and ImageStream
 
+The scoped streams and snapshot examples below use the 1.2.4 wrapper and matching native library. If your installed package predates these APIs, use the [local build setup](#use-a-local-native-build).
+
 Passing a three-channel `uint8` array directly uses BGR, as returned by `cv2.imread`. Four-channel arrays use BGRA. Specify the format when creating a stream from other pixel layouts:
 
 ```python
@@ -218,6 +189,46 @@ except isf.InspireFaceError as error:
 ```
 
 Handle an empty face list as a normal detection result and report processing exceptions separately. Include the model pack, native version, input shape and enabled options in error logs.
+
+## Use a local native build
+
+For native library replacement and wheel creation, see [Python packaging](../build/python.md). Keep the source wrapper and native library from the same build when using snapshots, capture or other development APIs.
+
+A wheel includes its native library. To use a local build with the 1.2.4 wrapper, set `INSPIREFACE_LIBRARY_PATH` **before importing** `inspireface`:
+
+```bash
+# Run from an InspireFace checkout, inside your virtual environment.
+python -m pip install -e ./python
+export INSPIREFACE_LIBRARY_PATH=/absolute/path/to/libInspireFace.so
+python -c 'import inspireface as isf; print(isf.version())'
+```
+
+On macOS, use the native `libInspireFace.dylib` from the SDK’s `InspireFace/lib/` directory, or build a shared library using the [macOS guide](../build/macos.md). The Objective-C and Swift frameworks are for Apple application targets; they are not a drop-in replacement for this Python library file. The library architecture must match the running Python process. An Intel Python running under Rosetta needs an Intel library even on an Apple Silicon machine.
+
+Install the backend's runtime dependencies along with the native library. Target-specific setup is covered in [Rockchip Python](../guides/python-rockchip-device.md) and [TensorRT](./cuda.md).
+
+### Prepare a reproducible environment
+
+Keep the interpreter, Python wrapper, native library and model pack together when recording a working setup. A useful first check is:
+
+```bash
+python -c 'import platform, sys; print(sys.executable); print(platform.machine())'
+python -m pip show inspireface
+python -c 'import inspireface as isf; print(isf.version())'
+```
+
+The package metadata reports the Python distribution version; `isf.version()` reports the loaded native runtime. Record both for a custom build. In notebooks, set the library environment variable before the first import and restart the kernel after changing the selected native library.
+
+| Deployment item | Purpose |
+| --- | --- |
+| Virtual environment | Keeps the wrapper and NumPy dependencies separate from other applications. |
+| Native library and dependencies | Must match the process architecture and selected backend. |
+| Model pack | A readable local file passed as `resource_path`. |
+| Input assets | Test images with a known format and orientation before camera integration. |
+
+::: tip Offline deployment
+Copy both the Python package and model pack onto an offline target, then pass the local pack path to `launch`. Keep the pack name and version alongside any saved recognition database.
+:::
 
 ## Complete command-line examples {#further-examples}
 

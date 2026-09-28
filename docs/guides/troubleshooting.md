@@ -32,6 +32,21 @@ On Linux, `ldd /path/to/libInspireFace.so` shows dynamic dependencies. On macOS,
 
 Set `INSPIREFACE_LIBRARY_PATH` before the first import. After changing the path, restart the process to load the selected library.
 
+## Apple framework or camera integration fails {#apple-integration-fails}
+
+| Symptom | Check |
+| --- | --- |
+| `No such module InspireFaceSwift` | Add both XCFrameworks from the same build to the Swift target. Check Framework Search Paths and that the package contains the target platform and architecture. |
+| Linker reports iOS versus iOS Simulator | Select the simulator slice. An `arm64` device binary and an `arm64` simulator binary are different platform targets; use the XCFramework so Xcode selects the correct one. |
+| Duplicate native symbols | Remove a second copy of the SDK or inference library. The new iOS `InspireFace.framework` already contains its static inference dependency. |
+| macOS reports a missing framework at launch | Embed and sign both dynamic frameworks for a Swift app; check the app's Frameworks directory and runpath. For a command-line test, supply the framework directory through `-rpath`. |
+| iOS framework embedding or signing fails | The new iOS frameworks are static: choose **Do Not Embed**. Keep the application target's signing configuration separate from the SDK build. |
+| Pixel-buffer construction returns an error | Check the actual pixel format, bytes per row and plane layout. Repack padded BGRA rows or noncontiguous NV12 planes before using a borrowed raw stream. |
+| Results change after the next frame | A borrowed pointer was retained beyond its valid scope. Copy scalar geometry for overlays; use a snapshot and retain the matching pixels for deferred processing. |
+| A wrapper reports an invalid handle | Check whether it or its owner has already been closed. A strong reference to a closed wrapper does not reopen the native handle. |
+
+Use the [iOS](../using-with/ios.md) and [macOS](../using-with/macos.md) guides for linkage settings. The [Apple API guide](../using-with/apple.md) includes complete `NSError` / Swift `throws` examples. Preserve the error domain, numeric code and message when logging a failure.
+
 ## Model launch fails
 
 If the model download is a ZIP archive, extract it and pass the resource-pack file to the SDK. Check the file size and checksum against the download.

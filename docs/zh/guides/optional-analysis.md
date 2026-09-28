@@ -27,7 +27,7 @@ Quality、Mask、Attributes 和 Expression 都是可选模型。按需启用后�
 
 ## 读取分析结果 {#read-analysis-results}
 
-在下方选择 API。这些辅助函数创建会话并处理**一张静态图片**，可以接在平台基础检测示例之后使用。先启动 SDK 并准备输入，具体步骤见 [C](../using-with/c-cpp.md)、[C++](../using-with/cpp.md)、[Android](../using-with/android.md)、[HarmonyOS](../using-with/harmonyos.md) 和 [Python](../using-with/python.md)。接入视频时，把会话创建移到帧循环之外。
+在下方选择 API。这些辅助函数创建会话并处理**一张静态图片**，可以接在平台基础检测示例之后使用。先启动 SDK 并准备输入，具体步骤见 [C](../using-with/c-cpp.md)、[C++](../using-with/cpp.md)、[Apple](../using-with/apple.md)、[Android](../using-with/android.md)、[HarmonyOS](../using-with/harmonyos.md) 和 [Python](../using-with/python.md)。接入视频时，把会话创建移到帧循环之外。
 
 ::: tabs #api-language
 
@@ -128,6 +128,98 @@ bool AnalyzeFrame(inspirecv::FrameProcess& frame) {
                   << " pitch=" << pose.pitch << '\n';
     }
     return true;  // Session releases its resources when leaving scope.
+}
+```
+
+</details>
+
+@tab Objective-C
+
+运行时启动后，传入静态图像的有效 `IFImageStream`。函数创建并关闭自己的会话，通过 `BOOL`/`NSError` 返回错误。Getter 借用会话数组；后续 UI 回调需要的分数或标签应在函数返回前复制。
+
+<details>
+<summary>Objective-C — 完整示例</summary>
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static BOOL AnalyzeFrame(IFImageStream *stream, NSError **error) {
+    HInt32 pipeline = HF_ENABLE_QUALITY | HF_ENABLE_MASK_DETECT |
+        HF_ENABLE_FACE_ATTRIBUTE | HF_ENABLE_FACE_EMOTION;
+    IFSession *session = [[IFSession alloc] initWithOptions:pipeline | HF_ENABLE_FACE_POSE
+        mode:HF_DETECT_MODE_ALWAYS_DETECT maximumFaces:10 pixelLevel:320
+        framesPerSecond:-1 error:error];
+    if (session == nil) return NO;
+    @try {
+        HFMultipleFaceData faces = {0};
+        if (![session trackStream:stream borrowedResult:&faces error:error]) return NO;
+        if (faces.detectedNum == 0) return YES;
+        if (![session processStream:stream faces:&faces options:pipeline error:error]) return NO;
+        HFFaceQualityConfidence quality = {0};
+        HFFaceMaskConfidence masks = {0};
+        HFFaceAttributeResult attributes = {0};
+        HFFaceEmotionResult expressions = {0};
+        if (![session getBorrowedQualityConfidence:&quality error:error] ||
+            ![session getBorrowedMaskConfidence:&masks error:error] ||
+            ![session getBorrowedAttributes:&attributes error:error] ||
+            ![session getBorrowedEmotions:&expressions error:error]) return NO;
+        if (quality.num != faces.detectedNum || masks.num != faces.detectedNum ||
+            attributes.num != faces.detectedNum || expressions.num != faces.detectedNum)
+            return IFCheck(HERR_INVALID_PARAM, error);
+        for (HInt32 i = 0; i < faces.detectedNum; ++i) {
+            NSLog(@"quality=%.3f mask=%.3f age=%d gender=%d race=%d emotion=%d",
+                quality.confidence[i], masks.confidence[i], attributes.ageBracket[i],
+                attributes.gender[i], attributes.race[i], expressions.emotion[i]);
+            NSLog(@"roll=%.2f yaw=%.2f pitch=%.2f", faces.angles.roll[i],
+                faces.angles.yaw[i], faces.angles.pitch[i]);
+        }
+        return YES;
+    } @finally {
+        [session closeWithError:NULL];
+    }
+}
+```
+
+</details>
+
+@tab Swift
+
+先启动运行时，再传入有效图像流。函数管理临时会话，图像流由调用方管理。创建会话时启用姿态，Pipeline 只运行所选模型，所有结果在会话关闭前读取；失败时抛出错误。
+
+<details>
+<summary>Swift — 完整示例</summary>
+
+```swift
+import InspireFaceSwift
+
+func analyzeFrame(stream: ImageStream) throws {
+    let pipeline: FaceFeatures = [.quality, .mask, .attributes, .emotion]
+    let session = try FaceSession(configuration: SessionConfiguration(
+        features: pipeline.union(.pose), maximumFaces: 10, pixelLevel: 320))
+    defer { try? session.close() }
+    try session.withUnsafeFaces(in: stream) { borrowed in
+        guard borrowed.count > 0 else { return }
+        var faces = borrowed.cValue
+        try session.process(stream, faces: &faces, options: Int32(pipeline.rawValue))
+        var quality = HFFaceQualityConfidence()
+        var masks = HFFaceMaskConfidence()
+        var attributes = HFFaceAttributeResult()
+        var expressions = HFFaceEmotionResult()
+        try session.getBorrowedQualityConfidence(&quality)
+        try session.getBorrowedMaskConfidence(&masks)
+        try session.getBorrowedAttributes(&attributes)
+        try session.getBorrowedEmotions(&expressions)
+        guard quality.num == faces.detectedNum, masks.num == faces.detectedNum,
+              attributes.num == faces.detectedNum, expressions.num == faces.detectedNum else {
+            throw NSError(domain: IFErrorDomain, code: Int(HERR_INVALID_PARAM))
+        }
+        for i in 0..<borrowed.count {
+            print("quality=\(quality.confidence[i]) mask=\(masks.confidence[i])")
+            print("age=\(attributes.ageBracket[i]) gender=\(attributes.gender[i]) race=\(attributes.race[i])")
+            print("emotion=\(expressions.emotion[i])")
+            print("roll=\(borrowed.roll[i]) yaw=\(borrowed.yaw[i]) pitch=\(borrowed.pitch[i])")
+        }
+    }
 }
 ```
 
@@ -280,9 +372,9 @@ def analyze_frame(image):
 | Mask | 表示佩戴口罩的置信度。根据目标摄像头评估阈值，再将分数与阈值比较。 |
 | Attributes | 返回整数类别索引。先检查索引范围，再映射为标签。 |
 | Expression | 索引顺序为 `Neutral`、`Happy`、`Sad`、`Surprise`、`Fear`、`Disgust`、`Anger`。 |
-| Pose | 返回 roll、yaw 和 pitch 角度。C/C++/Python 需要先启用 `HF_ENABLE_FACE_POSE` 或对应的 C++ 选项，再读取角度。HarmonyOS 使用 `Feature.FACE_POSE`。 |
+| Pose | 返回 roll、yaw 和 pitch 角度。C/C++/Python 需要先启用 `HF_ENABLE_FACE_POSE` 或对应的 C++ 选项，再读取角度。Objective-C 同样使用 `HF_ENABLE_FACE_POSE`；Swift 使用 `FaceFeatures` 的 `.pose`；HarmonyOS 使用 `Feature.FACE_POSE`。 |
 
-完整的属性标签数组见 [Python 分析说明](../using-with/python.md#optional-analysis)。Pipeline 完成前保持输入像素不变，完成后再绘制或复用缓冲区。C getter 返回会话内部数组，需要跨越下一次分析调用保留时先复制；C++ 向量和 Python 结果使用独立存储。
+完整的属性标签数组见 [Python 分析说明](../using-with/python.md#optional-analysis)。Pipeline 完成前保持输入像素不变，完成后再绘制或复用缓冲区。C、Objective-C 和 Swift getter 返回会话内部数组，下一次分析调用或会话关闭后仍要使用的值，应提前复制；C++ 向量和 Python 结果使用独立存储。
 
 升级 Android 时，一起更新 Java 包及其配套的 JNI/原生库。各接口支持的分析输出见 [API 功能索引](./api-coverage.md)。
 

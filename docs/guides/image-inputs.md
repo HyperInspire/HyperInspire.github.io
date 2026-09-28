@@ -47,6 +47,76 @@ An existing stream can be reused with `HFImageStreamSetBuffer`, `HFImageStreamSe
 
 For a first integration, the [C detection program](../using-with/c-cpp.md#a-complete-detection-program) uses this path. Use it to check the SDK setup before connecting a camera.
 
+## Apple camera and memory inputs {#apple-camera-and-memory-inputs}
+
+The Apple wrappers accept `CVPixelBuffer` directly when it contains tightly packed BGRA, RGBA, Gray or NV12 pixels. The stream retains and locks the buffer until it closes or replaces its input. No pixel copy is made by this constructor.
+
+::: tabs #api-language
+
+@tab Objective-C
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+// session is initialized; buffer uses a supported tightly packed layout.
+BOOL CountCameraFaces(IFSession *session, CVPixelBufferRef buffer,
+                      HInt32 *count, NSError **error) {
+    IFImageStream *stream = [[IFImageStream alloc]
+        initWithPixelBuffer:buffer rotation:HF_CAMERA_ROTATION_0 error:error];
+    if (!stream) return NO;
+    @try {
+        return [session withBorrowedFacesFromStream:stream
+            body:^(HFMultipleFaceData faces) {
+                *count = faces.detectedNum;
+            } error:error];
+    } @finally {
+        [stream closeWithError:nil];
+    }
+}
+```
+
+@tab Swift
+
+```swift
+import CoreVideo
+import InspireFaceSwift
+
+// session is initialized; buffer uses a supported tightly packed layout.
+func countCameraFaces(session: FaceSession, buffer: CVPixelBuffer) throws -> Int {
+    let stream = try ImageStream(pixelBuffer: buffer, rotation: .degrees0)
+    defer { try? stream.close() }
+    return try session.withUnsafeFaces(in: stream) { faces in
+        faces.count
+    }
+}
+```
+
+:::
+
+The constructor rejects padded rows and NV12 planes that do not form one contiguous packed allocation. A camera buffer can have either layout, even when the requested pixel format is BGRA. Check `CVPixelBufferGetBytesPerRow`; use the complete [BGRA row-copy example](../using-with/ios.md#camera-input-and-row-stride) when padding is present. Do not replace the byte stride with the image width without moving the pixels.
+
+For bytes already in application memory, Swift can keep the stream inside the allocation's pointer scope:
+
+```swift
+import InspireFaceSwift
+
+// bgra holds width * height * 4 bytes, without padding between rows.
+func countPackedFaces(session: FaceSession, bgra: inout [UInt8],
+                      width: Int32, height: Int32) throws -> Int {
+    try bgra.withUnsafeMutableBytes { bytes in
+        try ImageStream.withBorrowedBytes(
+            bytes, width: width, height: height, format: .bgra
+        ) { stream in
+            try session.withUnsafeFaces(in: stream) { faces in
+                faces.count
+            }
+        }
+    }
+}
+```
+
+Finish detection, analysis and feature extraction before leaving these scopes. Do not return the stream or its borrowed face pointers from a `withUnsafeMutableBytes` callback. For a file image, Objective-C `IFImageBitmap` and Swift `ImageBitmap` own decoded storage; `snapshotStream` copies pixels into an independent stream. See the [Apple examples](../using-with/apple.md) for file loading and error handling.
+
 ## NumPy input
 
 Use `uint8` arrays with shape `(height, width, 3)` for BGR. Current Python also accepts `(height, width)` gray and `(height, width, 4)` BGRA arrays. To make storage explicit:

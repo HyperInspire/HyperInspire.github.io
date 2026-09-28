@@ -2,11 +2,13 @@
 
 将下面的代码按标注的文件名保存，再运行对应命令。每个程序都读取本地图像或视频，完整代码默认收起，需要时展开即可复制。
 
-按功能查找时，可以从 [API 功能索引](./api-coverage.md)进入跟踪、分析、关键点、识别、活体和抓拍指南，在 tab 中选择 C API、C++、Android、Python 或 HarmonyOS。[补充 API 示例](./api-recipes.md)介绍对齐图像、分数显示和诊断信息。
+按功能查找时，可以从 [API 功能索引](./api-coverage.md)进入跟踪、分析、关键点、识别、活体和抓拍指南，在 tab 中选择 C API、C++、Android、Python、HarmonyOS、Objective-C 或 Swift。[补充 API 示例](./api-recipes.md)介绍对齐图像、分数显示和诊断信息。
 
 ## Python {#python}
 
-在虚拟环境中安装 `inspireface` 和 OpenCV。如果不需要 GUI 窗口，文件处理示例可以使用 `opencv-python-headless`。抓拍和性能测量示例中的上下文管理器使用 1.2.4 封装及其匹配的原生库，安装方式见 [Python 配置](../using-with/python.md#use-a-local-native-build)。
+```bash
+python -m pip install inspireface opencv-python
+```
 
 | 文件 | 用途 |
 | --- | --- |
@@ -14,6 +16,8 @@
 | [compare.py](#python-comparison) | 要求每张图像只有一张人脸，打印相似度和模型阈值。 |
 | [capture.py](#python-capture) | 抓拍就绪后保存选中的完整帧。 |
 | [benchmark.py](#python-benchmark) | 测量预热后的静态图片检测延迟。 |
+
+抓拍和性能测量示例使用 1.2.4 封装及配套原生库，配置方法见[自定义原生库](../using-with/python.md#use-a-local-native-build)。
 
 检测示例省略 `--model` 时可以下载默认 `Pikachu` 模型包，下面的其他命令使用明确的资源路径。图像无法读取属于错误；图像可读但未检测到人脸，是正常检测结果。
 
@@ -548,12 +552,159 @@ target_link_libraries(preprocess PRIVATE InspireCV::inspirecv)
 
 </details>
 
+## Apple：Objective-C 与 Swift {#apple-command-line}
+
+下面是两份完整的 macOS 命令行程序：读取一张图片，输出人脸框，并在失败时释放资源。按文件名保存到 `apple/` 目录，使用 1.2.4 CPU Framework 与 `Pikachu` 模型文件。每个程序独占本次执行的运行时；应用中则应在连续帧之间复用运行时和 Session。
+
+::: tabs #api-language
+
+@tab Objective-C
+
+<details>
+<summary>apple/detect.m — 展开完整代码</summary>
+
+```objectivec
+#import <InspireFace/InspireFaceApple.h>
+
+BOOL DetectFile(NSString *modelPath, NSString *imagePath,
+                HInt32 *faceCount, NSError **error) {
+    *faceCount = 0;
+    if (![IFRuntime launchAtPath:modelPath error:error]) return NO;
+    IFSession *session = nil;
+    IFImageBitmap *bitmap = nil;
+    IFImageStream *stream = nil;
+    BOOL success = NO;
+    do {
+        session = [[IFSession alloc] initWithOptions:0
+                                               mode:HF_DETECT_MODE_ALWAYS_DETECT
+                                       maximumFaces:10
+                                         pixelLevel:320
+                                    framesPerSecond:-1
+                                              error:error];
+        if (!session) break;
+        bitmap = [[IFImageBitmap alloc] initWithContentsOfFile:imagePath
+                                                     channels:3 error:error];
+        if (!bitmap) break;
+        HFImageBitmapData pixels = {0};
+        if (![bitmap getBorrowedData:&pixels error:error]) break;
+        HFImageData input = {pixels.data, pixels.width, pixels.height,
+                             HF_STREAM_BGR, HF_CAMERA_ROTATION_0};
+        stream = [[IFImageStream alloc] initWithBorrowedData:input error:error];
+        if (!stream) break;
+        HFMultipleFaceData faces = {0};
+        if (![session trackStream:stream borrowedResult:&faces error:error]) break;
+        for (HInt32 i = 0; i < faces.detectedNum; ++i) {
+            HFaceRect rect = faces.rects[i];
+            NSLog(@"face %d: x=%d y=%d width=%d height=%d", i,
+                  rect.x, rect.y, rect.width, rect.height);
+        }
+        *faceCount = faces.detectedNum;
+        success = YES;
+    } while (NO);
+    [stream closeWithError:NULL];
+    [bitmap closeWithError:NULL];
+    [session closeWithError:NULL];
+    [IFRuntime terminateWithError:NULL];
+    return success;
+}
+
+#include <stdio.h>
+int main(int argc, const char *argv[]) {
+    @autoreleasepool {
+        if (argc != 3) { fprintf(stderr, "Usage: detect MODEL IMAGE\n"); return 2; }
+        NSError *error = nil;
+        HInt32 count = 0;
+        if (!DetectFile([NSString stringWithUTF8String:argv[1]],
+                        [NSString stringWithUTF8String:argv[2]], &count, &error)) {
+            NSLog(@"%@ (%ld): %@", error.domain, (long)error.code, error.localizedDescription);
+            return 1;
+        }
+        printf("Detected %d faces\n", count);
+        return 0;
+    }
+}
+```
+
+</details>
+
+@tab Swift
+
+<details>
+<summary>apple/detect.swift — 展开完整代码</summary>
+
+```swift
+import Foundation
+import InspireFaceSwift
+
+func detectFile(modelPath: String, imagePath: String) throws -> Int {
+    try InspireFaceRuntime.launch(path: modelPath)
+    defer { try? InspireFaceRuntime.terminate() }
+    let session = try FaceSession(configuration: SessionConfiguration(
+        detectionMode: .alwaysDetect, maximumFaces: 10, pixelLevel: 320))
+    defer { try? session.close() }
+    let bitmap = try ImageBitmap(contentsOfFile: imagePath, channels: 3)
+    defer { try? bitmap.close() }
+    return try bitmap.withUnsafeMutablePixels { bytes, pixels in
+        try ImageStream.withBorrowedBytes(
+            bytes, width: pixels.width, height: pixels.height, format: .bgr
+        ) { stream in
+            try session.withUnsafeFaces(in: stream) { faces in
+                for (index, rect) in faces.rectangles.enumerated() {
+                    print("face \(index): x=\(rect.x) y=\(rect.y) " +
+                          "width=\(rect.width) height=\(rect.height)")
+                }
+                return faces.count
+            }
+        }
+    }
+}
+
+guard CommandLine.arguments.count == 3 else {
+    print("Usage: detect MODEL IMAGE")
+    exit(2)
+}
+do {
+    let count = try detectFile(modelPath: CommandLine.arguments[1], imagePath: CommandLine.arguments[2])
+    print("Detected \(count) faces")
+} catch {
+    let failure = error as NSError
+    print("\(failure.domain) (\(failure.code)): \(failure.localizedDescription)")
+    exit(1)
+}
+```
+
+</details>
+
+:::
+
+### 编译并运行 {#compile-apple-examples}
+
+将 `APPLE_SDK_DIR` 指向包含两个 Framework 的目录，可以是单架构 SDK 目录，也可以是合并包内的 `Frameworks/macosx/`。下面以 Apple Silicon、macOS 14 为目标，对应 `MACOSX_DEPLOYMENT_TARGET=14.0` 的构建。Intel 请改用 `x86_64`，并按该 SDK 记录的最低 macOS 版本设置 target。应用的部署版本不能低于 Framework 的要求。
+
+```bash
+APPLE_SDK_DIR="/absolute/path/to/inspireface-apple-1.2.4/Frameworks/macosx"
+APPLE_TARGET="arm64-apple-macosx14.0"
+xcrun clang -target "$APPLE_TARGET" -fobjc-arc -fmodules apple/detect.m \
+  -F "$APPLE_SDK_DIR" -framework InspireFace -framework Foundation \
+  -framework CoreVideo -lc++ -Wl,-ObjC \
+  -Wl,-rpath,"$APPLE_SDK_DIR" -o detect-objc
+xcrun swiftc -target "$APPLE_TARGET" apple/detect.swift \
+  -F "$APPLE_SDK_DIR" -framework InspireFace -framework InspireFaceSwift \
+  -Xlinker -ObjC -Xlinker -rpath -Xlinker "$APPLE_SDK_DIR" \
+  -o detect-swift
+./detect-objc /path/to/Pikachu face.jpg
+./detect-swift /path/to/Pikachu face.jpg
+```
+
+在 iOS 或 macOS 应用 target 中，[Apple 接入指南](../using-with/apple.md#a-complete-detection-example)提供同一检测流程的函数形式。Xcode、模型资源与相机输入的配置分别见 [iOS](../using-with/ios.md) 和 [macOS](../using-with/macos.md)。
+
 ## 平台配置 {#platform-projects}
 
 平台指南包含依赖配置，以及各平台的图像输入和资源管理代码：
 
 - [Android](../using-with/android.md)：Gradle 依赖、图像输入、摄像头帧和 Java 资源管理。
-- [iOS](../using-with/ios.md)：framework 配置和图像缓冲区转换。
+- [iOS](../using-with/ios.md)：真机与模拟器配置、Objective-C / Swift 和相机缓冲区。
+- [macOS](../using-with/macos.md)：Framework 嵌入、应用资源和原生库。
 - [HarmonyOS](../using-with/harmonyos.md)：ArkTS 配置、图像输入和检测。
 - [C](../using-with/c-cpp.md) 与 [C++](../using-with/cpp.md)：SDK 链接和原生资源生命周期。
 - [Python](../using-with/python.md)：环境配置、人脸检测和本地原生库配置。

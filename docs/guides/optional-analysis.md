@@ -27,7 +27,7 @@ First enable quality alone and inspect a few clear and blurred inputs. Add the o
 
 ## Read analysis results
 
-Select an API below. These helpers process **one still image** using a newly created session, so they can be called from the platform's basic detection example. Launch the SDK and prepare the input first; [C](../using-with/c-cpp.md), [C++](../using-with/cpp.md), [Android](../using-with/android.md), [HarmonyOS](../using-with/harmonyos.md) and [Python](../using-with/python.md) cover that setup. In a video application, move session creation outside the frame loop.
+Select an API below. These helpers process **one still image** using a newly created session, so they can be called from the platform's basic detection example. Launch the SDK and prepare the input first; [C](../using-with/c-cpp.md), [C++](../using-with/cpp.md), [Apple](../using-with/apple.md), [Android](../using-with/android.md), [HarmonyOS](../using-with/harmonyos.md) and [Python](../using-with/python.md) cover that setup. In a video application, move session creation outside the frame loop.
 
 ::: tabs #api-language
 
@@ -128,6 +128,98 @@ bool AnalyzeFrame(inspirecv::FrameProcess& frame) {
                   << " pitch=" << pose.pitch << '\n';
     }
     return true;  // Session releases its resources when leaving scope.
+}
+```
+
+</details>
+
+@tab Objective-C
+
+After runtime launch, pass the still image as an open `IFImageStream`. This helper creates and closes its own session. `BOOL`/`NSError` report failures. Getters borrow session arrays; copy any scores or labels needed by a later UI callback before this function returns.
+
+<details>
+<summary>Objective-C — Complete example</summary>
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static BOOL AnalyzeFrame(IFImageStream *stream, NSError **error) {
+    HInt32 pipeline = HF_ENABLE_QUALITY | HF_ENABLE_MASK_DETECT |
+        HF_ENABLE_FACE_ATTRIBUTE | HF_ENABLE_FACE_EMOTION;
+    IFSession *session = [[IFSession alloc] initWithOptions:pipeline | HF_ENABLE_FACE_POSE
+        mode:HF_DETECT_MODE_ALWAYS_DETECT maximumFaces:10 pixelLevel:320
+        framesPerSecond:-1 error:error];
+    if (session == nil) return NO;
+    @try {
+        HFMultipleFaceData faces = {0};
+        if (![session trackStream:stream borrowedResult:&faces error:error]) return NO;
+        if (faces.detectedNum == 0) return YES;
+        if (![session processStream:stream faces:&faces options:pipeline error:error]) return NO;
+        HFFaceQualityConfidence quality = {0};
+        HFFaceMaskConfidence masks = {0};
+        HFFaceAttributeResult attributes = {0};
+        HFFaceEmotionResult expressions = {0};
+        if (![session getBorrowedQualityConfidence:&quality error:error] ||
+            ![session getBorrowedMaskConfidence:&masks error:error] ||
+            ![session getBorrowedAttributes:&attributes error:error] ||
+            ![session getBorrowedEmotions:&expressions error:error]) return NO;
+        if (quality.num != faces.detectedNum || masks.num != faces.detectedNum ||
+            attributes.num != faces.detectedNum || expressions.num != faces.detectedNum)
+            return IFCheck(HERR_INVALID_PARAM, error);
+        for (HInt32 i = 0; i < faces.detectedNum; ++i) {
+            NSLog(@"quality=%.3f mask=%.3f age=%d gender=%d race=%d emotion=%d",
+                quality.confidence[i], masks.confidence[i], attributes.ageBracket[i],
+                attributes.gender[i], attributes.race[i], expressions.emotion[i]);
+            NSLog(@"roll=%.2f yaw=%.2f pitch=%.2f", faces.angles.roll[i],
+                faces.angles.yaw[i], faces.angles.pitch[i]);
+        }
+        return YES;
+    } @finally {
+        [session closeWithError:NULL];
+    }
+}
+```
+
+</details>
+
+@tab Swift
+
+Pass an open stream after runtime launch. The helper owns its temporary session; the caller owns the stream. It enables pose at session creation, runs only the requested pipeline models and reads every output before closing the session. Failures throw.
+
+<details>
+<summary>Swift — Complete example</summary>
+
+```swift
+import InspireFaceSwift
+
+func analyzeFrame(stream: ImageStream) throws {
+    let pipeline: FaceFeatures = [.quality, .mask, .attributes, .emotion]
+    let session = try FaceSession(configuration: SessionConfiguration(
+        features: pipeline.union(.pose), maximumFaces: 10, pixelLevel: 320))
+    defer { try? session.close() }
+    try session.withUnsafeFaces(in: stream) { borrowed in
+        guard borrowed.count > 0 else { return }
+        var faces = borrowed.cValue
+        try session.process(stream, faces: &faces, options: Int32(pipeline.rawValue))
+        var quality = HFFaceQualityConfidence()
+        var masks = HFFaceMaskConfidence()
+        var attributes = HFFaceAttributeResult()
+        var expressions = HFFaceEmotionResult()
+        try session.getBorrowedQualityConfidence(&quality)
+        try session.getBorrowedMaskConfidence(&masks)
+        try session.getBorrowedAttributes(&attributes)
+        try session.getBorrowedEmotions(&expressions)
+        guard quality.num == faces.detectedNum, masks.num == faces.detectedNum,
+              attributes.num == faces.detectedNum, expressions.num == faces.detectedNum else {
+            throw NSError(domain: IFErrorDomain, code: Int(HERR_INVALID_PARAM))
+        }
+        for i in 0..<borrowed.count {
+            print("quality=\(quality.confidence[i]) mask=\(masks.confidence[i])")
+            print("age=\(attributes.ageBracket[i]) gender=\(attributes.gender[i]) race=\(attributes.race[i])")
+            print("emotion=\(expressions.emotion[i])")
+            print("roll=\(borrowed.roll[i]) yaw=\(borrowed.yaw[i]) pitch=\(borrowed.pitch[i])")
+        }
+    }
 }
 ```
 
@@ -280,9 +372,9 @@ def analyze_frame(image):
 | Mask | A score for mask presence. Compare the score with a threshold evaluated on your intended cameras. |
 | Attributes | Integer category indices. Check the index range, then map each index to its label. |
 | Expression | Index order: `Neutral`, `Happy`, `Sad`, `Surprise`, `Fear`, `Disgust`, `Anger`. |
-| Pose | Roll, yaw and pitch angles. In C/C++/Python, enable `HF_ENABLE_FACE_POSE` or its C++ option before reading these angles. HarmonyOS uses `Feature.FACE_POSE`. |
+| Pose | Roll, yaw and pitch angles. In C/C++/Python, enable `HF_ENABLE_FACE_POSE` or its C++ option before reading these angles. Objective-C also uses `HF_ENABLE_FACE_POSE`; Swift uses `.pose` in `FaceFeatures`. HarmonyOS uses `Feature.FACE_POSE`. |
 
-The complete attribute label arrays are shown in the [Python analysis reference](../using-with/python.md#optional-analysis). Keep the input pixels unchanged until the pipeline finishes, then draw or reuse the buffer. C getter arrays are borrowed from the session; copy values you need after the next pipeline call. C++ vectors and Python results have their own storage.
+The complete attribute label arrays are shown in the [Python analysis reference](../using-with/python.md#optional-analysis). Keep the input pixels unchanged until the pipeline finishes, then draw or reuse the buffer. C, Objective-C and Swift getter arrays are borrowed from the session; copy values you need after the next pipeline call or after closing the session. C++ vectors and Python results have their own storage.
 
 When upgrading Android, update the Java package and its matching JNI/native library together. The [API index](./api-coverage.md) lists the analysis outputs available in each interface.
 

@@ -2,7 +2,7 @@
 
 InspireFace separates the common detection and tracking work from optional models. Start with a session that finds faces, then enable recognition, quality or other analysis only when you use those results.
 
-This page maps each feature to the data it returns. Feature guides provide C API, C++, Android, HarmonyOS and Python tabs where the wrapper supports the operation. Use the [API index](./guides/api-coverage.md) to find a workflow, or copy a program from [Complete examples](./guides/examples.md).
+This page maps each feature to the data it returns. Feature guides provide C API, C++, Android, HarmonyOS, Python, Objective-C and Swift tabs where the wrapper supports the operation. Use the [API index](./guides/api-coverage.md) to find a workflow, or copy a program from [Complete examples](./guides/examples.md).
 
 ## Face Tracking
 
@@ -155,6 +155,7 @@ Choose a backend supported by the target hardware and pair it with the appropria
 | Target | SDK and pack choice | Setup |
 | --- | --- | --- |
 | Desktop, mobile or embedded CPU | CPU build with a compatible general pack such as Pikachu | [Models and builds](./guides/models-and-builds.md) |
+| iOS / macOS CPU | Objective-C and Swift frameworks with a general CPU resource pack | [Apple APIs](./using-with/apple.md) · [iOS](./using-with/ios.md) · [macOS](./using-with/macos.md) |
 | Apple CoreML | Apple-extension build and compatible Apple model resources | [iOS / Apple](./using-with/ios.md#apple-acceleration) |
 | Rockchip NPU | RKNN build, matching SoC pack and board runtime | [Rockchip](./using-with/rknpu.md) |
 | NVIDIA GPU | TensorRT build, compatible TensorRT/CUDA runtime and TRT pack | [CUDA / TensorRT](./using-with/cuda.md) |

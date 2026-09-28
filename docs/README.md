@@ -16,7 +16,7 @@ features:
   - title: Images and video
     details: Detect faces in a photograph, track them across frames, and read landmarks, pose and quality from the same session.
   - title: Choose your API
-    details: Use C, C++, Python, Android Java or HarmonyOS ArkTS. Enable the extra models your application needs.
+    details: Use C, C++, Python, Android Java, HarmonyOS ArkTS, Objective-C or Swift. Enable the extra models your application needs.
   - title: Choose your deployment
     details: Start on CPU, then select a matching SDK and model pack for Apple CoreML, Rockchip NPU or NVIDIA TensorRT.
 footerHtml: true
@@ -66,6 +66,16 @@ footer: |
   <a class="home-guide-card" href="./build/python.html">
     <strong>Python packaging</strong>
     <span>Replace the native library and create your own wheel.</span>
+    <span class="home-guide-card-arrow" aria-hidden="true">→</span>
+  </a>
+  <a class="home-guide-card" href="./using-with/apple.html">
+    <strong>Apple apps</strong>
+    <span>Use Objective-C or Swift on iOS and macOS.</span>
+    <span class="home-guide-card-arrow" aria-hidden="true">→</span>
+  </a>
+  <a class="home-guide-card" href="./guides/api-coverage.html">
+    <strong>API coverage</strong>
+    <span>Find an example for each feature and language.</span>
     <span class="home-guide-card-arrow" aria-hidden="true">→</span>
   </a>
 </div>

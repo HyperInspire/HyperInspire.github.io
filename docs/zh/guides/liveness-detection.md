@@ -58,6 +58,52 @@ if (!faces.empty()) {
 }
 ```
 
+@tab Objective-C
+
+创建 `IFSession` 时启用 `HF_ENABLE_LIVENESS`。传入该会话和当前图像流，并检查 `BOOL`/`NSError`。分数数组借用会话缓存，应在下一次 Pipeline 调用前读取或复制。
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static BOOL ReadRGBLiveness(IFSession *session, IFImageStream *stream, NSError **error) {
+    HFMultipleFaceData faces = {0};
+    if (![session trackStream:stream borrowedResult:&faces error:error]) return NO;
+    if (faces.detectedNum == 0) return YES;
+    if (![session processStream:stream faces:&faces options:HF_ENABLE_LIVENESS error:error]) return NO;
+    HFRGBLivenessConfidence scores = {0};
+    if (![session getBorrowedRGBLiveness:&scores error:error]) return NO;
+    if (scores.num != faces.detectedNum) return IFCheck(HERR_INVALID_PARAM, error);
+    for (HInt32 i = 0; i < scores.num; ++i) {
+        NSLog(@"face=%d liveness=%.4f", i, scores.confidence[i]);
+    }
+    return YES;
+}
+```
+
+@tab Swift
+
+用 `SessionConfiguration(features: [.rgbLiveness])` 创建会话。函数对同一图像流执行检测与分析，SDK 失败时抛出错误；借用的分数数组在闭包中同步读取。
+
+```swift
+import InspireFaceSwift
+
+func readRGBLiveness(session: FaceSession, stream: ImageStream) throws {
+    try session.withUnsafeFaces(in: stream) { borrowed in
+        guard borrowed.count > 0 else { return }
+        var faces = borrowed.cValue
+        try session.process(stream, faces: &faces, options: Int32(FaceFeatures.rgbLiveness.rawValue))
+        var scores = HFRGBLivenessConfidence()
+        try session.getBorrowedRGBLiveness(&scores)
+        guard scores.num == faces.detectedNum else {
+            throw NSError(domain: IFErrorDomain, code: Int(HERR_INVALID_PARAM))
+        }
+        for i in 0..<borrowed.count {
+            print("face=\(i) liveness=\(scores.confidence[i])")
+        }
+    }
+}
+```
+
 @tab Android
 
 创建会话时传入 `InspireFace.CreateCustomParameter().enableLiveness(true)`。下面使用已创建的 `ImageStream`，读取完结果后再释放该图像流。
@@ -172,6 +218,61 @@ if (!faces.empty()) {
                   << eyes.at(i).left_eye_status_confidence << " "
                   << eyes.at(i).right_eye_status_confidence << " "
                   << actions.at(i).blink << " " << actions.at(i).shake << '\n';
+    }
+}
+```
+
+@tab Objective-C
+
+用 `HF_ENABLE_INTERACTION | HF_ENABLE_FACE_POSE` 创建一个 `HF_DETECT_MODE_LIGHT_TRACK` 会话，并在整段序列中复用。按时间顺序逐帧调用；下一次 Pipeline 前复制 UI 所需的值，并检查 `BOOL`/`NSError`。
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static BOOL ReadActions(IFSession *session, IFImageStream *stream, NSError **error) {
+    HFMultipleFaceData faces = {0};
+    if (![session trackStream:stream borrowedResult:&faces error:error]) return NO;
+    if (faces.detectedNum == 0) return YES;
+    if (![session processStream:stream faces:&faces options:HF_ENABLE_INTERACTION error:error]) return NO;
+    HFFaceInteractionState eyes = {0};
+    HFFaceInteractionsActions actions = {0};
+    if (![session getBorrowedInteractionState:&eyes error:error] ||
+        ![session getBorrowedInteractionActions:&actions error:error]) return NO;
+    if (eyes.num != faces.detectedNum || actions.num != faces.detectedNum)
+        return IFCheck(HERR_INVALID_PARAM, error);
+    for (HInt32 i = 0; i < faces.detectedNum; ++i) {
+        NSLog(@"track=%d left=%.3f right=%.3f blink=%d shake=%d",
+            faces.trackIds[i], eyes.leftEyeStatusConfidence[i],
+            eyes.rightEyeStatusConfidence[i], actions.blink[i], actions.shake[i]);
+    }
+    return YES;
+}
+```
+
+@tab Swift
+
+用 `SessionConfiguration(features: [.interaction, .pose], detectionMode: .lightTracking, maximumFaces: 5, pixelLevel: 320)` 创建会话并跨帧复用。函数读取当前帧的眼睛分数和动作事件；调用成功后，再更新应用自己的动作挑战状态。
+
+```swift
+import InspireFaceSwift
+
+func readActions(session: FaceSession, stream: ImageStream) throws {
+    try session.withUnsafeFaces(in: stream) { borrowed in
+        guard borrowed.count > 0 else { return }
+        var faces = borrowed.cValue
+        try session.process(stream, faces: &faces, options: Int32(FaceFeatures.interaction.rawValue))
+        var eyes = HFFaceInteractionState()
+        var actions = HFFaceInteractionsActions()
+        try session.getBorrowedInteractionState(&eyes)
+        try session.getBorrowedInteractionActions(&actions)
+        guard eyes.num == faces.detectedNum, actions.num == faces.detectedNum else {
+            throw NSError(domain: IFErrorDomain, code: Int(HERR_INVALID_PARAM))
+        }
+        for i in 0..<borrowed.count {
+            print("track=\(borrowed.trackIDs[i])")
+            print("left=\(eyes.leftEyeStatusConfidence[i]) right=\(eyes.rightEyeStatusConfidence[i])")
+            print("blink=\(actions.blink[i]) shake=\(actions.shake[i])")
+        }
     }
 }
 ```

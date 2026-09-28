@@ -2,7 +2,7 @@
 
 InspireFace 是一个用于处理图片和视频中人脸的 C/C++ SDK。它可以检测人脸、跨帧跟踪、提取关键点和特征向量，也可以按需进行姿态、质量和 RGB 活体分析。你负责提供图像并使用结果；相机和应用界面由应用自身管理。
 
-C API、Python、Android Java 和 HarmonyOS ArkTS 封装采用相同的处理流程。对于已经使用 InspireCV 的应用，也可以选择 C++ 接口。
+C、C++、Python、Android Java、HarmonyOS ArkTS、Objective-C 和 Swift 都采用相同的处理流程。Apple 接口覆盖 iOS 与 macOS，支持图像输入、跟踪、分析、识别和抓拍。
 
 <figure>
 <img class="doc-banner" src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/inspireface-doc-images-web/banner.webp" alt="InspireFace 的检测、关键点、识别、活体与多平台部署示意" width="2048" height="683" />
@@ -82,7 +82,9 @@ Plus 新增被动活体与炫光活体，通过移动端实时采集、服务端
 | [Python](./using-with/python.md) | 原型、脚本和服务，可直接传入 NumPy 数组。 |
 | [C++](./using-with/cpp.md) | 希望使用 `Session`、`Image` 和 `FrameProcess` 对象的应用。头文件和库需要来自同一版本。 |
 | [Android](./using-with/android.md) | 通过 JNI 封装接入的 Java 或 Kotlin 应用。 |
-| [iOS](./using-with/ios.md) | 在 iOS 应用中使用 C 或 Objective-C++ 接口。 |
+| [Objective-C / Swift](./using-with/apple.md) | Apple 原生接口，使用 NSError / throws 处理错误，并显式管理缓冲区和资源。 |
+| [iOS](./using-with/ios.md) | Xcode 接入、真机与模拟器构建、相机像素缓冲区。 |
+| [macOS](./using-with/macos.md) | Intel 与 Apple Silicon 应用、动态 Framework 和原生命令行工具。 |
 | [HarmonyOS](./using-with/harmonyos.md) | 通过源码中的 Node-API 适配层接入 ArkTS 应用。 |
 
 ## SDK、模型与计算后端 {#sdk-models-and-backends}

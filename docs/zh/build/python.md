@@ -14,6 +14,8 @@ Python API 通过 `ctypes` 调用原生 SDK。要从 CPU 切换到 TensorRT、Co
 
 完成[源码准备](./source.md)，再按 [Linux](./linux.md)、[macOS](./macos.md)、[NVIDIA](./nvidia.md) 或 [Rockchip](./rockchip.md) 章节编译。Python 需要设置 `ISF_BUILD_SHARED_LIBS=ON` 生成的**动态库**：Linux 使用 `libInspireFace.so`，macOS 使用 `libInspireFace.dylib`。
 
+Apple 新增的 Objective-C / Swift framework 用于原生应用接入。Python 仍然加载 **macOS 原始 dylib**，不使用 `InspireFace.xcframework`、`InspireFaceSwift.framework` 或 iOS 静态库。`build_macos_arm64.sh` 和 `build_macos_x86.sh` 会生成该动态库；arm64 CoreML 脚本生成的原始库是 `.a`，Python 应改用[自定义动态库构建](./macos.md#set-architecture-and-deployment-target)。
+
 `python/version.txt` 由 CMake 配置阶段生成。在当前工作区编译过 SDK 后，这个文件就已经准备好了。如果复用的是在其他位置构建的同版本 SDK，请在安装或打包 Python 封装前，先复制 SDK 随附的 `version.txt`：
 
 ```bash
@@ -111,7 +113,7 @@ cp "$ISF_NATIVE" "$ISF_BUNDLE_DIR/libInspireFace.so"
 python -m build --wheel --outdir "$PWD/python/dist" "$ISF_WHEEL_STAGE"
 ```
 
-Linux aarch64 改用 `arm64` 和 `linux_aarch64`。macOS 改用 `darwin`、对应架构及 macOS wheel 标签，同时将复制命令中的源文件和目标文件改为 `libInspireFace.dylib`。
+Linux aarch64 改用 `arm64` 和 `linux_aarch64`。macOS 请按下文的[完整打包示例](#package-the-current-macos-sdk)操作，并显式设置最低系统版本标签。
 
 wheel 的版本号由 `python/version.txt` 与 `python/post` 中的后缀拼接而成。例如，版本为 `1.2.4`、后缀为空时，会生成 `inspireface-1.2.4-py3-none-linux_x86_64.whl`。
 
@@ -130,6 +132,50 @@ wheel 的版本号由 `python/version.txt` 与 `python/post` 中的后缀拼接�
 1.2.4 封装生成的 wheel 标签为 `py3-none-<platform>`：`ctypes` 没有 CPython 扩展 ABI 依赖，但包中带有原生库，仍然区分系统和架构。包声明要求 Python 3.7 或更新版本。修改标签或文件后缀，不会改变库的 CPU 架构、libc 要求或后端依赖。
 
 原生库已经为目标平台编译好后，可以在其他主机上打包。此时请明确设置三个变量，并在实际目标设备上测试 wheel。`INSPIREFACE_LIBRARY_PATH` 只控制运行时加载，**不会**改变 `setup.py` 收进 wheel 的库文件。
+
+### 打包当前 macOS SDK {#package-the-current-macos-sdk}
+
+先获取 [Develop 版本源码](./source.md#develop-source)。下面的完整示例面向 Apple Silicon，以 macOS 14.0 为最低版本构建 CPU 动态库，再使用对应的 wheel 标签打包。请在已激活的 Python 环境中，从仓库根目录运行。发布前检查命令输出中的架构、最低系统版本和依赖。
+
+<details>
+<summary>构建并打包 arm64 macOS wheel</summary>
+
+```bash
+MACOSX_DEPLOYMENT_TARGET=14.0 VERSION=1.2.4 \
+  bash command/build_macos_arm64.sh --jobs 4
+
+ISF_APPLE_SDK="$PWD/build/inspireface-macos-apple-silicon-arm64-1.2.4"
+ISF_NATIVE="$ISF_APPLE_SDK/InspireFace/lib/libInspireFace.dylib"
+xcrun lipo -info "$ISF_NATIVE"
+xcrun vtool -show-build "$ISF_NATIVE"
+otool -L "$ISF_NATIVE"
+cp "$ISF_APPLE_SDK/version.txt" python/version.txt
+
+python -m pip install build
+export INSPIRE_FACE_TARGET_PLATFORM=darwin
+export INSPIRE_FACE_TARGET_ARCH=arm64
+export INSPIRE_FACE_TARGET_AARCH_MAPPING=macosx_14_0_arm64
+
+ISF_WHEEL_STAGE="$(mktemp -d)"
+cp -R python/inspireface "$ISF_WHEEL_STAGE/"
+cp python/{setup.py,pyproject.toml,README.md,version.txt,post} "$ISF_WHEEL_STAGE/"
+ISF_BUNDLE_DIR="$ISF_WHEEL_STAGE/inspireface/modules/core/libs/darwin/arm64"
+mkdir -p "$ISF_BUNDLE_DIR"
+cp "$ISF_NATIVE" "$ISF_BUNDLE_DIR/libInspireFace.dylib"
+python -m build --wheel --outdir "$PWD/python/dist" "$ISF_WHEEL_STAGE"
+```
+
+</details>
+
+`python/post` 为空时，输出为 `inspireface-1.2.4-py3-none-macosx_14_0_arm64.whl`。Intel 改用 `build_macos_x86.sh` 及其 `inspireface-macos-intel-x86-64-1.2.4` 输出目录，包内目录和目标架构变量使用 `x64`，标签使用匹配的 `macosx_<major>_<minor>_x86_64`。构建时同样应显式设置最低系统版本。
+
+复用已有 Apple XCFramework 包时，从 `SDKs/macosx-arm64/InspireFace/lib/` 或 `SDKs/macosx-x86_64/InspireFace/lib/` 中取原始 dylib，并使用同一 slice 的 `version.txt`。两种架构分别打 wheel；把 XCFramework 放进 Python 包并不会让 wheel 自动支持两种架构。
+
+::: warning wheel 标签要与动态库匹配
+`setup.py` 默认使用 `macosx_11_0_arm64` 或 `macosx_12_0_x86_64`，不会读取二进制中的最低系统版本。请按实际构建设置 `INSPIRE_FACE_TARGET_AARCH_MAPPING`，不要给要求较新系统的动态库填较旧的标签。当前 Apple CI 的 arm64 目标是 macOS 14.0，x86_64 目标是 macOS 15.0。
+:::
+
+arm64 CoreML 打包前，先按 [CoreML 动态库 CMake 配置](./macos.md#set-architecture-and-deployment-target)构建，将其 `install/InspireFace/lib/libInspireFace.dylib` 用作上面的 `ISF_NATIVE`。最低系统版本、架构和版本文件应一起匹配，CoreML 推理还需要部署 Apple 模型包。
 
 ### 检查 wheel 内容 {#inspect-the-wheel}
 
@@ -181,9 +227,9 @@ print("Loaded library:", native._LIBRARY_FILENAME)
 | --- | --- |
 | Linux x86_64, manylinux2014 | `docker compose run --rm build-manylinux2014-x86` |
 | Linux aarch64, manylinux2014 | `docker compose run --rm build-manylinux2014-aarch64` |
-| macOS Apple Silicon | `bash command/build_wheel_macos_arm64.sh` |
-| macOS Intel | `bash command/build_wheel_macos_x86.sh` |
 
-Linux 打包在仓库提供的 Docker 环境中执行，aarch64 容器需要 ARM64 主机或配置好的模拟环境。macOS 脚本在对应架构的 Mac 上运行。脚本会重新编译原生库，并将 wheel 写入 `python/dist/`。已有编译完成的 TensorRT、CoreML 或 Rockchip 库时，直接使用上面的独立打包步骤即可。
+Linux 打包在仓库提供的 Docker 环境中执行，aarch64 容器需要 ARM64 主机或配置好的模拟环境。脚本会重新编译原生库，并将 wheel 写入 `python/dist/`。已有编译完成的 TensorRT、CoreML 或 Rockchip 库时，直接使用上面的独立打包步骤即可。
 
-目录选择、wheel 标签和运行时覆盖路径的实现分别位于 [`python/setup.py`](https://github.com/HyperInspire/InspireFace/blob/1cb2c1e44bde56253fe9eb5bbc8e14dc5e72dee9/python/setup.py)、[`_library_path.py`](https://github.com/HyperInspire/InspireFace/blob/1cb2c1e44bde56253fe9eb5bbc8e14dc5e72dee9/python/inspireface/modules/core/_library_path.py) 和 [`_native_loader.py`](https://github.com/HyperInspire/InspireFace/blob/1cb2c1e44bde56253fe9eb5bbc8e14dc5e72dee9/python/inspireface/modules/core/_native_loader.py)。
+macOS 使用本文的 [Apple SDK 打包步骤](#package-the-current-macos-sdk)。现有 `build_wheel_macos_arm64.sh` 和 `build_wheel_macos_x86.sh` 仍然单独调用 CMake，没有使用新的 Apple 构建脚本，也没有显式指定目标架构和最低系统版本，wheel 标签沿用 `setup.py` 默认值。仅凭脚本文件名无法确认产物的兼容范围。
+
+目录选择、wheel 标签和运行时覆盖路径的实现分别位于 [`python/setup.py`](https://github.com/HyperInspire/InspireFace/blob/8b37a2eb1e2fe61608195a979dda6cadb84f5106/python/setup.py)、[`_library_path.py`](https://github.com/HyperInspire/InspireFace/blob/8b37a2eb1e2fe61608195a979dda6cadb84f5106/python/inspireface/modules/core/_library_path.py) 和 [`_native_loader.py`](https://github.com/HyperInspire/InspireFace/blob/8b37a2eb1e2fe61608195a979dda6cadb84f5106/python/inspireface/modules/core/_native_loader.py)。

@@ -3,10 +3,11 @@
 ## Scope and baseline
 
 Audit the public APIs, build scripts, examples and tests in the local source
-checkouts, then update the English developer documentation. Source repositories
+checkouts, then update the English and Chinese developer documentation. Source repositories
 are read-only inputs to this task.
 
-- InspireFace: `1cb2c1e4` (2026-09-28), CMake version 1.2.4.
+- InspireFace: `8b37a2eb1e2fe61608195a979dda6cadb84f5106` (2026-09-29), CMake version 1.2.4.
+- Current documentation revision: 1.2.4.d3. Earlier dated sections retain their audit baselines.
 - InspireCV: `361574e` (2026-09-28), README version 1.0.2.
 - Preserve existing document URLs, the default light theme, Android demo QR code
   and the recently selected cloud illustrations.
@@ -25,7 +26,7 @@ are read-only inputs to this task.
 - [x] Improve navigation, image sizes, code readability and mobile layout.
 - [x] Validate code against source, execute examples where the local runtime
   supports them, build the site and check links and browser rendering.
-- [x] Leave a local preview running and record exact validation limits.
+- [x] Inspect a local preview, record validation limits, and stop the temporary server after review.
 
 ## Findings to address
 
@@ -570,3 +571,99 @@ viewport: none had document-level horizontal overflow. Confirmed keyboard
 scrolling in the API matrix and shared HarmonyOS selection across all three
 capture code groups. Restored the normal viewport. The documentation release
 remains 1.2.4.d2; this sweep is part of the same unpublished update.
+
+
+## Apple SDK update (2026-09-29, documentation 1.2.4.d3)
+
+Audited SDK 8b37a2eb1e2fe61608195a979dda6cadb84f5106, including the unified
+Apple build driver, framework/Swift packaging, Objective-C public header, Swift
+overlay, contract tests and CPU release workflow. The dependency checkout remains
+dfb1f29c511954bc0764c232ed62e713d972844d. No SDK source was changed or rebuilt.
+
+Updated 29 English/Chinese page pairs (58 Markdown files) relative to the d2
+working-tree snapshot. Added the shared Apple API and macOS integration pages;
+rewrote iOS integration and both Apple build guides. Updated navigation, home,
+Introduction, feature overview, API coverage, all relevant feature tabs, image
+inputs, model loading, object lifetime, troubleshooting, ARM and Python guidance.
+The public version now derives 1.2.4.d3 from package version 1.2.4-d3.
+
+The guides distinguish iOS static frameworks from macOS dynamic frameworks,
+Objective-C core from the Swift overlay, device from simulator slices, and raw
+C/C++/Python libraries from application frameworks. They cover XCFramework
+packaging, architecture/deployment metadata, caches, tests, CoreML compute modes,
+Xcode embedding, model resources and camera row strides. The old future-tense
+iOS wrapper notice is gone. The latest public GitHub release still resolved to
+v1.2.3 on this audit date; the new source-built packages are not presented as
+existing v1.2.3 downloads. Existing benchmark results retain their original dates.
+
+Validation completed:
+
+- `npm run docs:check`: 85 HTML pages, 13,991 local references, 92 parsed Python
+  fences, 42 bilingual page pairs, 329 identical code fences, matching anchors
+  and version metadata. Forty inline program copies match eleven source files.
+- Added two complete Apple command-line examples with explicit compile targets,
+  both embedded in English/Chinese examples pages. Long examples stay collapsed.
+- Sixteen Objective-C and sixteen Swift feature/recipe snippets were extracted
+  from the documentation, compiled, linked and run against the existing macOS
+  arm64 CPU frameworks whose public header matches the current source. Tests used
+  Pikachu and kun.jpg, covering tracking, landmarks, embeddings, similarity,
+  FeatureHub, analysis, liveness, capture, snapshots, alignment and diagnostics.
+  Same-image similarity exceeded 0.99; final session and stream counts were zero.
+- The complete Objective-C and Swift detection programs each found one face with
+  the same rectangle. Platform helpers passed syntax/type checks. A BGRA frame
+  with 64 padding bytes per row was rejected by direct pixel-buffer input, then
+  successfully detected one face through each explicit row-copy helper. Final
+  session and stream counts were zero.
+- Five image-input/model-loading snippets passed independent clang/swiftc checks.
+  Apple build/Python shell fences passed Bash and Zsh syntax checks. The SDK's
+  lightweight Apple API mapping check passed 116/116 entries, with nine hardware
+  exclusions defined by that check.
+- Browser review covered all English/Chinese content routes at a 390-pixel
+  viewport, with no document overflow. The eight-column API matrix fits the
+  desktop content width and scrolls by keyboard on mobile. Objective-C and Swift
+  tab selections synchronize across groups. The desktop viewport was restored.
+- `git diff --check` passed. No iOS device/simulator application or CoreML model
+  was executed. Runtime checks used the available macOS CPU build; no new timing
+  or hardware performance claims were added.
+
+Runtime evidence is in `/private/tmp/inspireface-apple-feature-objc-run.log`,
+`/private/tmp/inspireface-apple-feature-swift-run.log` and
+`/private/tmp/inspireface-apple-doc-platform/{check.log,check_pixels.log}`.
+
+Additional Apple checks:
+
+- Cross-compiled the documented Objective-C functions to object files and
+  type-checked Swift against existing iOS device and simulator frameworks.
+  All public headers matched the current source. All 26 compilation units passed
+  without warnings: 13 for arm64-apple-ios11.0 and 13 for
+  arm64-apple-ios14.0-simulator. This includes the 32 feature/recipe functions,
+  file/pixel-buffer/row-copy helpers and the five image/model snippets. No iOS
+  app was executed. Detailed report:
+  `/private/tmp/inspireface-apple-ios-doc-check/report.json`.
+- The audited SDK commit is published on origin/development and resolves through
+  GitHub's public API. New Apple source links on master returned 404, so the API
+  index now pins those two references to the audited commit.
+- Browser checks visited 84 unique content routes with zero overflow at 390px
+  and no console errors on the final Apple page. Saved review screenshot:
+  `/private/tmp/inspireface-apple-docs-d3.png`.
+- Stopped the temporary preview on 127.0.0.1:8081 after review; no listener remains.
+
+
+## Review refinements before d3 publication (2026-09-29)
+
+- Removed the separate Apple SDK section from Introduction and shortened the
+  English/Chinese sidebar entry to Apple.
+- Source setup now recommends the Release route through
+  deepinsight/insightface, entering cpp-package/inspireface before fetching
+  recursive third-party dependencies. The Develop repository is the second
+  route, described as the option for more frequent updates and faster fixes.
+  Clone commands use each repository's default branch; fixed checkouts and
+  revision-recording steps were removed at the maintainer's request.
+- Basic Python installation is one command everywhere it is introduced:
+  python -m pip install inspireface opencv-python. Native-library replacement
+  and environment diagnostics follow the main Python API examples. The first
+  detection and optional-analysis snippets use explicit release in finally;
+  both ran with the existing runtime and found one face / one analysis result.
+- Final site check: 85 HTML pages, 13,989 local references, 92 Python fences,
+  42 bilingual pairs, 330 matching code fences and 40 complete inline examples.
+  The local preview remains available at 127.0.0.1:8080 at the user's request.

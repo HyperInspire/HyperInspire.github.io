@@ -105,6 +105,75 @@ auto updateCapture = [&](inspirecv::FrameProcess& frame,
 };
 ```
 
+@tab Objective-C
+
+使用已打开的 `LIGHT_TRACK` 会话，`maximumFaces` 大于 1。抓拍对象只创建一次，随后在同一串行工作队列中逐帧调用 `UpdateCapture`。`BOOL`/`NSError` 返回错误，`progress` 返回抓拍状态。结果中的 token 是借用数据，应在下一次更新、重置、结束或关闭前用完。
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static IFCaptureSession *CreateCapture(IFSession *session, NSError **error) {
+    HFFaceCaptureConfig config = {0};
+    if (![IFCaptureSession getDefaultConfiguration:&config error:error]) return nil;
+    return [[IFCaptureSession alloc] initWithSession:session configuration:config error:error];
+}
+
+static BOOL UpdateCapture(IFCaptureSession *capture, IFImageStream *stream,
+                          uint64_t frameID, uint64_t timestampMS,
+                          HFFaceCaptureProgress *progress, NSError **error) {
+    if (![capture updateStream:stream frameID:frameID timestampMilliseconds:timestampMS
+        progress:progress error:error]) return NO;
+    if (progress->state == HF_CAPTURE_STATE_READY &&
+        ![capture finishWithProgress:progress error:error]) return NO;
+    HFFaceCaptureResult results[HF_FACE_CAPTURE_MAX_RESULTS];
+    uint32_t count = 0;
+    if (![capture getResults:results capacity:HF_FACE_CAPTURE_MAX_RESULTS
+        count:&count error:error]) return NO;
+    for (uint32_t i = 0; i < count; ++i) {
+        NSLog(@"candidate=%llu score=%.3f", (unsigned long long)results[i].frameId,
+            results[i].score);
+    }
+    return YES;
+}
+// Stop updating when progress.state == HF_CAPTURE_STATE_FINISHED.
+// Close capture before session: [capture closeWithError:&error];
+```
+
+@tab Swift
+
+父会话使用 `.lightTracking` 和 `maximumFaces: 5`。整段序列复用一个抓拍对象和结果缓冲区，结束时释放缓冲区，先关闭抓拍再关闭会话。返回状态等于 `Int32(HF_CAPTURE_STATE_FINISHED.rawValue)` 时停止送帧。`results(into:)` 复制结果描述符，其中的 token 内容仍是借用数据。
+
+```swift
+import InspireFaceSwift
+
+func createCapture(session: FaceSession) throws -> FaceCaptureSession {
+    try FaceCaptureSession(session: session,
+                           configuration: FaceCaptureSession.defaultConfiguration())
+}
+
+func updateCapture(capture: FaceCaptureSession, stream: ImageStream,
+                   frameID: UInt64, timestampMS: UInt64,
+                   results: UnsafeMutableBufferPointer<HFFaceCaptureResult>) throws
+    -> HFFaceCaptureProgress {
+    var progress = HFFaceCaptureProgress()
+    try capture.update(stream, frameID: frameID,
+                       timestampMilliseconds: timestampMS, progress: &progress)
+    if progress.state == Int32(HF_CAPTURE_STATE_READY.rawValue) {
+        try capture.finish(progress: &progress)
+    }
+    let count = try capture.results(into: results)
+    for i in 0..<count {
+        print("candidate=\(results[i].frameId) score=\(results[i].score)")
+    }
+    return progress
+}
+// Allocate once for the frame loop; pass this buffer to updateCapture.
+func makeCaptureResultBuffer() -> UnsafeMutableBufferPointer<HFFaceCaptureResult> {
+    .allocate(capacity: Int(HF_FACE_CAPTURE_MAX_RESULTS))
+}
+// After the loop: results.deallocate(); try capture.close(); try session.close()
+```
+
 @tab Android
 
 使用 **1.2.4 的 `FaceCapture` 类及配套 JNI 库**，并先创建跟踪 `Session`。`FaceCapture` 位于 `com.insightface.sdk.inspireface`，结果和配置类位于其 `.base` 包。每帧调用更新方法，摄像头工作线程结束后关闭抓拍对象。
@@ -197,7 +266,7 @@ Python 的 `frame` 是 BGR 图像数组；原生接口传入对应的图像流�
 
 ## 保存选中的图像 {#keep-the-selected-images}
 
-抓拍结果包含帧 ID、时间戳、评分、人脸 token 和指标。**选中帧的像素由应用单独缓存**，各语言可以使用同一策略：每次更新后读取候选 ID，只复制本次被选中的图像，删除已不在候选列表中的缓存。C++ 可使用 `Image::Clone()`；Android 应在相机缓冲区被复用前复制 bitmap 或图像字节。ArkTS 可用 `new Uint8Array(bytes)` 复制选中的相机图像，并按 `frameId` 缓存。下面是 Python 写法：
+抓拍结果包含帧 ID、时间戳、评分、人脸 token 和指标。**选中帧的像素由应用单独缓存**，各语言可以使用同一策略：每次更新后读取候选 ID，只复制本次被选中的图像，删除已不在候选列表中的缓存。Apple 接入时，在摄像头缓冲区复用前把选中帧的像素复制到应用持有的存储中；保留 token 不会保留图像。C++ 可使用 `Image::Clone()`；Android 应在相机缓冲区被复用前复制 bitmap 或图像字节。ArkTS 可用 `new Uint8Array(bytes)` 复制选中的相机图像，并按 `frameId` 缓存。下面是 Python 写法：
 
 <figure>
 <a href="/images/capture-candidate-cache.svg" target="_blank" rel="noopener"><img class="doc-diagram" src="/images/capture-candidate-cache.svg" alt="output_count 为 1 时，按选中的 frame ID 更新候选图像缓存" loading="lazy" /></a>
@@ -353,6 +422,45 @@ if (capture.Configure(config, options) != 0) {
 }
 ```
 
+@tab Objective-C
+
+创建父跟踪会话时启用 `HF_ENABLE_QUALITY | HF_ENABLE_FACE_POSE`。返回的抓拍对象使用这些模型；返回 `nil` 时通过 `NSError` 获取原因。
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static IFCaptureSession *CreateFilteredCapture(IFSession *session, NSError **error) {
+    HFFaceCaptureConfig config = {0};
+    if (![IFCaptureSession getDefaultConfiguration:&config error:error]) return nil;
+    config.filterMask |= HF_CAPTURE_FILTER_QUALITY | HF_CAPTURE_FILTER_POSE;
+    config.minQualityScore = 0.60f;
+    config.maxAbsYaw = 25.0f;
+    config.maxAbsPitch = 25.0f;
+    config.maxAbsRoll = 20.0f;
+    return [[IFCaptureSession alloc] initWithSession:session configuration:config error:error];
+}
+```
+
+@tab Swift
+
+父会话的 `SessionConfiguration` 启用 `features: [.quality, .pose]` 和 `detectionMode: .lightTracking`。函数调整默认抓拍策略，创建失败时抛出错误。Swift 当前不能导入 C 头文件中的 `HF_CAPTURE_FILTER_*` 宏，下面两个局部 `UInt64` 值使用配套头文件定义的位位置。
+
+```swift
+import InspireFaceSwift
+
+func createFilteredCapture(session: FaceSession) throws -> FaceCaptureSession {
+    var config = try FaceCaptureSession.defaultConfiguration()
+    let qualityFilter: UInt64 = 1 << 6  // HF_CAPTURE_FILTER_QUALITY
+    let poseFilter: UInt64 = 1 << 5     // HF_CAPTURE_FILTER_POSE
+    config.filterMask |= qualityFilter | poseFilter
+    config.minQualityScore = 0.60
+    config.maxAbsYaw = 25
+    config.maxAbsPitch = 25
+    config.maxAbsRoll = 20
+    return try FaceCaptureSession(session: session, configuration: config)
+}
+```
+
 @tab Android
 
 使用 1.2.4 Java 类及配套 JNI 库。先在父会话中启用质量和姿态，再配置抓拍过滤项：
@@ -412,7 +520,7 @@ config.max_abs_roll = 20.0
 ## 复用检测快照 {#reuse-a-detection-snapshot}
 
 ::: warning 快照的生命周期与复制开销
-Snapshot 会复制检测结果，生命周期更清晰，保留结果和延后处理时更安全、易用，但也会增加复制开销和延时。单路视频按顺序跟踪时，可以直接读取 C API 句柄内的借用结果，并在下一次检测前用完，减少这部分复制。借用数据可能被后续调用覆盖，不适合跨帧保留，或在同一会话的多次处理之间交叉复用。检测快照不复制原始图像，后续仍需处理像素时，应另行保留对应帧。
+Snapshot 会复制检测结果，生命周期更清晰，保留结果和延后处理时更安全、易用，但也会增加复制开销和延时。单路视频按顺序跟踪时，可以通过 C、Objective-C 或 Swift 读取会话内的借用结果，并在下一次检测前用完，减少这部分复制。借用数据可能被后续调用覆盖，不适合跨帧保留，或在同一会话的多次处理之间交叉复用。检测快照不复制原始图像，后续仍需处理像素时，应另行保留对应帧。
 :::
 
 如果每帧已经需要检测结果来绘制人脸框，可以避免重复运行跟踪：
@@ -459,6 +567,58 @@ for (const auto& face : faces) {
 inspire::FaceCaptureUpdate progress;
 status = capture.Update(frame, faces, frameId, timestampMs, progress);
 if (status != 0) throw std::runtime_error("Capture update failed");
+```
+
+@tab Objective-C
+
+函数只管理本次新建的快照，抓拍使用完毕后将其关闭。框坐标在函数内同步读取；若异步更新预览，应先复制所需的框，再转换到预览坐标绘制。抓拍对象、会话和图像流由调用方管理。
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static BOOL CaptureWithSnapshot(IFSession *session, IFCaptureSession *capture,
+                                IFImageStream *stream, uint64_t frameID,
+                                uint64_t timestampMS, HFFaceCaptureProgress *progress,
+                                NSError **error) {
+    IFFaceSnapshot *snapshot = [session snapshotFromStream:stream error:error];
+    if (snapshot == nil) return NO;
+    @try {
+        HFMultipleFaceData faces = {0};
+        if (![snapshot getBorrowedFaces:&faces error:error]) return NO;
+        for (HInt32 i = 0; i < faces.detectedNum; ++i) {
+            NSLog(@"track=%d x=%d y=%d", faces.trackIds[i], faces.rects[i].x, faces.rects[i].y);
+        }
+        return [capture updateStream:stream snapshot:snapshot frameID:frameID
+            timestampMilliseconds:timestampMS progress:progress error:error];
+    } @finally {
+        [snapshot closeWithError:NULL];
+    }
+}
+```
+
+@tab Swift
+
+一帧使用同一会话产生的快照和对应图像。快照独立持有检测结果，但 `withUnsafeFaces` 返回的仍是对快照存储的借用视图；`snapshot.close()` 后还要使用的数据需先复制，原图像素另行管理。
+
+```swift
+import InspireFaceSwift
+
+func captureWithSnapshot(session: FaceSession, capture: FaceCaptureSession,
+                         stream: ImageStream, frameID: UInt64,
+                         timestampMS: UInt64) throws -> HFFaceCaptureProgress {
+    let snapshot = try session.snapshot(from: stream)
+    defer { try? snapshot.close() }
+    try snapshot.withUnsafeFaces { faces in
+        for i in 0..<faces.count {
+            let box = faces.rectangles[i]
+            print("track=\(faces.trackIDs[i]) x=\(box.x) y=\(box.y)")
+        }
+    }
+    var progress = HFFaceCaptureProgress()
+    try capture.update(stream, snapshot: snapshot, frameID: frameID,
+                       timestampMilliseconds: timestampMS, progress: &progress)
+    return progress
+}
 ```
 
 @tab Android
@@ -515,4 +675,4 @@ with session.face_detection_snapshot(frame) as snapshot:
 
 C 接口包括 `HFCreateFaceCaptureSession`、`HFUpdateFaceCaptureSession`、`HFGetFaceCaptureResults`、`HFFinishFaceCaptureSession`、`HFResetFaceCaptureSession` 和 `HFReleaseFaceCaptureSession`。使用 `HFGetDefaultFaceCaptureConfig` 初始化带版本的配置结构体。
 
-`HFUpdateFaceCaptureSessionWithSnapshot` 接受具有独立生命周期的检测快照。C 结果中的 token 是借用数据，在下一次抓拍更新、重置、结束或释放之前有效；需要跨越这些调用保留时应复制。先释放抓拍对象，再释放它依赖的会话。Python 封装会复制结果中的人脸 token，并为这两种资源提供上下文管理器。C++ 候选结果按值保存 `FaceTrackWrap`，Java 和 ArkTS 结果会复制 token 字节；对应的原图像素保存在上文所述的应用缓存中。
+`HFUpdateFaceCaptureSessionWithSnapshot` 接受具有独立生命周期的检测快照。C、Objective-C 和 Swift 结果中的 token 是借用数据，在下一次抓拍更新、重置、结束或释放之前有效；需要跨越这些调用保留时应复制。先释放抓拍对象，再释放它依赖的会话。Python 封装会复制结果中的人脸 token，并为这两种资源提供上下文管理器。C++ 候选结果按值保存 `FaceTrackWrap`，Java 和 ArkTS 结果会复制 token 字节；对应的原图像素保存在上文所述的应用缓存中。

@@ -39,6 +39,60 @@ for (const auto& face : faces) {
 }
 ```
 
+@tab Objective-C
+
+传入当前 `HFMultipleFaceData` 中的 token，并在下一次跟踪前读取；也可以使用尚未关闭的 `IFFaceSnapshot` 中的 token。接口写入调用方提供的数组，通过 `BOOL` 和 `NSError` 检查结果。
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+#include <stdlib.h>
+
+static BOOL ReadLandmarks(HFFaceBasicToken token, NSError **error) {
+    HInt32 count = 0;
+    if (![IFFaceToken getDenseLandmarkCount:&count error:error]) return NO;
+    if (count <= 0) return IFCheck(HERR_INVALID_PARAM, error);
+    HPoint2f five[5];
+    HPoint2f *dense = calloc((size_t)count, sizeof(*dense));
+    if (dense == NULL) return IFCheck(HERR_INVALID_PARAM, error);
+    BOOL ok = [IFFaceToken getFiveKeyPoints:token into:five capacity:5 error:error] &&
+        [IFFaceToken getDenseLandmarks:token into:dense capacity:count error:error];
+    if (ok) {
+        for (HInt32 i = 0; i < count; ++i) {
+            NSLog(@"%d: %.2f, %.2f", i, dense[i].x, dense[i].y);
+        }
+    }
+    free(dense);
+    return ok;
+}
+```
+
+@tab Swift
+
+在 `session.withUnsafeFaces(in:)` 内传入 `faces.tokens[i]`，或保持对应的快照处于打开状态。输出数组独立保存坐标；视频循环中可以先查询点数，再分配一次数组并逐帧复用。
+
+```swift
+import InspireFaceSwift
+
+func readLandmarks(token: FaceToken) throws {
+    var count: Int32 = 0
+    try FaceTokenUtilities.getDenseLandmarkCount(&count)
+    guard count > 0 else {
+        throw NSError(domain: IFErrorDomain, code: Int(HERR_INVALID_PARAM))
+    }
+    var five = [HPoint2f](repeating: HPoint2f(), count: 5)
+    var dense = [HPoint2f](repeating: HPoint2f(), count: Int(count))
+    try five.withUnsafeMutableBufferPointer {
+        try FaceTokenUtilities.getFiveKeyPoints(token, into: $0)
+    }
+    try dense.withUnsafeMutableBufferPointer {
+        try FaceTokenUtilities.getDenseLandmarks(token, into: $0)
+    }
+    for (index, point) in dense.enumerated() {
+        print("\(index): \(point.x), \(point.y)")
+    }
+}
+```
+
 @tab Android
 
 1.2.0 Java 包通过 `DETECT_MODE_LIGHT_TRACK` 会话提供密集关键点。处理互不相关的静态图片时，每张图片创建新的会话。五点对齐数据的读取方式见 C、C++ 或 Python 标签页。
@@ -143,7 +197,7 @@ static HResult print_landmarks(HFFaceBasicToken token) {
 | HyperLandmarkV2 0.50 | `HF_LANDMARK_HYPLMV2_0_50` |
 | InsightFace 2D106 tracking | `HF_LANDMARK_INSIGHTFACE_2D106_TRACK` |
 
-在**创建会话前**，使用 C 的 `HFSwitchLandmarkEngine`、HarmonyOS 的 `InspireFace.switchLandmarkEngine` 或 Python 的 `isf.switch_landmark_engine` 选择引擎。选择结果对新创建的会话生效，模型包需要包含对应模型。
+在**创建会话前**选择引擎：C 使用 `HFSwitchLandmarkEngine`，Objective-C 使用 `[IFRuntime setLandmarkEngine:HF_LANDMARK_HYPLMV2_0_25 error:&error]`，Swift 使用 `try InspireFaceRuntime.setLandmarkEngine(.hyperLandmark025)`，HarmonyOS 使用 `InspireFace.switchLandmarkEngine`，Python 使用 `isf.switch_landmark_engine`。选择结果对新创建的会话生效，模型包需要包含对应模型。
 
 视频接入可以先使用默认引擎，再用典型视频片段比较点位稳定性和耗时，选择合适的引擎。
 

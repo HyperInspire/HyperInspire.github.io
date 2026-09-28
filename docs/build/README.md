@@ -4,7 +4,7 @@ Use a prebuilt SDK when its platform, backend and API version fit your applicati
 
 ## Prebuilt SDKs {#prebuilt-sdks}
 
-The download list below reflects [GitHub Releases](https://github.com/HyperInspire/InspireFace/releases) on **September 28, 2026**. The latest published native SDK is **v1.2.3**. Links point to that release so the selected package does not change underneath an integration.
+The download list below reflects [GitHub Releases](https://github.com/HyperInspire/InspireFace/releases) on **September 29, 2026**. The latest published native SDK is **v1.2.3**. Links point to that release so the selected package does not change underneath an integration.
 
 ::: warning Match the API version
 The native and Python examples in this documentation use the **1.2.4 source API**, including newer snapshot, capture and diagnostic interfaces. For those examples, build the native library and use the headers or wrapper from the same source revision. A v1.2.3 archive does not provide every interface shown here.
@@ -33,15 +33,30 @@ The CUDA/Ubuntu label above is the release asset name. Check the linked library 
 
 Choose the library for the **application process**, including its architecture and C runtime. A 64-bit device can still run a 32-bit application. Keep each archive’s headers and libraries together, and check the platform guide before linking static frameworks or GPU/NPU libraries.
 
+## Apple SDK packaging {#apple-sdk-packaging}
+
+The 1.2.4 source adds Objective-C and Swift APIs, iOS simulator slices and paired XCFrameworks. The v1.2.3 downloads above use the older package layout; follow [Develop source setup](./source.md#develop-source) to build the SDK for the Apple examples in this documentation.
+
+| Application | Libraries to add | Integration guide |
+| --- | --- | --- |
+| Objective-C | `InspireFace.xcframework` | [Apple API](../using-with/apple.md) |
+| Swift | `InspireFace.xcframework` + `InspireFaceSwift.xcframework` | [Apple API](../using-with/apple.md) |
+| Native C / C++ | Headers and libraries under the per-architecture `InspireFace/` directory | [C](../using-with/c-cpp.md), [C++](../using-with/cpp.md) |
+| macOS Python | Matching `libInspireFace.dylib` and Python wrapper | [Python packaging](./python.md) |
+
+`InspireFace.framework` contains the C and Objective-C interfaces. `InspireFaceSwift.framework` adds Swift configuration types and scoped buffer helpers. Keep both frameworks from the same build. The package also includes merged platform frameworks, native SDK directories and metadata for checking architectures and deployment targets.
+
+Use the [iOS build guide](./ios.md) for device and simulator packages, and the [macOS build guide](./macos.md) for Intel, Apple Silicon and universal packages. iOS frameworks are static; macOS frameworks are dynamic. This distinction controls Xcode's embedding settings. The new iOS framework already incorporates its inference dependency, so it does not need an additional `MNN.framework` in the application target.
+
+The Apple release workflow prepares a CPU archive named `inspireface-apple-<version>.zip`; no such archive is present in the published release checked above. CoreML packages can be built locally with the same builder and require a compatible CoreML resource pack.
+
 ## Python and Android packages {#python-and-android-packages}
 
-The current [PyPI package](https://pypi.org/project/inspireface/) is **1.2.3.post5**. Its wheels cover Linux x86_64/aarch64 with CPython 3.8–3.12 and several macOS CPython/platform combinations. Let `pip` select a compatible wheel; availability depends on the interpreter and platform tags. It is a separate release from the 1.2.4 source wrapper.
-
 ```bash
-python -m pip install "inspireface==1.2.3.post5"
+python -m pip install inspireface opencv-python
 ```
 
-For the 1.2.4 examples or a custom backend, follow [Python packaging and native library replacement](./python.md). That chapter covers testing a local `.so`/`.dylib`, bundling it in a wheel and checking the installed result.
+For a custom native library or wheel, see [Python packaging and library replacement](./python.md).
 
 The Android example uses the JitPack dependency `com.github.HyperInspire:inspireface-android-sdk:1.2.0`. Its [integration page](../using-with/android.md#choose-a-package-or-source-build) includes the repository and Gradle configuration. Building a native Android SDK produces JNI libraries; assembling Java classes and libraries into an AAR is a separate packaging step explained in [Android builds](./android.md).
 
@@ -57,9 +72,9 @@ SDK libraries and Python wheels need a resource pack at runtime. Download packs 
 | --- | --- |
 | [Source and common options](./source.md) | Checkouts, dependencies, CMake options and output layout. |
 | [Linux](./linux.md) | Native CPU, ARM cross-compilation, Ubuntu and manylinux builds. |
-| [macOS](./macos.md) | Intel, Apple Silicon and CoreML. |
+| [macOS](./macos.md) | Intel, Apple Silicon, universal frameworks, Swift modules and CoreML. |
 | [Android](./android.md) | NDK, ABIs, JNI libraries and AAR packaging. |
-| [iOS](./ios.md) | Device frameworks, CoreML and Xcode integration. |
+| [iOS](./ios.md) | Device / simulator slices, XCFramework packaging and CoreML. |
 | [HarmonyOS](./harmonyos.md) | Native SDK, Node-API adapter and HAR staging. |
 | [NVIDIA TensorRT](./nvidia.md) | CUDA/TensorRT dependencies and Linux builds. |
 | [Rockchip NPU](./rockchip.md) | Board toolchains, RKNN/RGA and Android NPU builds. |

@@ -47,6 +47,76 @@ if (status == HSUCCEED) {
 
 首次接入可使用[完整的 C 检测程序](../using-with/c-cpp.md#a-complete-detection-program)。它采用文件输入，先确认 SDK 配置，再接入摄像头。
 
+## Apple 相机与内存输入 {#apple-camera-and-memory-inputs}
+
+Apple 封装可以直接接收紧密排列的 BGRA、RGBA、Gray 或 NV12 `CVPixelBuffer`。图像流会保留并锁定缓冲区，直到关闭或替换输入；这个构造方法不会复制像素。
+
+::: tabs #api-language
+
+@tab Objective-C
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+// session is initialized; buffer uses a supported tightly packed layout.
+BOOL CountCameraFaces(IFSession *session, CVPixelBufferRef buffer,
+                      HInt32 *count, NSError **error) {
+    IFImageStream *stream = [[IFImageStream alloc]
+        initWithPixelBuffer:buffer rotation:HF_CAMERA_ROTATION_0 error:error];
+    if (!stream) return NO;
+    @try {
+        return [session withBorrowedFacesFromStream:stream
+            body:^(HFMultipleFaceData faces) {
+                *count = faces.detectedNum;
+            } error:error];
+    } @finally {
+        [stream closeWithError:nil];
+    }
+}
+```
+
+@tab Swift
+
+```swift
+import CoreVideo
+import InspireFaceSwift
+
+// session is initialized; buffer uses a supported tightly packed layout.
+func countCameraFaces(session: FaceSession, buffer: CVPixelBuffer) throws -> Int {
+    let stream = try ImageStream(pixelBuffer: buffer, rotation: .degrees0)
+    defer { try? stream.close() }
+    return try session.withUnsafeFaces(in: stream) { faces in
+        faces.count
+    }
+}
+```
+
+:::
+
+构造方法会拒绝带有行填充的缓冲区，以及未组成连续内存的 NV12 平面。即使相机设置为 BGRA，输出也可能带有行填充。先检查 `CVPixelBufferGetBytesPerRow`；需要重新排列时，使用 [iOS 页中的完整 BGRA 逐行复制示例](../using-with/ios.md#camera-input-and-row-stride)。不能只把 stride 改成图像宽度而不移动像素。
+
+像素已经保存在应用内存中时，Swift 可以让图像流留在该内存的指针作用域内：
+
+```swift
+import InspireFaceSwift
+
+// bgra holds width * height * 4 bytes, without padding between rows.
+func countPackedFaces(session: FaceSession, bgra: inout [UInt8],
+                      width: Int32, height: Int32) throws -> Int {
+    try bgra.withUnsafeMutableBytes { bytes in
+        try ImageStream.withBorrowedBytes(
+            bytes, width: width, height: height, format: .bgra
+        ) { stream in
+            try session.withUnsafeFaces(in: stream) { faces in
+                faces.count
+            }
+        }
+    }
+}
+```
+
+离开这些作用域前，完成检测、分析与特征提取。不要从 `withUnsafeMutableBytes` 回调中返回图像流或借用的人脸指针。文件输入则可以使用 Objective-C 的 `IFImageBitmap` 或 Swift 的 `ImageBitmap`，由位图持有解码后的像素；`snapshotStream` 会复制像素，生成独立的图像流。文件加载与错误处理见 [Apple 示例](../using-with/apple.md)。
+
 ## NumPy 输入 {#numpy-input}
 
 BGR 输入使用形状为 `(height, width, 3)` 的 `uint8` 数组。当前 Python 封装也接受 `(height, width)` 的灰度数组和 `(height, width, 4)` 的 BGRA 数组。用下面的代码保证数组内存连续：

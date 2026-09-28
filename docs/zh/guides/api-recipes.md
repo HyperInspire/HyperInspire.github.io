@@ -1,6 +1,6 @@
 # API 实用示例 {#api-recipes}
 
-本页介绍对齐人脸图像、转换显示分数、查询运行库和检查资源释放。运行前，先按[语言接入指南](../using-with/c-cpp.md)初始化 Session 并准备输入图像。Native、Python 和 [HarmonyOS](../using-with/harmonyos.md) 示例使用 1.2.4，Android 示例使用 Java SDK 1.2.0。
+本页介绍对齐人脸图像、转换显示分数、查询运行库和检查资源释放。运行前，先按[语言接入指南](../using-with/c-cpp.md)初始化 Session 并准备输入图像。Native、[Objective-C / Swift](../using-with/apple.md)、Python 和 [HarmonyOS](../using-with/harmonyos.md) 示例使用 1.2.4，Android 示例使用 Java SDK 1.2.0。
 
 ## 获取对齐后的人脸图像 {#get-an-aligned-face-image}
 
@@ -57,6 +57,48 @@ int32_t extract_aligned(inspire::Session& session,
 
 图像和特征各自持有数据。`GetFaceAlignmentImage` 返回 `void`，因此继续提取前需要检查输出图像是否为空。
 
+@tab Objective-C
+
+先在会话中启用识别。传入对应原图的有效 token，以及已创建的 `IFFeatureBuffer`，两者均由调用方管理。函数关闭自己的裁剪图和临时图像流，通过 `BOOL`/`NSError` 返回错误。需要保存裁剪图时，在关闭前调用 `[crop writeToFile:path error:&error]`。
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static BOOL ExtractAligned(IFSession *session, IFImageStream *source,
+                           HFFaceBasicToken token, IFFeatureBuffer *output,
+                           NSError **error) {
+    IFImageBitmap *crop = [session alignmentBitmapFromStream:source token:token error:error];
+    if (crop == nil) return NO;
+    IFImageStream *aligned = nil;
+    @try {
+        aligned = [crop snapshotStreamWithRotation:HF_CAMERA_ROTATION_0 error:error];
+        if (aligned == nil) return NO;
+        return [session extractAlignedFeatureFromStream:aligned
+            into:output.borrowedFeature error:error];
+    } @finally {
+        if (aligned != nil) [aligned closeWithError:NULL];
+        [crop closeWithError:NULL];
+    }
+}
+```
+
+@tab Swift
+
+会话启用 `.recognition`，传入当前原图的 token 和尚未关闭的 `FaceFeatureBuffer`。`snapshotStream` 会明确复制裁剪图的像素。即使提取失败，函数也会关闭临时资源；输出特征缓冲区由调用方在使用结束后关闭。保存裁剪图可在关闭前调用 `try crop.write(toFile: path)`。
+
+```swift
+import InspireFaceSwift
+
+func extractAligned(session: FaceSession, source: ImageStream,
+                    token: FaceToken, into output: FaceFeatureBuffer) throws {
+    let crop = try session.alignmentBitmap(from: source, token: token)
+    defer { try? crop.close() }
+    let aligned = try crop.snapshotStream(rotation: .degrees0)
+    defer { try? aligned.close() }
+    try session.extractAlignedFeature(from: aligned, into: output.borrowedFeature)
+}
+```
+
 @tab Android
 
 ```java
@@ -104,7 +146,7 @@ function extractAligned(session: Session, image: ImageStream,
 
 @tab Python
 
-识别时调用 `session.face_feature_extract(image, face)`，由接口完成对齐和特征提取。绘制调试图时，可以用 `get_face_five_key_points` 读取五点坐标。需要保存对齐图本身时，可使用上方的 C、C++ 或 Android 示例。
+识别时调用 `session.face_feature_extract(image, face)`，由接口完成对齐和特征提取。绘制调试图时，可以用 `get_face_five_key_points` 读取五点坐标。需要保存对齐图本身时，可使用上方的 C、C++、Objective-C、Swift 或 Android 示例。
 
 :::
 
@@ -153,6 +195,40 @@ void print_display_score(float cosine) {
 }
 ```
 
+@tab Objective-C
+
+传入比对得到的原始余弦分数。读取显示值前检查 `BOOL`/`NSError`。应用初始化阶段可用 `setSimilarityConverter:error:` 设置共享转换曲线。
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static BOOL PrintDisplayScore(float cosine, NSError **error) {
+    HFSimilarityConverterConfig config = {0};
+    float display = 0;
+    if (![IFFeatureBuffer getSimilarityConverter:&config error:error] ||
+        ![IFFeatureBuffer convertSimilarity:cosine percentage:&display error:error]) return NO;
+    NSLog(@"cosine=%.4f display=%.4f range=[%.2f, %.2f]",
+        cosine, display, config.outputMin, config.outputMax);
+    return YES;
+}
+```
+
+@tab Swift
+
+函数失败时抛出错误。应用初始化阶段可用 `FaceFeatureBuffer.setSimilarityConverter(_:)` 修改共享曲线；匹配判断仍使用原始余弦分数。
+
+```swift
+import InspireFaceSwift
+
+func printDisplayScore(cosine: Float) throws {
+    var config = HFSimilarityConverterConfig()
+    var display: Float = 0
+    try FaceFeatureBuffer.getSimilarityConverter(&config)
+    try FaceFeatureBuffer.convert(similarity: cosine, percentage: &display)
+    print("cosine=\(cosine) display=\(display) range=[\(config.outputMin), \(config.outputMax)]")
+}
+```
+
 @tab Android
 
 ```java
@@ -197,7 +273,7 @@ def print_display_score(cosine):
 
 :::
 
-可以通过 `HFUpdateCosineSimilarityConverter`、C++ `SimilarityConverter::updateConfig`、Java `UpdateCosineSimilarityConverter`、ArkTS `InspireFace.updateSimilarityConverter` 或 Python `set_similarity_converter_config` 修改曲线。配置字段为 `threshold`、`middleScore`、`steepness`、`outputMin` 和 `outputMax`。通常在应用初始化时设置一次。识别阈值另外用具有代表性的同人、非同人图片对来评估。
+可以通过 `HFUpdateCosineSimilarityConverter`、C++ `SimilarityConverter::updateConfig`、Objective-C `setSimilarityConverter:error:`、Swift `FaceFeatureBuffer.setSimilarityConverter(_:)`、Java `UpdateCosineSimilarityConverter`、ArkTS `InspireFace.updateSimilarityConverter` 或 Python `set_similarity_converter_config` 修改曲线。配置字段为 `threshold`、`middleScore`、`steepness`、`outputMin` 和 `outputMax`。通常在应用初始化时设置一次。识别阈值另外用具有代表性的同人、非同人图片对来评估。
 
 ## 检查运行库与错误信息 {#inspect-the-loaded-runtime-and-errors}
 
@@ -255,6 +331,62 @@ void print_diagnostics() {
 ```
 
 C++ 操作返回错误码时，也可以包含 `<inspireface.h>`，使用上面的 `HFGetErrorMessage` 辅助函数读取错误文字。
+
+@tab Objective-C
+
+模型启动前也能查询。先获取包含末尾空字符的所需容量。SDK 失败时，`NSError.domain` 为 `IFErrorDomain`，`code` 保留 C 接口的 `HResult`。记录这两个字段，并附上 `localizedDescription`，有说明文本时便于一起排查。每次调用都要检查 `BOOL` 或 `nil`。
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+#include <stdlib.h>
+
+static BOOL PrintDiagnostics(NSError **error) {
+    HInt32 required = 0;
+    if (![IFDiagnostics getDiagnosticInformation:NULL capacity:0
+        requiredSize:&required error:error]) return NO;
+    if (required <= 0) return IFCheck(HERR_INVALID_PARAM, error);
+    char *buffer = calloc((size_t)required, 1);
+    if (buffer == NULL) return IFCheck(HERR_INVALID_PARAM, error);
+    BOOL ok = [IFDiagnostics getDiagnosticInformation:buffer capacity:required
+        requiredSize:&required error:error];
+    if (ok) NSLog(@"%s", buffer);
+    free(buffer);
+    return ok;
+}
+
+static void LogSDKError(NSError *error) {
+    NSLog(@"%@ code=%ld: %@", error.domain, (long)error.code, error.localizedDescription);
+}
+// NSError *error = nil;
+// if (!PrintDiagnostics(&error)) LogSDKError(error);
+```
+
+@tab Swift
+
+Swift 方法通过抛出 `NSError` 传递同一套 SDK 错误。分配前先查询容量，在应用层记录 domain、数值 code 和说明。跟踪调用成功但结果为零张人脸时属于正常结果，不会因此抛出异常。
+
+```swift
+import InspireFaceSwift
+
+func printDiagnostics() throws {
+    var required: Int32 = 0
+    try InspireFaceDiagnostics.getDiagnosticInformation(nil, capacity: 0, requiredSize: &required)
+    guard required > 0 else {
+        throw NSError(domain: IFErrorDomain, code: Int(HERR_INVALID_PARAM))
+    }
+    let buffer = UnsafeMutablePointer<CChar>.allocate(capacity: Int(required))
+    defer { buffer.deallocate() }
+    try InspireFaceDiagnostics.getDiagnosticInformation(buffer, capacity: required,
+                                                        requiredSize: &required)
+    print(String(cString: buffer))
+}
+
+func logSDKError(_ error: Error) {
+    let failure = error as NSError
+    print("\(failure.domain) code=\(failure.code): \(failure.localizedDescription)")
+}
+// do { try printDiagnostics() } catch { logSDKError(error) }
+```
 
 @tab Android
 
@@ -349,6 +481,39 @@ HResult print_open_handles(void) {
 @tab C++
 
 C++ 的 `Session`、`Image` 和 capture selector 在离开作用域时释放自己持有的资源。应用同时使用 C API 时，可以用上面的诊断函数统计仍在使用的 C Session 和 stream handle。Native C++ 对象和 GPU 分配可通过内存分析工具检查。
+
+@tab Objective-C
+
+在处理队列空闲时，于任务前后各调用一次。`closeWithError:` 会立即释放对象持有的原生句柄；ARC 在对象销毁时也会释放。先关闭抓拍再关闭父会话，先关闭借用图像流再释放输入像素。计数器只统计会话和图像流，不代表全部内存分配。
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static BOOL PrintOpenHandles(NSError **error) {
+    HInt32 sessions = 0, streams = 0;
+    if (![IFDiagnostics getLiveSessionCount:&sessions error:error] ||
+        ![IFDiagnostics getLiveStreamCount:&streams error:error]) return NO;
+    NSLog(@"open sessions=%d streams=%d", sessions, streams);
+    return [IFDiagnostics printResourceStatisticsWithError:error];
+}
+```
+
+@tab Swift
+
+函数内创建的资源，可以紧接着写 `defer { try? resource.close() }`。长期保留的相机对象在串行工作队列停止后关闭。Swift 闭包辅助接口限制借用范围，但不会让已保存的指针在关闭或后续处理后继续有效。
+
+```swift
+import InspireFaceSwift
+
+func printOpenHandles() throws {
+    var sessions: Int32 = 0
+    var streams: Int32 = 0
+    try InspireFaceDiagnostics.getLiveSessionCount(&sessions)
+    try InspireFaceDiagnostics.getLiveStreamCount(&streams)
+    print("open sessions=\(sessions) streams=\(streams)")
+    try InspireFaceDiagnostics.printResourceStatistics()
+}
+```
 
 @tab Android
 

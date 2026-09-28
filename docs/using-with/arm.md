@@ -78,9 +78,9 @@ Use a CPU resource pack such as `Pikachu` or `Megatron` with the CPU SDK. Downlo
 | --- | --- | --- |
 | Linux | ARM64 `aarch64`; ARMv7 hard-float | [Build](../build/linux.md#cross-compile-for-arm) · [C API](./c-cpp.md) · [Python packaging](../build/python.md) |
 | Android | `arm64-v8a`; `armeabi-v7a` | [Build](../build/android.md) · [Camera integration](./android.md#process-camera-frames) |
-| iOS | Device `arm64` | [Build](../build/ios.md) · [C/C++ integration](./ios.md) |
+| iOS | Device `arm64`; simulator `arm64` on Apple Silicon | [Build](../build/ios.md) · [Objective-C / Swift integration](./ios.md) |
 | HarmonyOS | `arm64-v8a` | [Build](../build/harmonyos.md) · [ArkTS integration](./harmonyos.md) |
-| macOS Apple Silicon | Native `arm64` process | [Build](../build/macos.md) · [C++](./cpp.md) · [Python](./python.md) |
+| macOS Apple Silicon | Native `arm64` process | [Build](../build/macos.md) · [macOS](./macos.md) · [C++](./cpp.md) · [Python](./python.md) |
 
 For Linux, match glibc/uClibc and the compiler runtime to the device image. On Apple Silicon, an x86_64 process running through Rosetta needs an x86_64 SDK. Rockchip NPU deployment has its own [SDK, model and driver requirements](./rknpu.md).
 

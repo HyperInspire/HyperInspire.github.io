@@ -105,6 +105,75 @@ auto updateCapture = [&](inspirecv::FrameProcess& frame,
 };
 ```
 
+@tab Objective-C
+
+Use an open `LIGHT_TRACK` session with `maximumFaces` greater than one. Create capture once, then call `UpdateCapture` per frame on the same serial worker. `BOOL`/`NSError` report errors; `progress` reports capture state. Results contain borrowed tokens, so consume them before the next update, reset, finish or close.
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static IFCaptureSession *CreateCapture(IFSession *session, NSError **error) {
+    HFFaceCaptureConfig config = {0};
+    if (![IFCaptureSession getDefaultConfiguration:&config error:error]) return nil;
+    return [[IFCaptureSession alloc] initWithSession:session configuration:config error:error];
+}
+
+static BOOL UpdateCapture(IFCaptureSession *capture, IFImageStream *stream,
+                          uint64_t frameID, uint64_t timestampMS,
+                          HFFaceCaptureProgress *progress, NSError **error) {
+    if (![capture updateStream:stream frameID:frameID timestampMilliseconds:timestampMS
+        progress:progress error:error]) return NO;
+    if (progress->state == HF_CAPTURE_STATE_READY &&
+        ![capture finishWithProgress:progress error:error]) return NO;
+    HFFaceCaptureResult results[HF_FACE_CAPTURE_MAX_RESULTS];
+    uint32_t count = 0;
+    if (![capture getResults:results capacity:HF_FACE_CAPTURE_MAX_RESULTS
+        count:&count error:error]) return NO;
+    for (uint32_t i = 0; i < count; ++i) {
+        NSLog(@"candidate=%llu score=%.3f", (unsigned long long)results[i].frameId,
+            results[i].score);
+    }
+    return YES;
+}
+// Stop updating when progress.state == HF_CAPTURE_STATE_FINISHED.
+// Close capture before session: [capture closeWithError:&error];
+```
+
+@tab Swift
+
+Create the parent session with `.lightTracking` and `maximumFaces: 5`. Reuse one capture object and one result buffer across frames, then deallocate the buffer and close capture before closing the session. Stop the loop when the returned state equals `Int32(HF_CAPTURE_STATE_FINISHED.rawValue)`. `results(into:)` copies descriptors, while their token payloads remain borrowed.
+
+```swift
+import InspireFaceSwift
+
+func createCapture(session: FaceSession) throws -> FaceCaptureSession {
+    try FaceCaptureSession(session: session,
+                           configuration: FaceCaptureSession.defaultConfiguration())
+}
+
+func updateCapture(capture: FaceCaptureSession, stream: ImageStream,
+                   frameID: UInt64, timestampMS: UInt64,
+                   results: UnsafeMutableBufferPointer<HFFaceCaptureResult>) throws
+    -> HFFaceCaptureProgress {
+    var progress = HFFaceCaptureProgress()
+    try capture.update(stream, frameID: frameID,
+                       timestampMilliseconds: timestampMS, progress: &progress)
+    if progress.state == Int32(HF_CAPTURE_STATE_READY.rawValue) {
+        try capture.finish(progress: &progress)
+    }
+    let count = try capture.results(into: results)
+    for i in 0..<count {
+        print("candidate=\(results[i].frameId) score=\(results[i].score)")
+    }
+    return progress
+}
+// Allocate once for the frame loop; pass this buffer to updateCapture.
+func makeCaptureResultBuffer() -> UnsafeMutableBufferPointer<HFFaceCaptureResult> {
+    .allocate(capacity: Int(HF_FACE_CAPTURE_MAX_RESULTS))
+}
+// After the loop: results.deallocate(); try capture.close(); try session.close()
+```
+
 @tab Android
 
 Use the **1.2.4 `FaceCapture` classes and matching JNI library** with an open tracking `Session`. Import `FaceCapture` from `com.insightface.sdk.inspireface` and its result/config types from `.base`. The update helper runs once per frame; close the capture after the camera worker stops.
@@ -197,7 +266,7 @@ The current defaults request one output, at least five tracker observations, a 3
 
 ## Keep the selected images
 
-Capture results contain a frame ID, timestamp, score, face token and metrics. **Store the selected image pixels in an application cache.** Use the same cache strategy in each language: inspect current result IDs after every update, copy the current image only if its ID is selected, and remove entries no longer selected. In C++, use `Image::Clone()`; in Android, copy the bitmap or camera bytes before the input buffer is reused. In ArkTS, copy selected camera bytes with `new Uint8Array(bytes)` and keep them by `frameId`. Here is the Python version:
+Capture results contain a frame ID, timestamp, score, face token and metrics. **Store the selected image pixels in an application cache.** Use the same cache strategy in each language: inspect current result IDs after every update, copy the current image only if its ID is selected, and remove entries no longer selected. On Apple, copy the selected source pixels into application-owned storage before the camera buffer is reused; keeping a face token does not keep the image. In C++, use `Image::Clone()`; in Android, copy the bitmap or camera bytes before the input buffer is reused. In ArkTS, copy selected camera bytes with `new Uint8Array(bytes)` and keep them by `frameId`. Here is the Python version:
 
 <figure>
 <a href="/images/capture-candidate-cache.svg" target="_blank" rel="noopener"><img class="doc-diagram" src="/images/capture-candidate-cache.svg" alt="An output_count of one keeps image pixels for the selected frame ID rather than the newest frame" loading="lazy" /></a>
@@ -353,6 +422,45 @@ if (capture.Configure(config, options) != 0) {
 }
 ```
 
+@tab Objective-C
+
+Create the parent tracking session with `HF_ENABLE_QUALITY | HF_ENABLE_FACE_POSE`. The returned capture object uses those models. A `nil` result indicates a failure reported through `NSError`.
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static IFCaptureSession *CreateFilteredCapture(IFSession *session, NSError **error) {
+    HFFaceCaptureConfig config = {0};
+    if (![IFCaptureSession getDefaultConfiguration:&config error:error]) return nil;
+    config.filterMask |= HF_CAPTURE_FILTER_QUALITY | HF_CAPTURE_FILTER_POSE;
+    config.minQualityScore = 0.60f;
+    config.maxAbsYaw = 25.0f;
+    config.maxAbsPitch = 25.0f;
+    config.maxAbsRoll = 20.0f;
+    return [[IFCaptureSession alloc] initWithSession:session configuration:config error:error];
+}
+```
+
+@tab Swift
+
+Enable `features: [.quality, .pose]` and `detectionMode: .lightTracking` on the parent `SessionConfiguration`. This helper adjusts the default capture policy and throws if creation fails. The C `HF_CAPTURE_FILTER_*` macros are not imported by Swift; the two local `UInt64` values below use their bit positions from the matching public header.
+
+```swift
+import InspireFaceSwift
+
+func createFilteredCapture(session: FaceSession) throws -> FaceCaptureSession {
+    var config = try FaceCaptureSession.defaultConfiguration()
+    let qualityFilter: UInt64 = 1 << 6  // HF_CAPTURE_FILTER_QUALITY
+    let poseFilter: UInt64 = 1 << 5     // HF_CAPTURE_FILTER_POSE
+    config.filterMask |= qualityFilter | poseFilter
+    config.minQualityScore = 0.60
+    config.maxAbsYaw = 25
+    config.maxAbsPitch = 25
+    config.maxAbsRoll = 20
+    return try FaceCaptureSession(session: session, configuration: config)
+}
+```
+
 @tab Android
 
 Use the 1.2.4 Java classes and matching JNI library. Enable quality and pose on the parent session first, then configure the capture filters:
@@ -412,7 +520,7 @@ Use `progress.reject_reasons` to choose a concrete prompt such as “move closer
 ## Reuse a detection snapshot
 
 ::: warning Snapshot lifetime and copy cost
-A snapshot copies detection results, making them easier to retain and manage for later processing. That copy adds overhead and latency. For a single video stream processed in order, the C API's borrowed results can avoid this extra copy: read them completely before the next detection call. Later calls can overwrite borrowed data, so do not retain it across frames or interleave its use with other processing on the same session. Keep the matching image separately; a detection snapshot does not copy its pixels.
+A snapshot copies detection results, making them easier to retain and manage for later processing. That copy adds overhead and latency. For a single video stream processed in order, the C, Objective-C and Swift borrowed-result paths can avoid this extra copy: read them completely before the next detection call. Later calls can overwrite borrowed data, so do not retain it across frames or interleave its use with other processing on the same session. Keep the matching image separately; a detection snapshot does not copy its pixels.
 :::
 
 If your frame loop already needs detection results for an overlay, avoid running tracking twice:
@@ -459,6 +567,58 @@ for (const auto& face : faces) {
 inspire::FaceCaptureUpdate progress;
 status = capture.Update(frame, faces, frameId, timestampMs, progress);
 if (status != 0) throw std::runtime_error("Capture update failed");
+```
+
+@tab Objective-C
+
+The helper owns only the new snapshot and closes it after capture uses it. It reads rectangle values synchronously; for an asynchronous preview update, copy the needed boxes and apply the preview transform before drawing. The caller owns capture, session and stream.
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static BOOL CaptureWithSnapshot(IFSession *session, IFCaptureSession *capture,
+                                IFImageStream *stream, uint64_t frameID,
+                                uint64_t timestampMS, HFFaceCaptureProgress *progress,
+                                NSError **error) {
+    IFFaceSnapshot *snapshot = [session snapshotFromStream:stream error:error];
+    if (snapshot == nil) return NO;
+    @try {
+        HFMultipleFaceData faces = {0};
+        if (![snapshot getBorrowedFaces:&faces error:error]) return NO;
+        for (HInt32 i = 0; i < faces.detectedNum; ++i) {
+            NSLog(@"track=%d x=%d y=%d", faces.trackIds[i], faces.rects[i].x, faces.rects[i].y);
+        }
+        return [capture updateStream:stream snapshot:snapshot frameID:frameID
+            timestampMilliseconds:timestampMS progress:progress error:error];
+    } @finally {
+        [snapshot closeWithError:NULL];
+    }
+}
+```
+
+@tab Swift
+
+Use the same session, snapshot and image for this frame. The snapshot owns detection results independently, but `withUnsafeFaces` still provides a borrowed view of its storage. Copy values needed after `snapshot.close()`; image pixels are managed separately.
+
+```swift
+import InspireFaceSwift
+
+func captureWithSnapshot(session: FaceSession, capture: FaceCaptureSession,
+                         stream: ImageStream, frameID: UInt64,
+                         timestampMS: UInt64) throws -> HFFaceCaptureProgress {
+    let snapshot = try session.snapshot(from: stream)
+    defer { try? snapshot.close() }
+    try snapshot.withUnsafeFaces { faces in
+        for i in 0..<faces.count {
+            let box = faces.rectangles[i]
+            print("track=\(faces.trackIDs[i]) x=\(box.x) y=\(box.y)")
+        }
+    }
+    var progress = HFFaceCaptureProgress()
+    try capture.update(stream, snapshot: snapshot, frameID: frameID,
+                       timestampMilliseconds: timestampMS, progress: &progress)
+    return progress
+}
 ```
 
 @tab Android
@@ -515,4 +675,4 @@ Create a new snapshot from the same session for each frame. It preserves that fr
 
 The C entry points are `HFCreateFaceCaptureSession`, `HFUpdateFaceCaptureSession`, `HFGetFaceCaptureResults`, `HFFinishFaceCaptureSession`, `HFResetFaceCaptureSession` and `HFReleaseFaceCaptureSession`. Use `HFGetDefaultFaceCaptureConfig` to initialize the versioned configuration structure.
 
-`HFUpdateFaceCaptureSessionWithSnapshot` accepts an owned detection snapshot. C result tokens are borrowed until the next capture update, reset, finish or release; copy what must outlive those calls. Release the capture object before releasing its parent session. The Python wrapper copies result face tokens and supports context managers for both resources. C++ capture candidates contain value copies of `FaceTrackWrap`; Java and ArkTS capture results copy their token bytes. Keep the corresponding image pixels in the application cache described above.
+`HFUpdateFaceCaptureSessionWithSnapshot` accepts an owned detection snapshot. C, Objective-C and Swift result tokens are borrowed until the next capture update, reset, finish or release; copy what must outlive those calls. Release the capture object before releasing its parent session. The Python wrapper copies result face tokens and supports context managers for both resources. C++ capture candidates contain value copies of `FaceTrackWrap`; Java and ArkTS capture results copy their token bytes. Keep the corresponding image pixels in the application cache described above.

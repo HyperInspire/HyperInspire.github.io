@@ -58,6 +58,52 @@ if (!faces.empty()) {
 }
 ```
 
+@tab Objective-C
+
+Enable `HF_ENABLE_LIVENESS` when creating `IFSession`. Pass that session and the current open stream to this helper, and check `BOOL`/`NSError`. The scores borrow the session cache; read or copy them before the next pipeline call.
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static BOOL ReadRGBLiveness(IFSession *session, IFImageStream *stream, NSError **error) {
+    HFMultipleFaceData faces = {0};
+    if (![session trackStream:stream borrowedResult:&faces error:error]) return NO;
+    if (faces.detectedNum == 0) return YES;
+    if (![session processStream:stream faces:&faces options:HF_ENABLE_LIVENESS error:error]) return NO;
+    HFRGBLivenessConfidence scores = {0};
+    if (![session getBorrowedRGBLiveness:&scores error:error]) return NO;
+    if (scores.num != faces.detectedNum) return IFCheck(HERR_INVALID_PARAM, error);
+    for (HInt32 i = 0; i < scores.num; ++i) {
+        NSLog(@"face=%d liveness=%.4f", i, scores.confidence[i]);
+    }
+    return YES;
+}
+```
+
+@tab Swift
+
+Create the session with `SessionConfiguration(features: [.rgbLiveness])`. This helper tracks and processes the same stream. SDK failures throw; borrowed scores are consumed synchronously inside the closure.
+
+```swift
+import InspireFaceSwift
+
+func readRGBLiveness(session: FaceSession, stream: ImageStream) throws {
+    try session.withUnsafeFaces(in: stream) { borrowed in
+        guard borrowed.count > 0 else { return }
+        var faces = borrowed.cValue
+        try session.process(stream, faces: &faces, options: Int32(FaceFeatures.rgbLiveness.rawValue))
+        var scores = HFRGBLivenessConfidence()
+        try session.getBorrowedRGBLiveness(&scores)
+        guard scores.num == faces.detectedNum else {
+            throw NSError(domain: IFErrorDomain, code: Int(HERR_INVALID_PARAM))
+        }
+        for i in 0..<borrowed.count {
+            print("face=\(i) liveness=\(scores.confidence[i])")
+        }
+    }
+}
+```
+
 @tab Android
 
 Create the session with `InspireFace.CreateCustomParameter().enableLiveness(true)`. This block receives an open `ImageStream`; release it after reading the results.
@@ -172,6 +218,61 @@ if (!faces.empty()) {
                   << eyes.at(i).left_eye_status_confidence << " "
                   << eyes.at(i).right_eye_status_confidence << " "
                   << actions.at(i).blink << " " << actions.at(i).shake << '\n';
+    }
+}
+```
+
+@tab Objective-C
+
+Create one `HF_DETECT_MODE_LIGHT_TRACK` session with `HF_ENABLE_INTERACTION | HF_ENABLE_FACE_POSE`, and keep it for the whole sequence. Invoke this helper once per ordered frame. Copy values for the UI before the next pipeline call, and check its `BOOL`/`NSError` result.
+
+```objc
+#import <InspireFace/InspireFaceApple.h>
+
+static BOOL ReadActions(IFSession *session, IFImageStream *stream, NSError **error) {
+    HFMultipleFaceData faces = {0};
+    if (![session trackStream:stream borrowedResult:&faces error:error]) return NO;
+    if (faces.detectedNum == 0) return YES;
+    if (![session processStream:stream faces:&faces options:HF_ENABLE_INTERACTION error:error]) return NO;
+    HFFaceInteractionState eyes = {0};
+    HFFaceInteractionsActions actions = {0};
+    if (![session getBorrowedInteractionState:&eyes error:error] ||
+        ![session getBorrowedInteractionActions:&actions error:error]) return NO;
+    if (eyes.num != faces.detectedNum || actions.num != faces.detectedNum)
+        return IFCheck(HERR_INVALID_PARAM, error);
+    for (HInt32 i = 0; i < faces.detectedNum; ++i) {
+        NSLog(@"track=%d left=%.3f right=%.3f blink=%d shake=%d",
+            faces.trackIds[i], eyes.leftEyeStatusConfidence[i],
+            eyes.rightEyeStatusConfidence[i], actions.blink[i], actions.shake[i]);
+    }
+    return YES;
+}
+```
+
+@tab Swift
+
+Create the session with `SessionConfiguration(features: [.interaction, .pose], detectionMode: .lightTracking, maximumFaces: 5, pixelLevel: 320)`. Keep it across frames. This helper reads eye scores and events from the current frame; update the application challenge state after each successful call.
+
+```swift
+import InspireFaceSwift
+
+func readActions(session: FaceSession, stream: ImageStream) throws {
+    try session.withUnsafeFaces(in: stream) { borrowed in
+        guard borrowed.count > 0 else { return }
+        var faces = borrowed.cValue
+        try session.process(stream, faces: &faces, options: Int32(FaceFeatures.interaction.rawValue))
+        var eyes = HFFaceInteractionState()
+        var actions = HFFaceInteractionsActions()
+        try session.getBorrowedInteractionState(&eyes)
+        try session.getBorrowedInteractionActions(&actions)
+        guard eyes.num == faces.detectedNum, actions.num == faces.detectedNum else {
+            throw NSError(domain: IFErrorDomain, code: Int(HERR_INVALID_PARAM))
+        }
+        for i in 0..<borrowed.count {
+            print("track=\(borrowed.trackIDs[i])")
+            print("left=\(eyes.leftEyeStatusConfidence[i]) right=\(eyes.rightEyeStatusConfidence[i])")
+            print("blink=\(actions.blink[i]) shake=\(actions.shake[i])")
+        }
     }
 }
 ```

@@ -32,6 +32,21 @@ Linux 使用 `ldd /path/to/libInspireFace.so` 查看动态依赖；macOS 使用 
 
 在首次导入前设置 `INSPIREFACE_LIBRARY_PATH`。修改路径后，重新启动进程以加载指定的库。
 
+## Apple Framework 或相机接入失败 {#apple-integration-fails}
+
+| Symptom | 排查方向 |
+| --- | --- |
+| `No such module InspireFaceSwift` | 将同一构建中的两个 XCFramework 都加入 Swift target；检查 Framework Search Paths，以及包内是否有目标平台和架构。 |
+| 链接器报告 iOS 与 iOS Simulator 不匹配 | 选择模拟器切片。真机 `arm64` 与模拟器 `arm64` 属于不同平台目标；使用 XCFramework 让 Xcode 自动选择。 |
+| 原生符号重复 | 移除重复的 SDK 或推理库。新版 iOS `InspireFace.framework` 已经包含静态推理依赖。 |
+| macOS 启动时找不到 Framework | Swift 应用需要嵌入并签名两个动态 Framework；检查应用内的 Frameworks 目录和 runpath。命令行程序用 `-rpath` 指定 Framework 所在目录。 |
+| iOS Framework 嵌入或签名失败 | 新版 iOS Framework 为静态库，选择 **Do Not Embed**；应用 target 的签名配置独立于 SDK 构建。 |
+| Pixel buffer 构造返回错误 | 检查实际像素格式、每行字节数和各平面布局。带行填充的 BGRA、平面不连续的 NV12 需先重新排列，再交给借用缓冲区接口。 |
+| 下一帧之后，先前结果发生变化 | 借用指针被保留到了有效范围之外。叠加显示可复制几何数值；延后处理则保留 snapshot 与对应像素。 |
+| 封装报告无效句柄 | 检查对象或其所有者是否已经关闭。继续持有已关闭对象的强引用，不会重新打开原生句柄。 |
+
+链接配置见 [iOS](../using-with/ios.md) 与 [macOS](../using-with/macos.md)。[Apple API 指南](../using-with/apple.md)提供完整的 `NSError` 和 Swift `throws` 示例。记录错误时保留 domain、数值 code 和 message。
+
 ## 模型启动失败 {#model-launch-fails}
 
 如果下载的是 ZIP 压缩包，先解压，再把模型包文件传给 SDK。核对下载文件的大小和校验值。
