@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.15)
+project(inspirecv_docs_example LANGUAGES CXX)
+find_package(InspireCV CONFIG REQUIRED)
+add_executable(preprocess preprocess.cpp)
+target_compile_features(preprocess PRIVATE cxx_std_14)
+target_link_libraries(preprocess PRIVATE InspireCV::inspirecv)
