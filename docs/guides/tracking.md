@@ -1,0 +1,275 @@
+# Sessions and tracking
+
+A session holds enabled models, working memory and the tracking history for a video sequence. Create one for each worker or camera sequence and reuse it across frames to avoid repeated setup.
+
+<figure>
+<img class="feature-illustration" src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/inspireface-doc-images-web/track.webp" alt="Multiple face boxes with separate track IDs and motion paths" width="1672" height="941" loading="lazy" />
+<figcaption>Track IDs connect observations within a sequence. The colored motion paths illustrate overlays an application can draw from successive results.</figcaption>
+</figure>
+
+## Pick a mode for the input
+
+| Mode | Speed / latency | Use it for | How it works |
+| --- | --- | --- | --- |
+| `ALWAYS_DETECT` | ★★☆☆☆<br>Higher latency | Still images, independent requests | Run detection on every call; no persistent track ID. |
+| `LIGHT_TRACK` | ★★★★★<br>Low latency | Live cameras, continuous video | Reuse previous-frame results and run detection when needed. |
+| `TRACK_BY_DETECTION` | ★★☆☆☆<br>Higher latency | Video that needs detection on every frame and track association | Detect on every frame, then associate detections across frames. |
+
+Mode names in this table omit the C API prefix `HF_DETECT_MODE_`. More stars mean faster processing and lower per-frame latency in typical use. These are relative ratings; actual timings depend on the device, model, detector size, face count and enabled analysis features.
+
+### How the modes differ {#how-the-modes-differ}
+
+- **`ALWAYS_DETECT`** treats each input independently. Use it for uploaded photos, batch image processing or unrelated requests. A face's position in the results does not identify it across images.
+- **`LIGHT_TRACK`** uses the preceding frames to track faces with less work during stable tracking. Detection runs on the first frame, at the configured interval, or when no tracked faces remain. Frames that run detection usually take longer than tracking-only frames. With no faces to track, detection continues on each frame.
+- **`TRACK_BY_DETECTION`** runs the detector on every frame and associates its results into tracks. Use it when the application needs both per-frame detection and continuity across a video, such as monitoring or capture. It retains the detector's per-frame cost.
+
+Track IDs connect observations within a sequence. They are not recognition results or permanent person IDs. Use an application ID or FeatureHub ID when the workflow needs a persistent identity.
+
+### Processing latency and new faces {#processing-latency-and-new-faces}
+
+For `LIGHT_TRACK`, increasing the detector interval reduces periodic detection work, but a new face entering the scene may take longer to appear in the results. Start with a shorter interval when timely capture matters, then adjust it using representative video. The interval does not reduce the detector frequency in `ALWAYS_DETECT` or `TRACK_BY_DETECTION`.
+
+For a live camera, measure both SDK processing time and the age of the displayed frame. A queue of old frames can make the preview lag even when each SDK call is fast. Keep a short queue, drop stale frames when processing falls behind, and submit the remaining frames in order. See [performance measurement](./benchmark-remark(updating).md) for timing the processing stages.
+
+## A video loop
+
+Choose your integration below. Each example reuses one session across frames. The native, HarmonyOS and Python examples use the 1.2.4 APIs; Android uses the Java 1.2.0 package.
+
+::: tabs #api-language
+
+@tab C API
+
+After [launching the SDK](../using-with/c-cpp.md), create one session for the sequence. Call `track_frame` with each valid image stream; release each stream after its frame is processed, and release the session when the sequence ends.
+
+```c
+#include <stdio.h>
+#include <inspireface.h>
+
+static HResult create_tracker(HFSession *session) {
+    return HFCreateInspireFaceSessionOptional(
+        HF_ENABLE_NONE, HF_DETECT_MODE_LIGHT_TRACK, 5, 320, -1, session);
+}
+
+static HResult track_frame(HFSession session, HFImageStream stream) {
+    HFMultipleFaceData faces = {0};
+    HResult status = HFExecuteFaceTrack(session, stream, &faces);
+    if (status != HSUCCEED) return status;
+    for (HInt32 i = 0; i < faces.detectedNum; ++i) {
+        printf("track=%d observations=%d\n", faces.trackIds[i], faces.trackCounts[i]);
+    }
+    return HSUCCEED;
+}
+// At the end of the sequence: HFReleaseInspireFaceSession(session);
+```
+
+@tab C++
+
+The [C++ setup](../using-with/cpp.md) creates the runtime and `FrameProcess`. Keep the following session and call `trackFrame(frame)` once per ordered frame.
+
+```cpp
+inspire::CustomPipelineParameter options;
+auto session = inspire::Session::Create(
+    inspire::DETECT_MODE_LIGHT_TRACK, 5, options, 320);
+auto trackFrame = [&](inspirecv::FrameProcess& frame) {
+    std::vector<inspire::FaceTrackWrap> faces;
+    int status = session.FaceDetectAndTrack(frame, faces);
+    if (status != 0) throw std::runtime_error("Tracking failed");
+    for (const auto& face : faces) {
+        std::cout << face.trackId << " " << face.trackCount << '\n';
+    }
+};
+```
+
+@tab Android
+
+Create this session once after `GlobalLaunch`. Each invocation of `trackFrame` consumes a stream created from the current camera frame. See [camera input](../using-with/android.md#process-camera-frames) for conversion and cleanup. Java types are from `com.insightface.sdk.inspireface.base`.
+
+```java
+static Session createTracker() {
+    Session session = InspireFace.CreateSession(
+            InspireFace.CreateCustomParameter(),
+            InspireFace.DETECT_MODE_LIGHT_TRACK, 5, 320, -1);
+    if (session == null || session.handle == 0L) {
+        throw new IllegalStateException("Cannot create tracker");
+    }
+    return session;
+}
+
+static void trackFrame(Session session, ImageStream stream) {
+    MultipleFaceData faces = InspireFace.ExecuteFaceTrack(session, stream);
+    if (faces == null) throw new IllegalStateException("Tracking failed");
+    for (int i = 0; i < faces.detectedNum; i++) {
+        System.out.println("track=" + faces.trackIds[i]);
+    }
+}
+// After the camera worker stops: InspireFace.ReleaseSession(session);
+```
+
+@tab HarmonyOS
+
+Initialize the SDK with the [HarmonyOS setup](../using-with/harmonyos.md), then create one tracker for the camera sequence. Pass each frame's open `ImageStream` to `trackFrame` in order. The caller closes each stream after processing and calls `session.close()` when the sequence ends.
+
+```ts
+import { DetectMode, Feature, ImageStream, Session }
+  from '@hyperinspire/inspireface';
+
+function createTracker(): Session {
+  return new Session({
+    featureMask: Feature.NONE,
+    detectMode: DetectMode.LIGHT_TRACK,
+    maxFaces: 5,
+    detectPixelLevel: 320
+  });
+}
+
+function trackFrame(session: Session, stream: ImageStream): void {
+  const result = session.track(stream);
+  try {
+    for (const face of result.faces) {
+      console.info(`track=${face.trackId} observations=${face.trackCount}`);
+    }
+  } finally {
+    session.releaseFaceResult(result);
+  }
+}
+```
+
+@tab Python
+
+This complete loop reads `input.mp4` and requires no camera permission or display.
+
+```python
+import cv2
+import inspireface as isf
+
+video = cv2.VideoCapture("input.mp4")
+if not video.isOpened():
+    raise RuntimeError("Cannot open input.mp4")
+
+try:
+    isf.launch(resource_path="/path/to/Pikachu")
+    with isf.InspireFaceSession(
+        isf.HF_ENABLE_NONE,
+        isf.HF_DETECT_MODE_LIGHT_TRACK,
+        max_detect_num=5,
+        detect_pixel_level=320,
+        auto_launch=False,
+    ) as session:
+        while True:
+            ok, frame = video.read()
+            if not ok:
+                break
+            faces = session.face_detection(frame)
+            for face in faces:
+                print(face.track_id, face.track_count, face.location)
+finally:
+    video.release()
+    isf.terminate()
+```
+
+:::
+
+## Tune one setting at a time
+
+| Setting | What it changes | Practical use |
+| --- | --- | --- |
+| Detector pixel level | Model input size for detection | Larger supported levels can help small faces, but increase detection work. |
+| Maximum faces | Session capacity | Keep it close to the number needed by the application. |
+| Detection confidence threshold | Which detections are accepted | Inspect missed and false detections before changing it. |
+| Minimum face pixel size | Filter for faces too small to use | Choose according to the actual input resolution and downstream task. |
+| Track preview size | Preview/preprocessing size used in tracking | Different from the detector model level. |
+| Detector interval | Detector cadence in tracking | Balance new-face recovery with per-frame work. |
+| Landmark smoothing | Temporal stability of points | More smoothing can make overlays steadier but slower to respond. |
+
+Supported detector levels come from the loaded pack. Use `HFQuerySupportedPixelLevelsForFaceDetection` in C to read the available levels, then choose one for the session.
+
+The equivalent settings in each interface:
+
+::: tabs #api-language
+
+@tab C API
+
+Apply these setters to an existing session. The helper stops at the first failed setting.
+
+```c
+static HResult tune_tracking(HFSession session) {
+    HResult status = HFSessionSetFaceDetectThreshold(session, 0.5f);
+    if (status != HSUCCEED) return status;
+    status = HFSessionSetFilterMinimumFacePixelSize(session, 32);
+    if (status != HSUCCEED) return status;
+    status = HFSessionSetTrackPreviewSize(session, 320);
+    if (status != HSUCCEED) return status;
+    status = HFSessionSetTrackModeDetectInterval(session, 20);
+    if (status != HSUCCEED) return status;
+    status = HFSessionSetTrackModeSmoothRatio(session, 0.05f);
+    if (status != HSUCCEED) return status;
+    return HFSessionSetTrackModeNumSmoothCacheFrame(session, 5);
+}
+```
+
+@tab C++
+
+Use the floating-point smoothing overload in the current headers.
+
+```cpp
+session.SetFaceDetectThreshold(0.5f);
+session.SetFilterMinimumFacePixelSize(32);
+session.SetTrackPreviewSize(320);
+session.SetTrackModeDetectInterval(20);
+session.SetTrackModeSmoothRatio(0.05f);
+session.SetTrackModeNumSmoothCacheFrame(5);
+```
+
+@tab Android
+
+The Java 1.2.0 wrapper exposes these setters. They return `void`.
+
+```java
+InspireFace.SetFaceDetectThreshold(session, 0.5f);
+InspireFace.SetFilterMinimumFacePixelSize(session, 32);
+InspireFace.SetTrackPreviewSize(session, 320);
+InspireFace.SetTrackModeDetectInterval(session, 20);
+InspireFace.SetTrackModeSmoothRatio(session, 0.05f);
+InspireFace.SetTrackModeNumSmoothCacheFrame(session, 5);
+```
+
+@tab HarmonyOS
+
+Apply `configure` to an existing `Session`. `getSupportedPixelLevels()` reads the detector levels from the loaded resource pack. Use `session.clearTracking()` when starting a different camera sequence.
+
+```ts
+import { InspireFace } from '@hyperinspire/inspireface';
+
+console.info(`detector levels: ${InspireFace.getSupportedPixelLevels()}`);
+session.configure({
+  detectThreshold: 0.5,
+  minimumFaceSize: 32,
+  previewSize: 320,
+  detectInterval: 20,
+  smoothRatio: 0.05,
+  smoothCacheFrames: 5
+});
+```
+
+@tab Python
+
+Use an existing `InspireFaceSession`.
+
+```python
+session.set_detection_confidence_threshold(0.5)
+session.set_filter_minimum_face_pixel_size(32)
+session.set_track_preview_size(320)
+session.set_track_model_detect_interval(20)
+session.set_track_mode_smooth_ratio(0.05)
+session.set_track_mode_num_smooth_cache_frame(5)
+```
+
+:::
+
+Adjust these example values using representative video from the target camera. The Python method `set_track_model_detect_interval` corresponds to `HFSessionSetTrackModeDetectInterval` in C.
+
+## Resetting a sequence
+
+If a camera switches, a video seeks or the input orientation changes, reset the temporal history. The C API has `HFSessionClearTrackingFace`; C++ has `Session::ClearTrackingFace`; HarmonyOS has `session.clearTracking()`. With the Python high-level wrapper or Java 1.2.0 package, recreate the session to begin a fresh sequence.
+
+Enable pose, quality, recognition and pipeline models according to the outputs the application uses. Profile [detection, tracking and analysis separately](./benchmark-remark(updating).md) before optimizing the complete loop.

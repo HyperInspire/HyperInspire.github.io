@@ -1,0 +1,332 @@
+:root {
+  --content-width: 800px;
+}
+
+.vp-footer .home-develop-note {
+  display: block;
+  margin-top: 0.6rem;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--vp-c-text-mute);
+}
+
+.vp-home [vp-content] {
+  .home-guide-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin: 1.4rem 0 2rem;
+  }
+
+  .home-guide-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.35rem 1rem;
+    min-width: 0;
+    padding: 1.2rem 1.4rem;
+    border: 1px solid var(--vp-c-gutter);
+    border-radius: 10px;
+    background: var(--vp-c-bg-alt);
+    color: var(--vp-c-text);
+    text-decoration: none;
+    transition: border-color 0.2s;
+
+    strong {
+      font-size: 1.05rem;
+    }
+
+    > span:not(.home-guide-card-arrow) {
+      grid-column: 1;
+      color: var(--vp-c-text-mute);
+      font-size: 0.93rem;
+      font-weight: 400;
+      line-height: 1.65;
+    }
+
+    .home-guide-card-arrow {
+      grid-column: 2;
+      grid-row: 1 / 3;
+      align-self: center;
+      color: var(--vp-c-accent);
+      font-size: 1.4rem;
+    }
+
+    &:hover {
+      border-color: var(--vp-c-accent);
+      text-decoration: none;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--vp-c-accent);
+      outline-offset: 3px;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .home-guide-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+
+// Keep the fade, but avoid a 10px shift after the router locates a translated
+// section. That shift otherwise lets active-header-links select the prior section.
+.vp-fade-slide-y-enter-from,
+.vp-fade-slide-y-leave-to {
+  transform: none;
+}
+
+[vp-content] {
+  line-height: 1.75;
+  overflow-wrap: break-word;
+
+  p, ul, ol {
+    margin-block: 1.15rem;
+  }
+
+  table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    font-size: 0.94rem;
+    line-height: 1.6;
+  }
+
+  .sdk-table {
+    margin-block: 1.2rem;
+    overflow-x: auto;
+
+    table {
+      display: table;
+      width: 100%;
+      margin: 0;
+    }
+  }
+
+  .api-coverage-table table {
+    min-width: 44rem;
+  }
+
+  .api-coverage-table:focus-visible {
+    outline: 2px solid var(--vp-c-accent);
+    outline-offset: 3px;
+  }
+
+  th, td {
+    padding: 0.7rem 0.9rem;
+    vertical-align: top;
+  }
+
+  pre {
+    line-height: 1.6;
+  }
+
+  .feature-illustration {
+    display: block;
+    width: min(100%, 540px);
+    height: auto;
+    margin: 1.6rem auto 1.9rem;
+    border-radius: 10px;
+  }
+
+  .doc-banner,
+  .doc-diagram {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin-inline: auto;
+    border-radius: 10px;
+  }
+
+  .doc-image-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+    gap: 1rem;
+    margin-block: 1.8rem;
+
+    &.two-column {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    figure {
+      min-width: 0;
+      margin: 0;
+      padding: 0.75rem;
+      border: 1px solid var(--vp-c-gutter);
+      border-radius: 10px;
+      background: var(--vp-c-bg-alt);
+    }
+
+    img {
+      display: block;
+      width: 100%;
+      height: 180px;
+      margin: 0 auto;
+      object-fit: contain;
+      border-radius: 6px;
+    }
+
+    &.two-column img {
+      height: auto;
+      aspect-ratio: 3 / 2;
+    }
+
+    figcaption {
+      text-align: left;
+    }
+  }
+
+  figure {
+    margin: 1.8rem 0;
+
+    > a {
+      display: block;
+
+      // Image links already communicate their target visually; avoid a lone
+      // external-link icon between the illustration and its caption.
+      &::after {
+        display: none !important;
+      }
+    }
+  }
+
+  .landmark-map {
+    display: block;
+    width: min(100%, 640px);
+    height: auto;
+    margin: 0 auto;
+  }
+
+  figcaption {
+    margin-top: 0.7rem;
+    color: var(--vp-c-text-mute);
+    font-size: 0.9rem;
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  .demo-download {
+    display: grid;
+    grid-template-columns: 176px minmax(0, 1fr);
+    align-items: center;
+    gap: 1.5rem;
+    margin: 1.5rem 0;
+    padding: 1.25rem;
+    border: 1px solid var(--vp-c-gutter);
+    border-radius: 12px;
+    background: var(--vp-c-bg-alt);
+
+    img {
+      display: block;
+      width: 176px;
+      height: 176px;
+      border-radius: 6px;
+    }
+
+    p {
+      margin: 0.65rem 0;
+      font-size: 0.95rem;
+    }
+  }
+
+  .doc-flow {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.8rem;
+    margin: 1.6rem 0;
+
+    > div {
+      padding: 1rem;
+      border: 1px solid var(--vp-c-gutter);
+      border-radius: 10px;
+      background: var(--vp-c-bg-alt);
+    }
+
+    strong, span {
+      display: block;
+    }
+
+    span {
+      margin-top: 0.4rem;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      color: var(--vp-c-text-mute);
+    }
+  }
+
+  details {
+    margin: 1.2rem 0;
+    padding: 0.9rem 1.1rem;
+    border: 1px solid var(--vp-c-gutter);
+    border-radius: 8px;
+
+    summary {
+      cursor: pointer;
+      font-weight: 600;
+
+      &:focus-visible {
+        outline: 2px solid var(--vp-c-accent);
+        outline-offset: 5px;
+        border-radius: 3px;
+      }
+    }
+
+    div[class*='language-'] {
+      margin-inline: 0;
+      border-radius: 6px;
+    }
+  }
+}
+
+@media (hover: none) {
+  [vp-content] div[class*='language-'] {
+    // Touch screens have no hover state to reveal the copy control.
+    .vp-copy-code-button {
+      opacity: 1;
+    }
+
+    &::before {
+      display: none;
+    }
+  }
+}
+
+@media (max-width: 600px) {
+  [vp-content] {
+    .doc-image-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .demo-download {
+      grid-template-columns: 1fr;
+      gap: 0.6rem;
+
+      > a {
+        justify-self: center;
+      }
+    }
+
+    .doc-flow {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    // The theme's mobile code blocks bleed to the article edge. Inside a tab,
+    // keep them within that tab's padding and border instead.
+    .vp-tab div[class*='language-'] {
+      margin-inline: 0;
+      border-radius: 6px;
+    }
+
+    th, td {
+      padding: 0.6rem 0.7rem;
+    }
+  }
+}
+
+@media (max-width: 420px) {
+  [vp-content] .doc-image-grid,
+  [vp-content] .doc-image-grid.two-column {
+    grid-template-columns: 1fr;
+  }
+}

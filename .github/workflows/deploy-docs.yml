@@ -38,6 +38,9 @@ jobs:
           npm run docs:build
           > docs/.vuepress/dist/.nojekyll
 
+      - name: 检查站内链接和示例语法
+        run: python3 maintenance/check_site.py
+
       - name: 部署文档
         uses: JamesIves/github-pages-deploy-action@v4
         with:

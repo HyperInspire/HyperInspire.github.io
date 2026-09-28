@@ -1,726 +1,477 @@
-# InspireCV: Lightweight CV library
+# Image processing with InspireCV
 
-**InspireCV** is a lightweight computer vision library that provides high-level abstract interfaces for commonly used vision algorithms. It features a flexible backend architecture, allowing users to leverage a lightweight backend by default while also offering the option to switch to a more powerful **OpenCV backend** for enhanced performance.
+[InspireCV](https://github.com/tunmx/InspireCV) is a C++ library for image operations and model-input preprocessing. It can be used independently of InspireFace. Its default build uses OKCV; OpenCV is optional.
 
-![InspireCV](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv2.jpg)
+Use `Image` for file I/O, cropping, resizing, drawing and simple filters. Use `task::Pipeline` when you need explicit pixel formats, transforms, normalization or tensor layouts. The examples below use InspireCV 1.0.2.
 
-- Supports both OpenCV and custom OKCV backends
-- Core functionality includes:
-  - Basic image processing operations
-  - Geometric primitives (Point, Rect, Size)
-  - Transform matrices
-  - Image I/O
-- Minimal dependencies when using OKCV backend
-- Optional OpenCV integration for debugging and visualization
+For CPU/OpenCV comparisons, CUDA preprocessing and image chains in GPU memory, see [image processing benchmarks](./image-processing-benchmarks.md), including run commands and raw CSV reports.
 
-::: tip
-InspireCV was developed to reduce SDK size and avoid dependency issues by replacing OpenCV with a lightweight, project-tailored vision library.
-:::
+For NEON image operations and deployment options, see [ARM deployment](../using-with/arm.md).
 
-## Build Options
+## Build and link
 
-### Backend Selection
+The default CPU build needs CMake 3.15 or newer and a C++14 compiler:
 
-- `INSPIRECV_BACKEND_OPENCV`: Use OpenCV as the backend (OFF by default)
-- `INSPIRECV_BACKEND_OKCV_USE_OPENCV`: Enable OpenCV support in OKCV backend (OFF by default)
-- `INSPIRECV_BACKEND_OKCV_USE_OPENCV_IO`: Use OpenCV's image I/O in OKCV (OFF by default)
-- `INSPIRECV_BACKEND_OKCV_USE_OPENCV_GUI`: Use OpenCV's GUI features in OKCV (OFF by default)
+```bash
+git clone --recurse-submodules https://github.com/tunmx/InspireCV.git
+cmake -S InspireCV -B build/inspirecv \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DINSPIRECV_BUILD_EXAMPLES=ON \
+  -DCMAKE_INSTALL_PREFIX="$PWD/local/inspirecv"
+cmake --build build/inspirecv --parallel 4
+cmake --install build/inspirecv
+```
 
-### Other Options
+For an installed library, link the exported CMake target:
 
-- `INSPIRECV_BUILD_SHARED_LIBS`: Build as shared libraries (OFF by default)
-- `INSPIRECV_OKCV_BUILD_TESTS`: Build test suite (ON by default)
-- `INSPIRECV_OKCV_BUILD_SAMPLE`: Build sample applications (ON by default)
+```cmake
+cmake_minimum_required(VERSION 3.15)
+project(image_app LANGUAGES CXX)
+find_package(InspireCV CONFIG REQUIRED)
+add_executable(image_app main.cpp)
+target_compile_features(image_app PRIVATE cxx_std_14)
+target_link_libraries(image_app PRIVATE InspireCV::inspirecv)
+```
 
-### Dependencies
+Configure your application with `-DCMAKE_PREFIX_PATH=/path/to/local/inspirecv`. If you embed the source instead, use `add_subdirectory(InspireCV)` and link the same `InspireCV::inspirecv` target. The target supplies the include directories and dependencies.
 
-Required:
+| Build option | Default | Purpose |
+| --- | --- | --- |
+| `INSPIRECV_BUILD_EXAMPLES` | OFF | Build the small programs in `example/`. |
+| `INSPIRECV_BUILD_TESTS` | OFF | Build library tests. |
+| `INSPIRECV_BACKEND_OPENCV` | OFF | Use the OpenCV-backed Image implementation. |
+| `INSPIRECV_TASK_ENABLE_ARM_NEON` | ON | Enable supported ARM NEON preprocessing paths. |
+| `INSPIRECV_ENABLE_AVX2` | OFF | Compile all x86 C++ sources with AVX2; requires compatible target CPUs. |
+| `INSPIRECV_ENABLE_CUDA` | OFF | Build optional CUDA preprocessing; needs CMake 3.18 or newer. |
 
-- CMake 3.10+
-- Eigen3
-- C++14 compiler
+Check the [project CMake options](https://github.com/tunmx/InspireCV/blob/main/CMakeLists.txt) when changing backends. OpenCV I/O/GUI integration for the default backend is configured separately from replacing the Image backend itself.
 
-Optional:
-
-- OpenCV (required if using OpenCV backend or OpenCV features in OKCV)
-
-## Use Guide
-
-### Image I/0
-
-Image has multiple ways to load from file, buffer, or other sources. Default image type is 3-channel **BGR** image, like OpenCV.
-
-- **Image Constructor**
-
-::: code-tabs#shell
-
-@tab C++
+## Read, transform and write an image
 
 ```cpp
-// Load image from file
-// Load with 3 channels (BGR, like opencv)
-inspirecv::Image img = inspirecv::Image::Create("test_res/data/bulk/kun_cartoon_crop.jpg", 3);
-
-// Other load methods
-
-// Load image from buffer
-uint8_t* buffer = ...;  // buffer is a pointer to the image data
-bool is_alloc_mem = false;  // if true, will allocate memory for the image data,
-                            // false is recommended to point to the original data to avoid copying
-inspirecv::Image img = inspirecv::Image::Create(width, height, channel, buffer, is_alloc_mem);
-```
-
-@tab C
-
-```c
-TODO
-```
-
-:::
-
-- **Image Save and Show**
-
-Image supports multiple image formats, including PNG, JPG, BMP, etc. You can save image to file. If you want to show image, it must depend on OpenCV.
-
-::: code-tabs#shell
-
-@tab C++
-
-```cpp
-// Save image to file
-img.Write("output.jpg");
-
-// Show image, warning: it must depend on opencv
-img.Show("input");
-```
-
-@tab C
-
-```c
-TODO
-```
-
-:::
-
-- **Get pointer of Image**
-
-::: code-tabs#shell
-
-@tab C++
-
-```cpp
-// Get pointer to image data
-const uint8_t* ptr = img.Data();
-```
-
-
-@tab C
-
-```c
-TODO
-```
-
-:::
-
-### Image Processing
-
-Image processing is a core functionality of InspireCV. It provides a set of functions to process images.
-
-Take this original image for example:
-
-![KunKun](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/kun_cartoon_crop.jpg)
-
-Features includes:
-
-- **ToGray**
-
-::: code-tabs#shell
-
-@tab C++
-
-```cpp
-inspirecv::Image gray = img.ToGray();
-```
-
-@tab C
-
-```c
-TODO
-```
-
-:::
-
-![Gray Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/gray.jpg)
-
----
-
-- **Apply Gaussian blur**
-
-::: code-tabs#shell
-
-@tab C++
-
-```cpp
-inspirecv::Image blurred = img.GaussianBlur(3, 1.0);
-```
-
-@tab C
-
-```c
-TODO
-```
-
-:::
-
-![Blurred Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/blurred.jpg)
-
----
-
-- **Resize**
-
-::: code-tabs#shell
-
-@tab C++
-
-```cpp
-auto scale = 0.35;
-bool use_bilinear = true;
-inspirecv::Image resized = img.Resize(img.Width() * scale, img.Height() * scale, use_bilinear);
-``` 
-
-@tab C
-
-```c
-TODO
-```
-
-:::
-
-![Resized Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/resized.jpg)
-
----
-
-- **Rotate**
-    - Support 90, 180, 270 clockwise degree rotation
-
-::: code-tabs#shell
-
-@tab C++
-
-```cpp
-inspirecv::Image rotated = img.Rotate90();
-```
-
-@tab C
-
-```c
-TODO
-```
-
-:::
-
-![Rotated Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/rotated.jpg)
-
----
-
-- **Flip**
-    - Support horizontal, vertical, and both flip
-
-::: code-tabs#shell
-
-@tab C++
-
-```cpp
-inspirecv::Image flipped_vertical = img.FlipVertical();
-```
-
-@tab C
-
-```c
-TODO
-```
-
-:::
-
-![Flipped Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/flipped_vertical.jpg)
-
----
-
-::: code-tabs#shell
-
-@tab C++
-
-```cpp
-inspirecv::Image flipped_horizontal = img.FlipHorizontal();
-```
-
-@tab C
-
-```c
-TODO
-```
-
-:::
-
-![Flipped Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/flipped_horizontal.jpg)
-
----
-
-- **Crop**
-
-::: code-tabs#shell
-
-@tab C++
-
-```cpp
-inspirecv::Rect<int> rect = inspirecv::Rect<int>::Create(78, 41, 171, 171);
-inspirecv::Image cropped = img.Crop(rect);
-```
-
-@tab C
-
-```c
-TODO
-```
-
-:::
-
-![Cropped Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/cropped.jpg)
-
----
-
-- **Padding**
-
-::: code-tabs#shell
-
-@tab C++
-
-```cpp
-int top = 50, bottom = 50, left = 50, right = 50;
-inspirecv::Image padded = img.Pad(top, bottom, left, right, inspirecv::Color::Black);
-```
-
-@tab C
-
-```c
-TODO
-```
-
-:::
-
-![Padded Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/padded.jpg)
-
----
-
-- **Swap red and blue channels**
-
-::: code-tabs#shell
-
-@tab C++
-
-```cpp
-inspirecv::Image swapped = img.SwapRB();
-```
-
-@tab C
-
-```c
-TODO
-```
-
-:::
-
-![Swapped Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/swapped.jpg)
-
----
-
-- **Multiply**
-
-::: code-tabs#shell
-
-@tab C++
-
-```cpp
-double scale_factor = 0.5;
-inspirecv::Image scaled = img.Mul(scale_factor);
-```
-
-@tab C
-
-```c
-TODO
-```
-
-:::
-
-![Scaled Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/scaled.jpg)
-
----
-
-- **Add**
-
-::: code-tabs#shell
-
-@tab C++
-
-```cpp
-double value = -175;
-inspirecv::Image added = img.Add(value);
-```
-
-@tab C
-
-```c
-TODO
-```
-
-:::
-
-![Added Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/added.jpg)
-
----
-
-- **Affine transform**
-    - Like warpAffine in OpenCV
-
-Origin input is rotated 90 degree image, and the transform matrix is from face location:
-
-![Rotated Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/rotated.jpg)
-
-::: code-tabs#shell
-
-@tab C++
-
-```cpp
-/**
- * Create a transform matrix from the following matrix
- * [[a11, a12, tx],
- *  [a21, a22, ty]]
- *
- * Face crop transform matrix
- * [[0.0, -1.37626, 261.127],
- *  [1.37626, 0.0, 85.1831]]
-*/
-float a11 = 0.0f;
-float a12 = -1.37626f;
-float a21 = 1.37626f;
-float a22 = 0.0f;
-float b1 = 261.127f;
-float b2 = 85.1831f;
-
-// Create a transform matrix: Face location transform matrix
-inspirecv::TransformMatrix trans = inspirecv::TransformMatrix::Create(a11, a12, b1, a21, a22, b2);
-
-// dst_width and dst_height is the size of the output image
-int dst_width = 112;
-int dst_height = 112;
-
-// Apply affine transform
-inspirecv::Image affine = rotated_90.WarpAffine(trans, dst_width, dst_height);
-```
-
-@tab C
-
-```c
-TODO
-```
-
-:::
-
-![Affine Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/affine.jpg)
-
----
-
-
-## Image Draw
-
-Image draw is a core functionality of InspireCV. It provides a set of functions to draw on images.
-
-- **Draw rectangle**
-
-::: code-tabs#shell
-
-@tab C++
-
-```cpp
-inspirecv::Rect<int> new_rect = rect.Square(1.1f);  // Square and expand the rect
-int thickness = 3;
-draw_img.DrawRect(new_rect, inspirecv::Color::Green, thickness);
-```
-
-@tab C
-
-```c
-TODO
-```
-
-:::
-
-![Draw Rectangle](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/draw_rect.jpg)
-
----
-
-- **Draw circle**
-
-::: code-tabs#shell
-
-@tab C++
-
-```cpp
-std::vector<inspirecv::Point<int>> points = new_rect.As<int>().ToFourVertices();
-for (auto& point : points) {
-    draw_img.DrawCircle(point, 1, inspirecv::Color::Red, 5);
+#include <inspirecv/inspirecv.h>
+#include <iostream>
+
+int main(int argc, char** argv) {
+    if (argc != 2) return 1;
+    auto image = inspirecv::Image::Create(argv[1], 3);
+    if (image.Empty()) {
+        std::cerr << "Cannot read image\n";
+        return 2;
+    }
+    auto resized = image.Resize(640, 480);
+    auto gray = resized.ToGray();
+    auto blurred = gray.GaussianBlur(5, 1.2);
+    if (!blurred.Write("processed.png")) return 3;
+    return 0;
 }
 ```
 
-@tab C
+Three-channel file input uses **BGR** storage. `Resize` returns a new image and uses bilinear sampling by default. This example stretches to a fixed size; preserve the aspect ratio or letterbox explicitly when your application needs that behavior.
 
-```c
-TODO
-```
+`Image` is movable but not copyable. Use `Clone()` when you need a separate pixel buffer. For external storage, `Image::Create(width, height, channels, data, false)` borrows the pixels: the caller must keep them alive and avoid concurrent writes. The default `copy_data=true` makes a copy.
 
-:::
+Image drawing and padding color arguments use RGB order; three-channel file pixels use BGR.
 
-![Draw Circle](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/draw_circle.jpg)
+The same input makes the individual operations easy to compare. These images show separate operations; their dimensions and settings can differ from the combined example above. Click a card to inspect its original size.
 
----
+<div class="doc-image-grid">
+<figure>
+<a href="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/kun_cartoon_crop.jpg" target="_blank" rel="noopener"><img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/kun_cartoon_crop.jpg" alt="Original: The same input for each comparison." width="325" height="325" loading="lazy" /></a>
+<figcaption><strong>Original</strong><br />The same input for each comparison.</figcaption>
+</figure>
+<figure>
+<a href="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/gray.jpg" target="_blank" rel="noopener"><img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/gray.jpg" alt="ToGray(): Remove color; retain brightness structure." width="325" height="325" loading="lazy" /></a>
+<figcaption><strong>ToGray()</strong><br />Remove color; retain brightness structure.</figcaption>
+</figure>
+<figure>
+<a href="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/blurred.jpg" target="_blank" rel="noopener"><img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/blurred.jpg" alt="GaussianBlur(): Soften local detail with a blur filter." width="325" height="325" loading="lazy" /></a>
+<figcaption><strong>GaussianBlur()</strong><br />Soften local detail with a blur filter.</figcaption>
+</figure>
+</div>
 
-- **Draw Lines**
+## Crop, pad and draw
 
-::: code-tabs#shell
-
-@tab C++
-
-```cpp
-draw_img.DrawLine(points[0], points[1], inspirecv::Color::Cyan, 2);
-draw_img.DrawLine(points[1], points[2], inspirecv::Color::Magenta, 2);
-draw_img.DrawLine(points[2], points[3], inspirecv::Color::Pink, 2);
-draw_img.DrawLine(points[3], points[0], inspirecv::Color::Yellow, 2);
-```
-
-@tab C
-
-```c
-TODO
-```
-
-:::
-
-![Draw Lines](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/draw_line.jpg)
-
----
-
-- **Fill**
-
-::: code-tabs#shell
-
-@tab C++
+Image operations can also prepare a preview or a region for another processing step. This helper crops the center of a valid image, adds a border and saves a separate output. It leaves the input unchanged.
 
 ```cpp
-draw_img.Fill(new_rect, inspirecv::Color::Purple);
-```
-
-@tab C
-
-```c
-TODO
-```
-
-:::
-
-![Fill](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/fill_rect.jpg)
-
----
-
-- **Reset**
-
-::: code-tabs#shell
-
-@tab C++
-
-```cpp
-// Reset image to gray
-std::vector<uint8_t> gray_color(img.Width() * img.Height() * 3, 128);
-img.Reset(img.Width(), img.Height(), 3, gray_color.data());
-```
-
-@tab C
-
-```c
-TODO
-```
-
-:::
-
-![Reset](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/reset.jpg)
-
-
-## Frame Process
-
-To streamline image processing, we designed a frame processor that wraps around the input image, providing flexible support for frame sequences such as images or video streams. It integrates a processing pipeline with built-in image decoding (**BGR, RGB, BGRA, RGBA, YUV, NV12, NV21**), rotation, scaling, and affine transformations, while optimizing internal buffering for enhanced performance.
-
-::: warning
-**FrameProcess** is an InspireFace module and is not yet integrated into the InspireCV library.
-:::
-
-### Create Frame Processor
-
-::: code-tabs#shell
-
-@tab C++
-
-```cpp
-// BGR888 as raw data
-inspirecv::Image raw = inspirecv::Image::Create("test_res/data/bulk/kun_cartoon_crop_r90.jpg", 3);
-const uint8_t* buffer = raw.Data();
-
-// You can also use other image format, like NV21, NV12, RGBA, RGB, BGR, BGRA
-const uint8_t* buffer = ...;
-
-// Create frame process
-auto width = raw.Width();
-auto height = raw.Height();
-auto rotation_mode = inspirecv::ROTATION_90;
-auto data_format = inspirecv::BGR;
-inspirecv::FrameProcess frame_process = inspirecv::FrameProcess::Create(buffer, height, width, data_format, rotation_mode);
-```
-
-@tab C
-
-```c
-TODO
-```
-
-:::
-
-Example of raw data:
-
-![Resized Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/rotated.jpg)
-
-### Pipeline
-
-- Set preview size
-
-::: code-tabs#shell
-
-@tab C++
-
-```cpp
-// Set preview size
-frame_process.SetPreviewSize(160);
-
-// or
-
-// Set preview scale
-frame_process.SetPreviewScale(0.5f);
-```
-
-@tab C
-
-```c
-TODO
-```
-
-:::
-
-- **Get transform image**
-    - Will rotate and scale the image to the preview size
-
-::: code-tabs#shell
-
-@tab C++
-
-```cpp
-inspirecv::Image transform_img = frame_process.GetTransformImage();
-```
-
-@tab C
-
-```c
-TODO
-```
-
-:::
-
-![Transform Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/transform_img.jpg)
-
----
-
-- **Get affine processing image**
-
-::: code-tabs#shell
-
-@tab C++
-
-```cpp
-/** 
- * Face crop transform matrix
- * [[0.0, 0.726607, -61.8946],
- *  [-0.726607, 0.0, 189.737]]
-*/
-
-// Face crop transform matrix
-float a11 = 0.0f;
-float a12 = 0.726607f;
-float a21 = -0.726607;
-float a22 = 0.0f;
-float b1 = -61.8946f;
-float b2 = 189.737f;
-inspirecv::TransformMatrix affine_matrix = inspirecv::TransformMatrix::Create(a11, a12, b1, a21, a22, b2);
-int dst_width = 112;
-int dst_height = 112;
-inspirecv::Image affine_img = frame_process.ExecuteImageAffineProcessing(affine_matrix, dst_width, dst_height);
-```
-
-@tab C
-
-```c
-TODO
-```
-
-:::
-
-![Affine Processing Image](https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/affine_img.jpg)
-
-## Performance Considerations
-
-- The library uses Eigen3 for efficient matrix operations
-- OKCV backend provides lightweight alternatives to OpenCV
-- Operations are designed to minimize memory allocations
-- Thread-safe operations for parallel processing
-
-## Thread Safety
-
-The library is designed to be thread-safe. You can use it in multi-threaded applications.
-
-## Error Handling
-
-The library uses error codes and exceptions to handle error conditions:
-
-- Image loading/saving errors
-- Invalid parameters
-- Memory allocation failures
-- Backend-specific errors
-
-Errors can be caught using standard try-catch blocks:
-
-::: code-tabs#shell
-
-@tab C++
-
-```cpp
-try {
-    Image img = Image::Create("nonexistent.jpg");
-} catch (const std::exception& e) {
-    std::cerr << "Error: " << e.what() << std::endl;
+#include <inspirecv/inspirecv.h>
+
+bool save_preview(const inspirecv::Image& image) {
+    if (image.Empty() || image.Width() < 2 || image.Height() < 2) return false;
+    auto roi = inspirecv::Rect2i::Create(
+        image.Width() / 4, image.Height() / 4,
+        image.Width() / 2, image.Height() / 2);
+    auto crop = image.Crop(roi);
+    auto preview = crop.Pad(16, 16, 16, 16, {32.0, 32.0, 32.0});
+    auto border = inspirecv::Rect2i::Create(16, 16, crop.Width(), crop.Height());
+    preview.DrawRect(border, {255.0, 128.0, 0.0}, 2);
+    return preview.Write("preview.jpg");
 }
 ```
 
-@tab C
+For an actual detection rectangle, clamp the region to the input dimensions before cropping. Padding shifts coordinates: the cropped image origin becomes `(left padding, top padding)` in the padded output. Apply that offset when drawing landmarks.
 
-```c
-TODO
+| Operation | API | Notes |
+| --- | --- | --- |
+| Geometry | `Resize`, `Crop`, `Pad`, `WarpAffine` | Returns a new image; `WarpAffine` requires an explicit transform. |
+| Orientation | `Rotate90`, `Rotate180`, `Rotate270`, `FlipHorizontal`, `FlipVertical` | Image rotations are clockwise. |
+| Color | `SwapRB`, `ToGray` | Preserve the resulting channel-order information in your application. |
+| Filters | `GaussianBlur`, `Threshold`, `Erode`, `Dilate` | Erode and dilate require single-channel images; `Threshold` supports binary thresholding. |
+| Comparison and blending | `AbsDiff`, `MeanChannels`, `Blend` | Match dimensions; `Blend` uses an 8-bit mask as the weight of the first image. |
+| Drawing | `DrawLine`, `DrawRect`, `DrawCircle`, `Fill` | Mutates the destination image; drawing colors use RGB order. |
+
+The [Image examples](https://github.com/tunmx/InspireCV/tree/361574e/example) cover geometry, filters, color and blending as small standalone programs.
+
+### Geometry side by side
+
+Resizing changes sampling and output dimensions; cropping keeps part of the source; padding expands the canvas. Each changes coordinates differently. After rotation or mirroring, use the transformed coordinates for boxes and landmarks too.
+
+<div class="doc-image-grid">
+<figure>
+<a href="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/resized.jpg" target="_blank" rel="noopener"><img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/resized.jpg" alt="Resize(): 325 × 325 → 113 × 113 pixels." width="113" height="113" loading="lazy" /></a>
+<figcaption><strong>Resize()</strong><br />325 × 325 → 113 × 113 pixels.</figcaption>
+</figure>
+<figure>
+<a href="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/rotated.jpg" target="_blank" rel="noopener"><img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/rotated.jpg" alt="Rotate90(): Rotate the image 90° clockwise." width="325" height="325" loading="lazy" /></a>
+<figcaption><strong>Rotate90()</strong><br />Rotate the image 90° clockwise.</figcaption>
+</figure>
+<figure>
+<a href="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/flipped_horizontal.jpg" target="_blank" rel="noopener"><img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/flipped_horizontal.jpg" alt="FlipHorizontal(): Mirror left and right." width="325" height="325" loading="lazy" /></a>
+<figcaption><strong>FlipHorizontal()</strong><br />Mirror left and right.</figcaption>
+</figure>
+<figure>
+<a href="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/flipped_vertical.jpg" target="_blank" rel="noopener"><img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/flipped_vertical.jpg" alt="FlipVertical(): Reverse the top and bottom." width="325" height="325" loading="lazy" /></a>
+<figcaption><strong>FlipVertical()</strong><br />Reverse the top and bottom.</figcaption>
+</figure>
+<figure>
+<a href="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/cropped.jpg" target="_blank" rel="noopener"><img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/cropped.jpg" alt="Crop(): Keep a 171 × 171 region of the input." width="171" height="171" loading="lazy" /></a>
+<figcaption><strong>Crop()</strong><br />Keep a 171 × 171 region of the input.</figcaption>
+</figure>
+<figure>
+<a href="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/padded.jpg" target="_blank" rel="noopener"><img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/padded.jpg" alt="Pad(): Add 50 pixels on each side." width="425" height="425" loading="lazy" /></a>
+<figcaption><strong>Pad()</strong><br />Add 50 pixels on each side.</figcaption>
+</figure>
+</div>
+
+### Draw on a copy
+
+Use `Clone()` for the drawing destination when the original pixels are still needed for recognition or analysis. This keeps lines and filled regions out of later model input. The examples below show a rectangle, its vertices, connecting lines and a filled region; drawing modifies the destination image.
+
+<div class="doc-image-grid two-column">
+<figure>
+<a href="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/draw_rect.jpg" target="_blank" rel="noopener"><img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/draw_rect.jpg" alt="DrawRect(): Draw a boundary on the image." width="325" height="325" loading="lazy" /></a>
+<figcaption><strong>DrawRect()</strong><br />Draw a boundary on the image.</figcaption>
+</figure>
+<figure>
+<a href="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/draw_circle.jpg" target="_blank" rel="noopener"><img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/draw_circle.jpg" alt="DrawCircle(): Mark the rectangle vertices." width="325" height="325" loading="lazy" /></a>
+<figcaption><strong>DrawCircle()</strong><br />Mark the rectangle vertices.</figcaption>
+</figure>
+<figure>
+<a href="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/draw_line.jpg" target="_blank" rel="noopener"><img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/draw_line.jpg" alt="DrawLine(): Connect the vertices with colored lines." width="325" height="325" loading="lazy" /></a>
+<figcaption><strong>DrawLine()</strong><br />Connect the vertices with colored lines.</figcaption>
+</figure>
+<figure>
+<a href="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/fill_rect.jpg" target="_blank" rel="noopener"><img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/fill_rect.jpg" alt="Fill(rect, color): Fill the selected region." width="325" height="325" loading="lazy" /></a>
+<figcaption><strong>Fill(rect, color)</strong><br />Fill the selected region.</figcaption>
+</figure>
+</div>
+
+### Channels and pixel values
+
+`SwapRB()` changes channel order, `Mul` and `Add` change pixel values, and `Reset` replaces the entire buffer. Intermediate 8-bit calculations can saturate; use the float image type below when fractional or out-of-range values must be retained.
+
+<div class="doc-image-grid two-column">
+<figure>
+<a href="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/swapped.jpg" target="_blank" rel="noopener"><img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/swapped.jpg" alt="SwapRB(): Red and blue channels exchanged." width="325" height="325" loading="lazy" /></a>
+<figcaption><strong>SwapRB()</strong><br />Red and blue channels exchanged.</figcaption>
+</figure>
+<figure>
+<a href="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/scaled.jpg" target="_blank" rel="noopener"><img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/scaled.jpg" alt="Mul(0.5): Scale the stored pixel values." width="325" height="325" loading="lazy" /></a>
+<figcaption><strong>Mul(0.5)</strong><br />Scale the stored pixel values.</figcaption>
+</figure>
+<figure>
+<a href="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/added.jpg" target="_blank" rel="noopener"><img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/added.jpg" alt="Add(-175): 8-bit values saturate at the lower bound." width="325" height="325" loading="lazy" /></a>
+<figcaption><strong>Add(-175)</strong><br />8-bit values saturate at the lower bound.</figcaption>
+</figure>
+<figure>
+<a href="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/reset.jpg" target="_blank" rel="noopener"><img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/reset.jpg" alt="Reset(): Replace the pixels with a gray buffer." width="325" height="325" loading="lazy" /></a>
+<figcaption><strong>Reset()</strong><br />Replace the pixels with a gray buffer.</figcaption>
+</figure>
+</div>
+
+## Float images and model tensors
+
+`Image` is an alias for `ImageT<uint8_t>`. Use `ImageT<float>` when intermediate pixel calculations need floating-point storage. Reading a file as float preserves the `[0, 255]` pixel range. Normalize the values with `Mul` or the Task mean/scale settings.
+
+```cpp
+#include <inspirecv/inspirecv.h>
+
+inspirecv::ImageT<float> load_unit_float(const std::string& path) {
+    auto image = inspirecv::ImageT<float>::Create(path, 3);
+    if (image.Empty()) return {};
+    return image.Mul(1.0 / 255.0);
+}
 ```
 
-:::
+The result contains `[0, 1]` values in interleaved HWC storage and BGR order. Use the Task pipeline below for RGB, per-channel mean/scale or CHW storage. `ImageT<float>::Write` rounds and saturates pixels to an 8-bit image file. To retain float values, save the buffer in a tensor format used by your application.
 
+## Task preprocessing
+
+A Task pipeline combines a destination-to-source transform, sampling, color conversion and output layout. It writes either an owned `Image` or a caller-provided tensor buffer.
+
+<figure>
+<a href="/images/inspirecv-preprocessing.svg" target="_blank" rel="noopener"><img class="doc-diagram" src="/images/inspirecv-preprocessing.svg" alt="The geometry, color, normalization and layout stages of Task preprocessing" loading="lazy" /></a>
+<figcaption>Specify geometry, color order, value range and layout separately; the application provides the output buffer.</figcaption>
+</figure>
+
+For example, convert a resized BGR image into normalized RGB float data in CHW order:
+
+```cpp
+#include <inspirecv/task/pipeline.h>
+#include <vector>
+
+// image is a valid three-channel BGR Image.
+auto resized = image.Resize(224, 224);
+namespace task = inspirecv::task;
+task::PipelineOptions options;
+options.input_format = task::PixelFormat::kBgr;
+options.output_format = task::PixelFormat::kRgb;
+options.mean = {{127.5f, 127.5f, 127.5f, 0.0f}};
+options.scale = {{1.0f / 127.5f, 1.0f / 127.5f, 1.0f / 127.5f, 1.0f}};
+task::Pipeline pipeline(options);
+
+std::vector<float> values(3 * 224 * 224);
+task::TensorBuffer tensor;
+tensor.data = values.data();
+tensor.width = 224;
+tensor.height = 224;
+tensor.channels = 3;
+tensor.element_type = task::ElementType::kFloat32;
+tensor.order = task::TensorOrder::kChw;
+auto status = pipeline.Run(resized, tensor);
+// Only consume values if status == task::Status::kOk.
+```
+
+Float normalization applies `(value - mean[channel]) * scale[channel]` after conversion to the configured output channel order. Here the values are mapped from `[0, 255]` to `[-1, 1]`. Set mean and scale according to the model's input requirements.
+
+The caller allocates and owns the storage described by `TensorBuffer`. Size `values` for the dimensions, element type and strides. Zero strides select tightly packed defaults. Select HWC, CHW or channel-packed-four to match the model's memory layout.
+
+Save the code below as `preprocess.cpp` and `CMakeLists.txt` in the same folder, then build with your installed InspireCV package. The program also writes `resized.jpg` so you can inspect the spatial preprocessing.
+
+<details>
+<summary>preprocess.cpp — complete code</summary>
+
+```cpp
+#include <inspirecv/inspirecv.h>
+#include <inspirecv/task/pipeline.h>
+#include <algorithm>
+#include <iostream>
+#include <vector>
+
+int main(int argc, char** argv) {
+    if (argc != 2) {
+        std::cerr << "Usage: preprocess IMAGE\n";
+        return 1;
+    }
+    auto image = inspirecv::Image::Create(argv[1], 3);
+    if (image.Empty()) {
+        std::cerr << "Cannot read image\n";
+        return 2;
+    }
+    // This example stretches to a square; use the transform your model expects.
+    auto resized = image.Resize(224, 224);
+    if (!resized.Write("resized.jpg")) {
+        std::cerr << "Cannot write resized.jpg\n";
+        return 3;
+    }
+    namespace task = inspirecv::task;
+    task::PipelineOptions options;
+    options.input_format = task::PixelFormat::kBgr;
+    options.output_format = task::PixelFormat::kRgb;
+    options.mean = {{127.5f, 127.5f, 127.5f, 0.0f}};
+    options.scale = {{1.0f / 127.5f, 1.0f / 127.5f, 1.0f / 127.5f, 1.0f}};
+    task::Pipeline pipeline(options);
+    if (pipeline.ConfigurationStatus() != task::Status::kOk) return 4;
+
+    std::vector<float> values(3 * 224 * 224);
+    task::TensorBuffer tensor;
+    tensor.data = values.data();
+    tensor.width = 224;
+    tensor.height = 224;
+    tensor.channels = 3;
+    tensor.element_type = task::ElementType::kFloat32;
+    tensor.order = task::TensorOrder::kChw;
+    const auto status = pipeline.Run(resized, tensor);
+    if (status != task::Status::kOk) {
+        std::cerr << task::StatusMessage(status) << '\n';
+        return 5;
+    }
+    const auto range = std::minmax_element(values.begin(), values.end());
+    std::cout << "RGB float tensor: 3 x 224 x 224, range ["
+              << *range.first << ", " << *range.second << "]\n";
+    return 0;
+}
+```
+
+</details>
+
+<details>
+<summary>CMakeLists.txt — complete code</summary>
+
+```cmake
+cmake_minimum_required(VERSION 3.15)
+project(inspirecv_docs_example LANGUAGES CXX)
+find_package(InspireCV CONFIG REQUIRED)
+add_executable(preprocess preprocess.cpp)
+target_compile_features(preprocess PRIVATE cxx_std_14)
+target_link_libraries(preprocess PRIVATE InspireCV::inspirecv)
+```
+
+</details>
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_PREFIX_PATH=/path/to/local/inspirecv
+cmake --build build --parallel 4
+./build/preprocess face.jpg
+```
+
+## Check pipeline status
+
+Check `ConfigurationStatus()` when creating a pipeline, then check the status returned by `SetTransform` and each `Run` call. Handle configuration, transform and input errors at the corresponding call.
+
+```cpp
+#include <inspirecv/task/pipeline.h>
+#include <iostream>
+
+inspirecv::task::Status convert_checked(
+        const inspirecv::Image& source, inspirecv::Image* output) {
+    namespace task = inspirecv::task;
+    task::PipelineOptions options;
+    options.input_format = task::PixelFormat::kBgr;
+    options.output_format = task::PixelFormat::kRgb;
+    options.backend_preference = task::BackendPreference::kCpu;
+    task::Pipeline pipeline(options);
+    auto status = pipeline.ConfigurationStatus();
+    if (status == task::Status::kOk) {
+        status = pipeline.Run(source, source.Width(), source.Height(), output);
+    }
+    if (status != task::Status::kOk) {
+        std::cerr << task::StatusMessage(status) << '\n';
+    }
+    return status;
+}
+```
+
+This example explicitly selects CPU processing and keeps the source dimensions. `kDefault` inherits the process preference; `kAuto` and `kCuda` participate in the host-side CUDA dispatch when acceleration is enabled. Unsupported CUDA requests may still run on CPU, so use `LastExecutionBackend()` after a successful call when recording measurements.
+
+The output above contains RGB pixels. Store the channel-order information alongside the `Image`, and use `SwapRB()` before passing it to an operation that expects BGR file pixels.
+
+## Transforms are explicit
+
+Set both the output dimensions and the sampling transform. `Pipeline::SetTransform` maps each destination coordinate back to a source coordinate. For an align-corners resize where all dimensions are greater than one:
+
+```cpp
+auto transform = inspirecv::TransformMatrix::Create(
+    float(source.Width() - 1) / float(output_width - 1), 0.0f, 0.0f,
+    0.0f, float(source.Height() - 1) / float(output_height - 1), 0.0f
+);
+auto status = pipeline.SetTransform(transform);
+// Check status before pipeline.Run(source, output_width, output_height, &output).
+```
+
+This transform uses align-corners sampling. For face alignment, supply a destination-to-source alignment transform. Check the return status of `SetTransform`; a non-invertible matrix leaves the previous transform in place.
+
+Supported sampling modes are nearest and linear.
+
+This example maps the face region of a rotated image into a 112 × 112 output. The affine transform selects and resamples that region.
+
+<div class="doc-image-grid two-column">
+<figure>
+<a href="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/rotated.jpg" target="_blank" rel="noopener"><img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/rotated.jpg" alt="Source: Start with the rotated sample image." width="325" height="325" loading="lazy" /></a>
+<figcaption><strong>Source</strong><br />Start with the rotated sample image.</figcaption>
+</figure>
+<figure>
+<a href="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/affine.jpg" target="_blank" rel="noopener"><img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/affine.jpg" alt="WarpAffine(): Resample a 112 × 112 aligned region." width="112" height="112" loading="lazy" /></a>
+<figcaption><strong>WarpAffine()</strong><br />Resample a 112 × 112 aligned region.</figcaption>
+</figure>
+</div>
+
+## Camera buffers and repeated frames
+
+`RawImageView` describes non-owning input memory with width, height and a row stride. For example, a tightly packed NV21 buffer can be decoded directly to BGR:
+
+```cpp
+task::PipelineOptions options;
+options.input_format = task::PixelFormat::kNv21;
+options.output_format = task::PixelFormat::kBgr;
+task::Pipeline pipeline(options);
+task::RawImageView source;
+source.data = nv21_bytes;
+source.width = width;
+source.height = height;
+source.row_stride_bytes = 0;
+inspirecv::Image bgr;
+auto status = pipeline.Run(source, width, height, &bgr);
+```
+
+Provide a buffer large enough for the declared format and use even dimensions for NV21. Repack Android plane-based input using its actual strides. Keep the camera buffer alive through the call. For JPEG files, decode the image before creating a raw view.
+
+| Output method | Memory behavior |
+| --- | --- |
+| `Run(..., width, height, Image*)` | Creates owned output; leaves the destination unchanged on failure. |
+| `RunInto(..., Image*)` | Reuses the destination's existing buffer and dimensions; a failure may partially modify it. |
+| `Run(..., TensorBuffer)` | Writes into memory owned and sized by the caller. |
+
+Reuse a pipeline for frames with the same configuration. `RunInto` avoids replacing the output image buffer; internal scratch memory may still be allocated when first needed. Use separate source and destination buffers. Use separate pipeline instances for concurrent workers because a pipeline reuses mutable execution state.
+
+## Optional CUDA processing
+
+Build with `INSPIRECV_ENABLE_CUDA=ON`, then enable acceleration at runtime:
+
+```cpp
+bool enabled = inspirecv::task::SetCudaEnabled(true);
+// false means this build or machine cannot enable CUDA.
+```
+
+For host-input pipelines, unsupported CUDA requests can fall back to CPU. Inspect `pipeline.LastExecutionBackend()` after a successful run when measuring performance. Include host/device transfers in an end-to-end comparison.
+### Keep images on the GPU
+
+The host-input API is convenient when pixels arrive in normal CPU memory. When several GPU operations run in sequence, the separate device API can avoid downloading and uploading between each operation.
+
+| API | Data and execution contract |
+| --- | --- |
+| `inspirecv::cuda::DeviceImage` | Owns device pixels. `Upload` and `Download` are synchronization boundaries; `Resize`, `WarpAffine` and rotations enqueue work on the supplied stream. |
+| `task::cuda::Pipeline::Run` | Converts device input into caller-owned device tensor memory. Accepts a `DeviceImageView` or an owning three-channel uint8 `DeviceImage`. |
+| `task::cuda::Pipeline::RunBatch` | Accepts arrays of input/output descriptors and a count; validates every descriptor before launching the first kernel and enqueues the batch on one stream. |
+| `inspirecv::cuda::Synchronize` | Waits for the selected stream when the application needs the queued results. |
+
+Device pipelines are asynchronous. Allocate device memory for the input and the full output tensor, including its dimensions and strides. Keep those buffers alive until their stream has finished. `RunBatch` enqueues all items on the supplied stream; same-shaped items reuse cached geometry.
+
+Use a CUDA-enabled build and enable acceleration explicitly. Device pipelines run on CUDA; check their returned status for device availability and operation support. Configure CPU/CUDA preferences separately for host-input pipelines.
+
+See the exact interfaces in [DeviceImage](https://github.com/tunmx/InspireCV/blob/361574e/include/inspirecv/cuda/image.h) and [CUDA Task Pipeline](https://github.com/tunmx/InspireCV/blob/361574e/include/inspirecv/task/cuda.h). For automatic acceleration of supported `Image` operations, [acceleration.h](https://github.com/tunmx/InspireCV/blob/361574e/include/inspirecv/acceleration.h) provides `SetCudaAccelerationEnabled`, `SetAccelerationPreference` and `GetLastImageExecutionBackend`. Measure the actual backend and transfer cost on the target device.
+
+## Relationship to InspireFace
+
+InspireFace uses InspireCV internally and provides `inspirecv::FrameProcess` through the **InspireFace** SDK. Include the SDK headers to use it, and select its own format and rotation enums.
+
+Build InspireFace with `ISF_ENABLE_INSPIRECV_TASK_PREPROCESS=ON` to use the Task preprocessing path inside the SDK.
+
+The FrameProcess example below shows the raw frame, an upright processing preview and an affine region output.
+
+<div class="doc-image-grid">
+<figure>
+<a href="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/rotated.jpg" target="_blank" rel="noopener"><img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/rotated.jpg" alt="Raw input: A sideways frame with a rotation flag." width="325" height="325" loading="lazy" /></a>
+<figcaption><strong>Raw input</strong><br />A sideways frame with a rotation flag.</figcaption>
+</figure>
+<figure>
+<a href="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/transform_img.jpg" target="_blank" rel="noopener"><img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/transform_img.jpg" alt="Processing preview: Rotate and reduce the preview to 160 × 160." width="160" height="160" loading="lazy" /></a>
+<figcaption><strong>Processing preview</strong><br />Rotate and reduce the preview to 160 × 160.</figcaption>
+</figure>
+<figure>
+<a href="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/affine_img.jpg" target="_blank" rel="noopener"><img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/affine_img.jpg" alt="Aligned output: Read the target region through an affine transform." width="112" height="112" loading="lazy" /></a>
+<figcaption><strong>Aligned output</strong><br />Read the target region through an affine transform.</figcaption>
+</figure>
+</div>
