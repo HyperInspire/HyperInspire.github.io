@@ -2,7 +2,27 @@
 
 macOS builds provide C/C++, Objective-C and Swift interfaces for Apple Silicon arm64 and Intel x86_64. You can build one architecture for local development, combine both into an XCFramework, or package macOS with iOS device and simulator slices.
 
-Start with [Develop source setup](./source.md#develop-source). Ready-made packages are listed in [SDK downloads](./README.md); the commands below build the current source and run from the InspireFace repository root.
+The 1.2.4 release provides a CPU package with both macOS architectures. For a source build, complete [Develop source setup](./source.md#develop-source), then run the build commands from the InspireFace repository root.
+
+## Download the CPU SDK {#download-the-cpu-sdk}
+
+Download [inspireface-apple-1.2.4.zip](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-apple-1.2.4.zip), which includes macOS, iOS devices and simulators. Extract it into `build/` to use the paths below:
+
+```bash
+mkdir -p build
+curl -L --fail -o build/inspireface-apple-1.2.4.zip \
+  https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-apple-1.2.4.zip
+ditto -x -k build/inspireface-apple-1.2.4.zip build
+```
+
+| Contents under `build/inspireface-apple-1.2.4/` | Use |
+| --- | --- |
+| `InspireFace.xcframework`, `InspireFaceSwift.xcframework` | Add to an Xcode app; select **Embed & Sign** on macOS. |
+| `Frameworks/macosx/` | Universal macOS frameworks for direct framework linking. |
+| `SDKs/macosx-arm64/InspireFace/` | Raw headers and `.dylib` for Apple Silicon; macOS 14.0 or newer. |
+| `SDKs/macosx-x86_64/InspireFace/` | Raw headers and `.dylib` for Intel; macOS 15.0 or newer. |
+
+The published binaries were built with Xcode 16.4. The model is [downloaded separately](./README.md#download-the-model-separately). Continue with [Link the application](#link-the-application) to use this package; build from source for CoreML or custom settings.
 
 ## Prepare the compiler and SDK {#prepare-the-compiler-and-sdk}
 
@@ -88,8 +108,8 @@ Without `--backend cpu`, this wrapper builds **both CPU and CoreML** and writes 
 
 The packager combines architectures within one platform, then passes separate platform frameworks to `xcodebuild -create-xcframework`. It checks that the dependency revision and Xcode toolchain match across slices. Keep a consistent source checkout, dependency checkout and toolchain when building slices separately.
 
-::: tip Local packages and release downloads
-The current source can create the new Apple packages locally. The release pipeline is configured to publish one CPU archive named `inspireface-apple-<version>.zip`; CoreML builds are separate. Check [SDK downloads](./README.md) for the assets that have actually been published.
+::: tip CPU release and CoreML builds
+The 1.2.4 CPU release already includes all five architecture / platform slices listed above. Use `--backend coreml` to build a separate CoreML package locally.
 :::
 
 ## Set architecture and deployment target {#set-architecture-and-deployment-target}
@@ -103,7 +123,7 @@ MACOSX_DEPLOYMENT_TARGET=14.0 VERSION=1.2.4 \
   bash command/build_macos_arm64.sh --jobs 4
 ```
 
-When omitted, the selected compiler and SDK determine the minimum. The current Apple CI explicitly targets macOS 14.0 for arm64 and 15.0 for x86_64 with Xcode 16.4. These are the CI build settings, rather than a fixed minimum imposed on every source build. Test your own build on the oldest macOS version your app supports.
+When omitted, the selected compiler and SDK determine the minimum. The published 1.2.4 binaries require macOS 14.0 for arm64 and 15.0 for x86_64. A custom source build can request another target; test it on the oldest macOS version your app supports.
 
 For a custom CMake build, this example produces the frameworks **and** a raw arm64 CoreML `.dylib`. It is useful when Python needs a shared library instead of the static raw library selected by `build_macos_coreml_arm64.sh`.
 
@@ -152,7 +172,7 @@ import InspireFaceSwift
 
 `InspireFaceSwift` re-exports the core module. You do not need a custom bridging header to use its Swift API. The inference dependency is linked into `InspireFace.framework`; do not additionally link the raw SDK or a separate inference archive into that target.
 
-The following command-line Swift program checks the frameworks without loading a model. First build the arm64 CPU SDK with `MACOSX_DEPLOYMENT_TARGET=14.0` as shown above, then compile the program:
+The following command-line Swift program checks the frameworks without loading a model. After extracting the CPU download above, save this code as `main.swift` and compile it:
 
 <details>
 <summary>main.swift and compile command</summary>
@@ -169,7 +189,7 @@ print("InspireFace API level:", level)
 ```
 
 ```bash
-SDK_DIR="$PWD/build/inspireface-macos-apple-silicon-arm64-1.2.4"
+SDK_DIR="$PWD/build/inspireface-apple-1.2.4/Frameworks/macosx"
 xcrun swiftc main.swift \
   -target arm64-apple-macosx14.0 \
   -F "$SDK_DIR" \
@@ -182,16 +202,17 @@ xcrun swiftc main.swift \
 
 </details>
 
-This command explicitly targets arm64 and macOS 14.0. For Intel, use the matching `SDK_DIR` and set `-target` to `x86_64-apple-macosx<minimum>`, with the minimum matching the package's binary deployment metadata. For app bundles, let Xcode copy and sign the frameworks, then test the packaged app as well as the development build. The [Apple API guide](../using-with/apple.md) covers model initialization and detection using the same Objective-C and Swift APIs.
+This command targets arm64 and macOS 14.0. For Intel, use the same universal frameworks and set `-target` to `x86_64-apple-macosx15.0`. With a local single-architecture build, set `SDK_DIR` to its output directory and match the deployment target. For app bundles, let Xcode copy and sign the frameworks, then test the packaged app as well as the development build. The [Apple API guide](../using-with/apple.md) covers model initialization and detection using the same Objective-C and Swift APIs.
 
 ### Raw shared SDK {#shared-sdk}
 
-C/C++ applications and Python can continue using `InspireFace/lib/libInspireFace.dylib`. Follow the [C API](../using-with/c-cpp.md#link-the-sdk) or [C++](../using-with/cpp.md#build-the-example) build example with `INSPIREFACE_ROOT` pointing to the directory containing `include/` and `lib/`.
+C/C++ applications and Python can continue using `InspireFace/lib/libInspireFace.dylib`. Follow the [C API](../using-with/c-cpp.md#link-the-sdk) or [C++](../using-with/cpp.md#build-the-example) build example with `INSPIREFACE_ROOT` pointing to the directory containing `include/` and `lib/`. In the release package, choose `SDKs/macosx-arm64/InspireFace` or `SDKs/macosx-x86_64/InspireFace` for the application architecture.
 
 ```bash
-file build/inspireface-macos-apple-silicon-arm64-1.2.4/InspireFace/lib/libInspireFace.dylib
-lipo -info build/inspireface-macos-apple-silicon-arm64-1.2.4/InspireFace/lib/libInspireFace.dylib
-otool -L build/inspireface-macos-apple-silicon-arm64-1.2.4/InspireFace/lib/libInspireFace.dylib
+SDK_ROOT="build/inspireface-apple-1.2.4/SDKs/macosx-arm64/InspireFace"
+file "$SDK_ROOT/lib/libInspireFace.dylib"
+lipo -info "$SDK_ROOT/lib/libInspireFace.dylib"
+otool -L "$SDK_ROOT/lib/libInspireFace.dylib"
 ```
 
 The Apple framework build also sets the raw dylib's install name to `@rpath`. Configure a runpath matching the library's location in the app bundle, and include it in signing. Link the raw SDK or the framework route within an application; both contain the SDK implementation.

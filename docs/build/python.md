@@ -1,6 +1,6 @@
 # Python package and native libraries {#python-package-and-native-libraries}
 
-The Python API uses `ctypes` to call the native SDK. To switch from CPU to TensorRT, CoreML or Rockchip NPU, build the matching shared library first, then select it from Python or include it in a wheel. The wrapper and native library should come from the same SDK revision.
+The Python API uses `ctypes` to call the native SDK. To switch from CPU to TensorRT or Rockchip NPU, download the matching **1.2.4 shared SDK** from [SDK downloads](./README.md#prebuilt-sdks), or build it for your target. CoreML requires a source build. Select the library from Python or include it in a wheel, keeping the wrapper and native SDK matched.
 
 For CPU use, install the published **1.2.4.post1** package with `python -m pip install inspireface opencv-python`. It includes the **1.2.4** native library. This chapter covers replacing that library and building your own wheel; available packages are listed in the [SDK overview](./README.md#python-and-android-packages).
 
@@ -12,7 +12,9 @@ For CPU use, install the published **1.2.4.post1** package with `python -m pip i
 
 ## Prepare the native SDK and wrapper {#prepare-the-native-sdk-and-wrapper}
 
-Complete [source preparation](./source.md), then follow the build chapter for [Linux](./linux.md), [macOS](./macos.md), [NVIDIA](./nvidia.md) or [Rockchip](./rockchip.md). Python needs a **shared library**, built with `ISF_BUILD_SHARED_LIBS=ON`: `libInspireFace.so` on Linux or `libInspireFace.dylib` on macOS.
+Python needs a **shared library**: `libInspireFace.so` on Linux or `libInspireFace.dylib` on macOS. With the current PyPI wrapper and a matching 1.2.4 release library, continue to [select a shared library](#select-or-replace-a-shared-library).
+
+To build your own library or edit the wrapper, complete [source preparation](./source.md), then follow [Linux](./linux.md), [macOS](./macos.md), [NVIDIA](./nvidia.md) or [Rockchip](./rockchip.md). Enable `ISF_BUILD_SHARED_LIBS=ON` and prepare the source wrapper as described below.
 
 On Apple platforms, the new Objective-C / Swift frameworks are an additional integration route for native apps. Python still loads the **raw macOS dylib**, not `InspireFace.xcframework`, `InspireFaceSwift.framework` or an iOS static archive. `build_macos_arm64.sh` and `build_macos_x86.sh` produce that dylib. The arm64 CoreML script produces a raw `.a`; use the [custom shared build](./macos.md#set-architecture-and-deployment-target) for Python instead.
 

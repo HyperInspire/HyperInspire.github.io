@@ -2,7 +2,20 @@
 
 Apple 构建已加入 **Objective-C 和 Swift 接口**，同时提供 arm64 真机、arm64 / x86_64 模拟器版本。主要产物是 `InspireFace.xcframework` 和 `InspireFaceSwift.xcframework`，加入应用后由 Xcode 选择对应的平台和架构。
 
-`InspireFace` 包含 C API 和 Objective-C 类，`InspireFaceSwift` 提供 Swift API。已有 C/C++ 项目仍可使用 `SDKs/` 下的头文件与库。预编译包见 [SDK 下载概述](./README.md)，应用代码见 [Objective-C 与 Swift 接入](../using-with/apple.md)。
+`InspireFace` 包含 C API 和 Objective-C 类，`InspireFaceSwift` 提供 Swift API。已有 C/C++ 项目仍可使用 `SDKs/` 下的头文件与库。可以直接使用下方 CPU 发布包，需要修改配置时再从源码构建。应用代码见 [Objective-C 与 Swift 接入](../using-with/apple.md)。
+
+## 下载 CPU SDK {#download-the-cpu-sdk}
+
+[inspireface-apple-1.2.4.zip](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-apple-1.2.4.zip) 包含 iOS 真机、模拟器和 macOS 切片。解压到 `build/` 后，可以直接使用本文的路径：
+
+```bash
+mkdir -p build
+curl -L --fail -o build/inspireface-apple-1.2.4.zip \
+  https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-apple-1.2.4.zip
+ditto -x -k build/inspireface-apple-1.2.4.zip build
+```
+
+两个 XCFramework 位于 `build/inspireface-apple-1.2.4/`。iOS 真机切片最低要求 iOS 11.0；模拟器 arm64 要求 iOS 14.0，x86_64 要求 iOS 11.0。使用 CPU 推理可直接继续[加入 Xcode 应用](#add-the-result-to-an-app)。压缩包仅包含 SDK 库，[模型资源](./README.md#download-the-model-separately)需单独下载。CoreML 版本使用下方源码构建方式。
 
 ## 准备 Xcode 和依赖 {#prepare-xcode-and-dependencies}
 
@@ -71,7 +84,7 @@ VERSION=1.2.4 bash command/build_ios_coreml.sh --jobs 4
 
 该命令启用 `ISF_ENABLE_APPLE_EXTENSION`，在 `build/inspireface-apple-coreml-1.2.4/` 中生成相同的真机 / 模拟器结构。CoreML 推理需要搭配 Apple 资源包；启用扩展不会自动转换 CPU 资源包。
 
-CPU 和 CoreML 包使用相同的模块名，一个应用 target 选择其中一套，并配套使用包内的两个 XCFramework。本地脚本可以构建、打包两种版本，当前发布流程发布的是 CPU Apple 包。
+CPU 和 CoreML 包使用相同的模块名，一个应用 target 选择其中一套，并配套使用包内的两个 XCFramework。1.2.4 Release 提供 CPU Apple 包，CoreML 版本使用这条脚本在本地构建。
 
 ## 选择 slice 和构建参数 {#select-slices-and-build-settings}
 

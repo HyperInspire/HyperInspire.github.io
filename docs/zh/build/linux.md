@@ -1,10 +1,12 @@
 # Linux SDK {#linux-sdk}
 
+[1.2.4 SDK 下载](./README.md)已提供 x86_64（Ubuntu 18.04 或 manylinux2014）、ARM64 和 ARMv7 hard-float 的 CPU 包。可以选择与进程架构、系统运行库匹配的包，也可以按本章使用自己的工具链和编译选项构建。
+
 本章构建 Linux x86_64、ARMv7 和 ARM64 的 CPU 动态库，可用于原生应用，也可以[放入 Python 包](./python.md)。NVIDIA 和 Rockchip 分别见 [TensorRT](./nvidia.md) 和 [RKNPU](./rockchip.md) 构建章节。
 
 Java 应用需要 JAR 和 JNI 适配库，构建步骤见 [Java 打包](./java.md)。
 
-先完成[源码准备](./source.md)，以下命令均在 InspireFace SDK 目录执行。需要现成的二进制包时，直接查看 [SDK 下载](./README.md)。
+先完成[源码准备](./source.md)，以下命令均在 InspireFace SDK 目录执行。
 
 ARM CPU 的图像处理、特征比对优化与相机循环调优见 [ARM 部署](../using-with/arm.md)。
 

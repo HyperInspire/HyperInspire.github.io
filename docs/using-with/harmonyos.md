@@ -1,31 +1,37 @@
 # HarmonyOS
 
-The ArkTS API provides sessions, image streams, detection, landmarks, embeddings, pipeline analysis and FeatureHub through a HAR module. The build and examples below use InspireFace 1.2.4.
+The ArkTS API provides sessions, image streams, detection, landmarks, embeddings, pipeline analysis and FeatureHub through a HAR module. The **1.2.4 Release** includes a ready-to-import HAR project with its compiled native library, as well as a separate C/C++ SDK.
 
 The [HarmonyOS build chapter](../build/harmonyos.md) covers toolchain setup, the native SDK, HAR staging and package checks.
 
-## Build the module
+## Get the module {#build-the-module}
 
-Prepare the [InspireFace source dependencies](../build/source.md), install an OpenHarmony Native SDK, and run from the repository root:
+Download and extract the [HarmonyOS 1.2.4 package](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-harmonyos-arm64-v8a-1.2.4.zip). The ArkTS module is under:
+
+```text
+inspireface-harmonyos-arm64-v8a-1.2.4/HarmonyOS/har
+```
+
+Import this directory as a module in DevEco Studio, or package it through your project's Hvigor workflow. It is a HAR project directory, not a finished `.har` archive. The compiled library is already at `src/main/libs/arm64-v8a/libinspireface_napi.so`; declarations are under `src/main/cpp/types/libinspireface_napi`.
+
+The package targets **arm64-v8a**, runs CPU inference and accepts raw pixel buffers. Download a [model pack](../guides/models-and-builds.md) separately. Verify model loading and one frame on the target device before connecting the camera.
+
+To rebuild the module, prepare the [InspireFace source dependencies](../build/source.md), install an OpenHarmony Native SDK, and run from the repository root:
 
 ```bash
 OHOS_NATIVE_HOME=/path/to/native-sdk/native \
   ./command/build_harmonyos_napi.sh
 ```
 
-The staged HAR project is written to:
+The source build writes the same HAR project layout to:
 
 ```text
 build/inspireface-harmonyos-napi-arm64-v8a/install/HarmonyOS/har
 ```
 
-Import that directory as a module in DevEco Studio, or package it through your project's Hvigor workflow. The native library is staged at `src/main/libs/arm64-v8a/libinspireface_napi.so`. Its declarations are under `src/main/cpp/types/libinspireface_napi`.
-
-The standard HAR build targets **arm64-v8a** and uses **MNN CPU inference** with raw-buffer image input. Build the module locally, then validate it on your target device before connecting the application workflow.
-
 ### Add the module to an application
 
-1. Copy the staged `har` directory into your project as an `inspireface` module. Use the installed directory from the build, since it contains the compiled `.so` as well as the ArkTS sources.
+1. Copy `HarmonyOS/har` from the Release package, or the installed `har` directory from a source build, into your project as an `inspireface` module. Both include the compiled `.so` and ArkTS sources.
 2. Register the module in the app project and add a local dependency from the entry module. For the layout `project/entry` and `project/inspireface`, the entry module's `oh-package.json5` can include:
 
 ```json

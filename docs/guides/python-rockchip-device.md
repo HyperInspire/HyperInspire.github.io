@@ -4,6 +4,8 @@ Python calls the same native SDK as a C application. To use the NPU, pair the Py
 
 This guide covers RK356x/RK3588 devices running **aarch64 Linux with glibc**. It uses `INSPIREFACE_LIBRARY_PATH` in the 1.2.4 wrapper to select the Rockchip native SDK. For a CPU comparison, use a compatible general CPU wheel in a separate environment.
 
+The [1.2.4 Linux RK356x/RK3588 SDK](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-linux-aarch64-rk356x-rk3588-1.2.4.zip) provides the native library. Extract it and use its `lib/libInspireFace.so` with the matching headers and version file. Prepare the board's runtime dependencies and the SoC-specific model pack separately; [build the SDK](../build/rockchip.md) if you need a different toolchain or configuration.
+
 ## Prepare the device
 
 First get the native [Rockchip detection example](../using-with/rknpu.md#start-with-a-still-image) working. Then check that the Python interpreter, native library and root filesystem agree on architecture and libc.

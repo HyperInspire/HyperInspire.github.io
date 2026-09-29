@@ -2,7 +2,7 @@
 
 C++ 应用可以使用 [C API](./c-cpp.md) 或 `inspire::Session` 接口。需要明确的 ABI 边界时可使用 C API；C++ 接口直接使用 InspireCV 的图像和几何类型，需要保证头文件、编译器 ABI 和原生库配套。
 
-SDK 编译从[源码准备与通用选项](../build/source.md)开始，再选择 [Linux](../build/linux.md) 或 [macOS](../build/macos.md)。本页介绍应用链接和 C++ API 用法。
+先在 [SDK 下载](../build/README.md#prebuilt-sdks)中选择匹配的 **1.2.4** 包。需要自定义构建时，从[源码准备与通用选项](../build/source.md)开始，再选择 [Linux](../build/linux.md) 或 [macOS](../build/macos.md)。本页介绍应用链接和 C++ API 用法。
 
 使用 Objective-C 或 Swift 开发 iOS、macOS 应用时，可以从 [Apple API 指南](./apple.md)开始。下面的 C/C++ 接入方式仍可使用，头文件与库需来自同一构建。
 

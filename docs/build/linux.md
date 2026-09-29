@@ -1,10 +1,12 @@
 # Linux SDK {#linux-sdk}
 
+The [1.2.4 SDK downloads](./README.md) provide CPU packages for x86_64 (Ubuntu 18.04 or manylinux2014), ARM64 and ARMv7 hard-float. Choose a package matching the process architecture and system libraries, or follow this chapter to build with your own toolchain and options.
+
 Build a shared CPU SDK for Linux x86_64, ARMv7 or ARM64, then link it from a native application or [package it with Python](./python.md). NVIDIA and Rockchip builds have separate [TensorRT](./nvidia.md) and [RKNPU](./rockchip.md) instructions.
 
 Java applications also need the JAR and JNI adapter; follow [Java packaging](./java.md) to build them.
 
-Complete [source preparation](./source.md) first. Run the commands below from the InspireFace SDK directory. For an existing binary package, use the [SDK downloads](./README.md).
+Complete [source preparation](./source.md) first. Run the commands below from the InspireFace SDK directory.
 
 For ARM CPU image processing, feature comparison and camera-loop tuning, see [ARM deployment](../using-with/arm.md).
 

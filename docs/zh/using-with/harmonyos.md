@@ -1,31 +1,37 @@
 # HarmonyOS {#harmonyos}
 
-ArkTS API 通过 HAR 模块提供会话、图像流、检测、关键点、特征、分析流水线和 FeatureHub。下面的构建步骤与示例使用 InspireFace 1.2.4。
+ArkTS API 通过 HAR 模块提供会话、图像流、检测、关键点、特征、分析流水线和 FeatureHub。**1.2.4 Release** 已提供可直接导入的 HAR 工程，包含编译好的原生库，包内也有独立的 C/C++ SDK。
 
 [HarmonyOS 构建章节](../build/harmonyos.md)介绍工具链配置、原生 SDK、HAR 工程生成与打包检查。
 
-## 构建模块 {#build-the-module}
+## 获取模块 {#build-the-module}
 
-准备 [InspireFace 源码依赖](../build/source.md)，安装 OpenHarmony Native SDK，然后从仓库根目录运行：
+下载并解压 [HarmonyOS 1.2.4 包](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-harmonyos-arm64-v8a-1.2.4.zip)。ArkTS 模块位于：
+
+```text
+inspireface-harmonyos-arm64-v8a-1.2.4/HarmonyOS/har
+```
+
+在 DevEco Studio 中将该目录导入为模块，或通过项目的 Hvigor 流程打包。这里提供的是 HAR 工程目录，还不是打包后的 `.har` 文件。编译好的原生库已位于 `src/main/libs/arm64-v8a/libinspireface_napi.so`，类型声明位于 `src/main/cpp/types/libinspireface_napi`。
+
+发布包面向 **arm64-v8a**，使用 CPU 推理和原始像素缓冲输入。[模型包](../guides/models-and-builds.md)需要单独下载。先在目标设备上确认模型加载和单帧处理，再连接摄像头。
+
+需要重新编译时，准备 [InspireFace 源码依赖](../build/source.md)，安装 OpenHarmony Native SDK，然后从仓库根目录运行：
 
 ```bash
 OHOS_NATIVE_HOME=/path/to/native-sdk/native \
   ./command/build_harmonyos_napi.sh
 ```
 
-整理后的 HAR 项目输出到：
+源码构建会将相同结构的 HAR 工程输出到：
 
 ```text
 build/inspireface-harmonyos-napi-arm64-v8a/install/HarmonyOS/har
 ```
 
-在 DevEco Studio 中将该目录导入为模块，或通过项目的 Hvigor 流程打包。原生库位于 `src/main/libs/arm64-v8a/libinspireface_napi.so`，类型声明位于 `src/main/cpp/types/libinspireface_napi`。
-
-标准 HAR 构建面向 **arm64-v8a**，使用 **MNN CPU 推理**和原始缓冲区图像输入。先在本地构建模块，再到目标设备上验证运行，然后接入应用流程。
-
 ### 接入应用工程 {#add-the-module-to-an-application}
 
-1. 将构建输出中的 `har` 目录复制到工程，作为 `inspireface` 模块。使用安装输出目录，其中同时包含 ArkTS 源码和编译好的 `.so`。
+1. 将 Release 包中的 `HarmonyOS/har`，或源码构建安装后的 `har` 目录复制到工程，作为 `inspireface` 模块。两种方式都包含编译好的 `.so` 和 ArkTS 源码。
 2. 在应用工程中注册该模块，并从 entry 模块添加本地依赖。假设目录为 `project/entry` 和 `project/inspireface`，entry 的 `oh-package.json5` 可以加入：
 
 ```json

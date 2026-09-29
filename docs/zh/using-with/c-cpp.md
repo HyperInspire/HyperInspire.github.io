@@ -8,7 +8,7 @@ SDK 版本、下载链接和各平台编译方法见[获取和编译](../build/R
 
 ## 链接 SDK {#link-the-sdk}
 
-从[发布页](https://github.com/HyperInspire/InspireFace/releases)下载匹配的 SDK，或[自行构建](../build/source.md)。找到包含 `include/inspireface.h` 和 `lib/libInspireFace.so` 的目录，macOS 对应 `.dylib`。
+从 [Release 1.2.4](https://github.com/HyperInspire/InspireFace/releases/tag/v1.2.4) 下载匹配的 SDK，或[自行构建](../build/source.md)。找到包含 `include/inspireface.h` 和 `lib/libInspireFace.so` 的目录，macOS 对应 `.dylib`。
 
 将[下方检测程序](#a-complete-detection-program)保存为 `detect.c`，再将下面的配置保存为同一目录下的 `CMakeLists.txt`。
 

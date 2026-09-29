@@ -6,10 +6,10 @@ The shared [Objective-C and Swift guide](./apple.md) contains a complete detecti
 
 ## Choose the frameworks {#build-the-frameworks}
 
-Build the current SDK with the [iOS build instructions](../build/ios.md), or use a matching Apple package when it is available in the [download list](../build/README.md). The new package contains:
+Download [inspireface-apple-1.2.4.zip](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-apple-1.2.4.zip). This CPU package includes the iOS device, simulator and macOS frameworks, with Objective-C and Swift interfaces. The extracted directory contains:
 
 ```text
-inspireface-apple/
+inspireface-apple-1.2.4/
   InspireFace.xcframework/
   InspireFaceSwift.xcframework/
   Frameworks/                 # Frameworks grouped by platform
@@ -17,9 +17,15 @@ inspireface-apple/
   sdk-manifest.json
 ```
 
-The default iOS script builds arm64 for devices and arm64 / x86_64 for simulators. Xcode chooses the matching slice when linking an XCFramework. A single-device build or a package made with `--arch` contains fewer slices; inspect its manifest before sharing it with a team.
+Xcode chooses the matching slice when linking an XCFramework. The published 1.2.4 package has these iOS deployment targets:
 
-The script requests iOS 11.0 by default. The arm64 simulator slice has a minimum of iOS 14.0 imposed by that target. Check the package's per-architecture deployment metadata and set the app's deployment target accordingly.
+| Platform | Architecture | Minimum OS |
+| --- | --- | --- |
+| iOS device | `arm64` | iOS 11.0 |
+| iOS Simulator | `arm64` | iOS 14.0 |
+| iOS Simulator | `x86_64` | iOS 11.0 |
+
+Set the app's deployment target for the selected slice. To change the build configuration or enable CoreML, follow [Build for iOS](../build/ios.md).
 
 ## Add the SDK and model to Xcode {#add-the-sdk-and-model-to-xcode}
 
@@ -230,6 +236,6 @@ On camera shutdown, stop new callbacks, drain the analysis queue, close any capt
 
 ## Apple acceleration {#apple-acceleration}
 
-CPU and CoreML are separate build packages with the same module names. Choose one package for the target. The CoreML build also needs the corresponding Apple model resources; simply switching frameworks does not convert a CPU model pack.
+The published 1.2.4 Apple package uses CPU inference. For CoreML, [build the Apple extension](../build/ios.md#build-with-the-apple-extension). CPU and CoreML packages use the same module names; choose one package for the target. The CoreML build also needs the corresponding Apple model resources; simply switching frameworks does not convert a CPU model pack.
 
 Use `IFRuntime` / `InspireFaceRuntime` to select the CoreML mode before creating sessions. See [CoreML runtime modes](./apple.md#coreml-runtime-modes) for CPU, GPU and Neural Engine configuration. Measure on physical devices: simulator compatibility checks do not represent camera latency, power use or Neural Engine performance.

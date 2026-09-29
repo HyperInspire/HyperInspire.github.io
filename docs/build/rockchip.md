@@ -1,5 +1,7 @@
 # Rockchip NPU builds {#rockchip-npu-builds}
 
+Prebuilt **1.2.4** packages are available for Linux RK356x/RK3588, RV1109/RV1126 and RV1106, and for Android RK356x/RK3588. Start with [SDK downloads](./README.md) when the package matches the board's ABI and runtime. The instructions below build the SDK with your own toolchain and settings.
+
 Build for the board’s CPU architecture, C library and NPU generation. Prepare the [SDK source](./source.md) and the cross toolchain supplied for the board’s Linux root filesystem. These builds run on a Linux host; run the resulting library on the board.
 
 ## Match the board and toolchain {#match-the-board-and-toolchain}

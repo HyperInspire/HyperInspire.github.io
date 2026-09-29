@@ -2,7 +2,27 @@
 
 macOS 构建支持 Apple Silicon arm64 和 Intel x86_64，并提供 C/C++、Objective-C 与 Swift 接口。可以只构建本机架构，也可以将两个架构合成 XCFramework，或与 iOS 真机、模拟器一起打包。
 
-先完成[Develop 版本源码准备](./source.md#develop-source)。预编译包见 [SDK 下载概述](./README.md)；以下命令用于构建当前源码，均从 InspireFace 仓库根目录运行。
+1.2.4 Release 已提供包含两种 macOS 架构的 CPU 包。需要从源码构建时，先完成[Develop 版本源码准备](./source.md#develop-source)，再从 InspireFace 仓库根目录执行构建命令。
+
+## 下载 CPU SDK {#download-the-cpu-sdk}
+
+下载 [inspireface-apple-1.2.4.zip](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-apple-1.2.4.zip)，其中包含 macOS、iOS 真机和模拟器版本。解压到 `build/` 后，可以直接使用下方路径：
+
+```bash
+mkdir -p build
+curl -L --fail -o build/inspireface-apple-1.2.4.zip \
+  https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-apple-1.2.4.zip
+ditto -x -k build/inspireface-apple-1.2.4.zip build
+```
+
+| Contents under `build/inspireface-apple-1.2.4/` | 用途 |
+| --- | --- |
+| `InspireFace.xcframework`, `InspireFaceSwift.xcframework` | 加入 Xcode 应用；macOS 选择 **Embed & Sign**。 |
+| `Frameworks/macosx/` | 合并架构后的 macOS Framework，可直接链接。 |
+| `SDKs/macosx-arm64/InspireFace/` | Apple Silicon 的原始头文件与 `.dylib`；要求 macOS 14.0 或更新版本。 |
+| `SDKs/macosx-x86_64/InspireFace/` | Intel 的原始头文件与 `.dylib`；要求 macOS 15.0 或更新版本。 |
+
+发布包使用 Xcode 16.4 构建，[模型资源](./README.md#download-the-model-separately)需单独下载。可直接继续[链接应用](#link-the-application)使用这个包；需要 CoreML 或自定义配置时，再从源码构建。
 
 ## 准备编译器与 SDK {#prepare-the-compiler-and-sdk}
 
@@ -88,8 +108,8 @@ VERSION=1.2.4 bash command/build_apple_xcframeworks.sh --backend cpu --jobs 4
 
 打包脚本先合并同一平台的架构，再通过 `xcodebuild -create-xcframework` 将不同平台组合起来。它会检查各个 slice 的依赖提交和 Xcode 工具链是否一致。分开构建 slice 时，也应保持 SDK 源码、依赖源码和工具链一致。
 
-::: tip 本地构建与发布下载
-当前源码可以在本地生成新的 Apple 包。发布流程配置为提供一个 `inspireface-apple-<version>.zip` CPU 包，CoreML 构建单独处理。已经发布的可下载产物请以 [SDK 下载概述](./README.md) 为准。
+::: tip CPU 发布包与 CoreML 构建
+1.2.4 CPU 发布包已包含上表的全部五个架构 / 平台切片。需要 CoreML 时，使用 `--backend coreml` 在本地构建独立的包。
 :::
 
 ## 设置架构和最低系统版本 {#set-architecture-and-deployment-target}
@@ -103,7 +123,7 @@ MACOSX_DEPLOYMENT_TARGET=14.0 VERSION=1.2.4 \
   bash command/build_macos_arm64.sh --jobs 4
 ```
 
-省略时，由所选编译器和 SDK 决定最低版本。当前 Apple CI 使用 Xcode 16.4，arm64 显式设置 macOS 14.0，x86_64 设置 macOS 15.0。这是 CI 的构建配置，并不代表所有源码构建都固定要求这些版本。自己的构建应在应用计划支持的最早 macOS 版本上验证。
+省略时，由所选编译器和 SDK 决定最低版本。1.2.4 发布包的 arm64 二进制要求 macOS 14.0，x86_64 要求 macOS 15.0。自行构建时可以请求其他目标版本，并在应用计划支持的最早 macOS 版本上验证。
 
 需要自定义 CMake 配置时，下面的示例同时生成 framework 和原始 arm64 CoreML `.dylib`。Python 需要动态库，可以使用这种构建方式，替代 `build_macos_coreml_arm64.sh` 默认选择的原始静态库。
 
@@ -152,7 +172,7 @@ import InspireFaceSwift
 
 `InspireFaceSwift` 会重新导出核心模块，使用 Swift API 不需要自行添加 bridging header。推理依赖已经链接进 `InspireFace.framework`，该 target 不应再额外链接原始 SDK 或单独的推理静态库。
 
-下面的 Swift 命令行程序不需要加载模型。先按前文设置 `MACOSX_DEPLOYMENT_TARGET=14.0`，构建 arm64 CPU SDK，再编译这个程序：
+下面的 Swift 命令行程序不需要加载模型。解压上方 CPU 下载包后，将代码保存为 `main.swift` 并编译：
 
 <details>
 <summary>main.swift 与编译命令</summary>
@@ -169,7 +189,7 @@ print("InspireFace API level:", level)
 ```
 
 ```bash
-SDK_DIR="$PWD/build/inspireface-macos-apple-silicon-arm64-1.2.4"
+SDK_DIR="$PWD/build/inspireface-apple-1.2.4/Frameworks/macosx"
 xcrun swiftc main.swift \
   -target arm64-apple-macosx14.0 \
   -F "$SDK_DIR" \
@@ -182,16 +202,17 @@ xcrun swiftc main.swift \
 
 </details>
 
-这条命令显式使用 arm64、macOS 14.0。Intel 构建应改用对应的 `SDK_DIR`，并将 `-target` 改为 `x86_64-apple-macosx<最低版本>`，其中最低版本应与包内二进制部署信息匹配。应用 bundle 交给 Xcode 复制和签名 framework，打包后再验证一次。[Apple API 指南](../using-with/apple.md)提供模型初始化与人脸检测示例，macOS 使用相同的 Objective-C 和 Swift API。
+这条命令使用 arm64、macOS 14.0。Intel 可使用同一套通用 Framework，将 `-target` 改为 `x86_64-apple-macosx15.0`。使用本地单架构构建时，将 `SDK_DIR` 改为对应输出目录，并匹配最低系统版本。应用 bundle 交给 Xcode 复制和签名 framework，打包后再验证一次。[Apple API 指南](../using-with/apple.md)提供模型初始化与人脸检测示例，macOS 使用相同的 Objective-C 和 Swift API。
 
 ### 原始动态库 {#shared-sdk}
 
-C/C++ 应用和 Python 可以继续使用 `InspireFace/lib/libInspireFace.dylib`。参考 [C API](../using-with/c-cpp.md#link-the-sdk) 或 [C++](../using-with/cpp.md#build-the-example) 的构建示例，将 `INSPIREFACE_ROOT` 指向包含 `include/` 和 `lib/` 的目录。
+C/C++ 应用和 Python 可以继续使用 `InspireFace/lib/libInspireFace.dylib`。参考 [C API](../using-with/c-cpp.md#link-the-sdk) 或 [C++](../using-with/cpp.md#build-the-example) 的构建示例，将 `INSPIREFACE_ROOT` 指向包含 `include/` 和 `lib/` 的目录。发布包中按应用架构选择 `SDKs/macosx-arm64/InspireFace` 或 `SDKs/macosx-x86_64/InspireFace`。
 
 ```bash
-file build/inspireface-macos-apple-silicon-arm64-1.2.4/InspireFace/lib/libInspireFace.dylib
-lipo -info build/inspireface-macos-apple-silicon-arm64-1.2.4/InspireFace/lib/libInspireFace.dylib
-otool -L build/inspireface-macos-apple-silicon-arm64-1.2.4/InspireFace/lib/libInspireFace.dylib
+SDK_ROOT="build/inspireface-apple-1.2.4/SDKs/macosx-arm64/InspireFace"
+file "$SDK_ROOT/lib/libInspireFace.dylib"
+lipo -info "$SDK_ROOT/lib/libInspireFace.dylib"
+otool -L "$SDK_ROOT/lib/libInspireFace.dylib"
 ```
 
 Apple framework 构建也会把原始 dylib 的 install name 设置为 `@rpath`。根据库在应用 bundle 中的位置配置 runpath，并在打包时签名。应用选择原始 SDK 或 framework 其中一条链接路径即可，两者都包含 SDK 实现。

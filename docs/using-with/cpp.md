@@ -2,7 +2,7 @@
 
 C++ applications can use either the [C API](./c-cpp.md) or the `inspire::Session` interface. Use the C API when you want an explicit ABI boundary. The C++ interface works directly with InspireCV image and geometry types; keep its headers, compiler ABI and native library matched.
 
-For SDK compilation, see [source preparation and options](../build/source.md), then choose [Linux](../build/linux.md) or [macOS](../build/macos.md). This page covers linking and using the C++ API.
+Download the matching **1.2.4** SDK from [SDK downloads](../build/README.md#prebuilt-sdks). For a custom build, see [source preparation and options](../build/source.md), then choose [Linux](../build/linux.md) or [macOS](../build/macos.md). This page covers linking and using the C++ API.
 
 For an iOS or macOS app written in Objective-C or Swift, see the [Apple API guide](./apple.md). The native C/C++ integration below remains available with the headers and libraries from the same build.
 

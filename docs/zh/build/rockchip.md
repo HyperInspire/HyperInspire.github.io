@@ -1,5 +1,7 @@
 # Rockchip NPU 构建 {#rockchip-npu-builds}
 
+**1.2.4** 已提供 Linux RK356x/RK3588、RV1109/RV1126、RV1106，以及 Android RK356x/RK3588 的预编译包。包的 ABI 和运行依赖符合板端环境时，可以先使用 [SDK 下载](./README.md)中的产物。以下步骤用于按自己的工具链和配置编译。
+
 按板端 CPU 架构、C 运行库和 NPU 代际选择构建方式。先准备 [SDK 源码](./source.md)，以及与板端 Linux 根文件系统配套的交叉工具链。在 Linux 主机上完成编译，再将库放到板端运行。
 
 ## 选择板型与工具链 {#match-the-board-and-toolchain}

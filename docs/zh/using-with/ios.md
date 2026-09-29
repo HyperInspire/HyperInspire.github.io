@@ -6,10 +6,10 @@ iOS 应用可以使用 Objective-C、Swift 或 C API。当前 Apple 构建提供
 
 ## 选择 Framework {#build-the-frameworks}
 
-按 [iOS 构建](../build/ios.md)生成当前 SDK，也可以在[下载列表](../build/README.md)提供对应 Apple 包后直接使用。新版包的目录如下：
+下载 [inspireface-apple-1.2.4.zip](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-apple-1.2.4.zip)。这个 CPU 包包含 iOS 真机、模拟器及 macOS 的 Framework，已提供 Objective-C 和 Swift 接口。解压后的目录如下：
 
 ```text
-inspireface-apple/
+inspireface-apple-1.2.4/
   InspireFace.xcframework/
   InspireFaceSwift.xcframework/
   Frameworks/                 # Frameworks grouped by platform
@@ -17,9 +17,15 @@ inspireface-apple/
   sdk-manifest.json
 ```
 
-默认 iOS 脚本会构建真机 arm64，以及模拟器 arm64 / x86_64。链接 XCFramework 时，Xcode 会选择对应切片。只构建真机或使用 `--arch` 限定架构时，产物包含的切片更少；分发给团队前先检查 manifest。
+链接 XCFramework 时，Xcode 会选择对应切片。1.2.4 发布包的 iOS 最低系统版本如下：
 
-脚本默认请求 iOS 11.0；arm64 模拟器目标的实际最低版本为 iOS 14.0。以包中各架构的部署元数据为准，设置应用的 deployment target。
+| Platform | Architecture | Minimum OS |
+| --- | --- | --- |
+| iOS device | `arm64` | iOS 11.0 |
+| iOS Simulator | `arm64` | iOS 14.0 |
+| iOS Simulator | `x86_64` | iOS 11.0 |
+
+按选用切片设置应用的 deployment target。需要更改构建配置或启用 CoreML 时，参考 [iOS 构建](../build/ios.md)。
 
 ## 将 SDK 和模型加入 Xcode {#add-the-sdk-and-model-to-xcode}
 
@@ -230,6 +236,6 @@ NV12 的输入带宽通常低于 BGRA。直接传入时，两个平面都必须�
 
 ## Apple 加速 {#apple-acceleration}
 
-CPU 与 CoreML 是两个独立构建包，模块名相同，一个 Target 选择其中一套。CoreML 构建还需要对应的 Apple 模型资源，只更换 Framework 不会将 CPU 模型包转换成 CoreML 模型。
+1.2.4 Apple 发布包使用 CPU 推理。需要 CoreML 时，按[启用 Apple 扩展](../build/ios.md#build-with-the-apple-extension)构建。CPU 与 CoreML 包的模块名相同，一个 Target 只使用其中一套。CoreML 构建还需要对应的 Apple 模型资源，只更换 Framework 不会将 CPU 模型包转换成 CoreML 模型。
 
 创建会话前，通过 `IFRuntime` / `InspireFaceRuntime` 选择 CoreML 模式。CPU、GPU 与 Neural Engine 的设置见 [CoreML 运行模式](./apple.md#coreml-runtime-modes)。延时、功耗和 Neural Engine 性能应在真机测量，模拟器只适合检查接入是否正常。

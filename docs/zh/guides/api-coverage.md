@@ -2,7 +2,7 @@
 
 按功能和 API 查找示例。先通过平台指南完成安装和初始化，再在功能指南的代码 tab 中选择使用的 API。
 
-示例使用 **InspireFace 1.2.4**、**InspireCV 1.0.2**、**Android Java SDK 1.2.4.post1** 和 **HarmonyOS ArkTS SDK 1.2.4**。[Python](../using-with/python.md) 使用 PyPI 的 **1.2.4.post1 包**，已包含 1.2.4 原生 SDK。Objective-C 和 Swift 使用[对应 1.2.4 源码](../build/source.md)构建的 Apple Framework。[Java（JVM）](../using-with/java.md)使用 1.2.4 源码构建的 portable JNI，与 Android 包分别列出。下表列出各接口支持的操作。
+示例使用 **InspireFace 1.2.4**、**InspireCV 1.0.2**、**Android Java SDK 1.2.4.post1** 和 **HarmonyOS ArkTS SDK 1.2.4**。[Python](../using-with/python.md) 使用 PyPI 的 **1.2.4.post1 包**，已包含 1.2.4 原生 SDK。Objective-C 和 Swift 可直接使用 [1.2.4 Apple 包](../build/README.md#apple-sdk-packaging)，HarmonyOS 发布包中包含原生 SDK 与 HAR 工程。[Java（JVM）](../using-with/java.md)使用 1.2.4 源码构建的 portable JNI，与 Android 包分别列出。下表列出各接口支持的操作。
 
 ## 各 API 的功能示例 {#feature-examples-by-api}
 
@@ -27,7 +27,6 @@
 | Similarity display conversion | [示例](./api-recipes.md) | [示例](./api-recipes.md) | [示例](./api-recipes.md) | [示例](./api-recipes.md) | [示例](./api-recipes.md) | [示例](./api-recipes.md) | [示例](./api-recipes.md) | [示例](./api-recipes.md) |
 | Detection snapshots | [示例](./face-capture.md) | [复制结果值](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) |
 | Face capture | [示例](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) |
-
 | CPU power mode | — | [示例](../using-with/cpp.md#cpu-power-mode) | [示例](../using-with/java.md#cpu-power-mode) | [示例](../using-with/android.md#cpu-power-mode) | — | — | — | — |
 
 </div>

@@ -2,6 +2,8 @@
 
 TensorRT 构建在 NVIDIA GPU 上运行兼容模型，使用与 CPU SDK 相同的检测、跟踪和识别接口，但需要启用 GPU 的原生库、匹配模型包，以及 CUDA/TensorRT 运行依赖。
 
+Linux x86_64 可下载 [1.2.4 TensorRT SDK（CUDA 12.2 / Ubuntu 22.04）](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-linux-tensorrt-cuda12.2_ubuntu22.04-1.2.4.zip)。先在目标机器上检查动态库依赖，符合当前环境时，可以跳过 SDK 编译，直接进行[模型加载](#load-the-matching-model)。
+
 完整编译参数和容器配置见 [NVIDIA TensorRT 构建](../build/nvidia.md)。
 
 Python 接入时，安装配套封装，并按下文设置 `INSPIREFACE_LIBRARY_PATH`，指向启用 TensorRT 的原生库。
@@ -48,7 +50,7 @@ ldd build/tensorrt/install/InspireFace/lib/libInspireFace.so
 
 ### 其他构建与部署方式 {#other-build-and-deployment-routes}
 
-[发布页](https://github.com/HyperInspire/InspireFace/releases)中的预编译 TensorRT SDK 可以省去编译步骤，但目标环境仍需提供该二进制依赖的 CUDA/TensorRT。使用前检查包的架构与依赖版本。
+预编译包和自行构建的 SDK 都需要目标环境提供匹配的 CUDA/TensorRT 依赖。配置应用或下文的 Python 库路径时，使用所选 SDK 中的 `lib/libInspireFace.so`。
 
 仓库也提供 Docker Compose 构建服务。先按[容器构建说明](../build/nvidia.md#build-in-a-container)统一基础镜像、TensorRT 包和输出标签，再运行：
 

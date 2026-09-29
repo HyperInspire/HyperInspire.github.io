@@ -1,6 +1,6 @@
 # Python 打包与原生库 {#python-package-and-native-libraries}
 
-Python API 通过 `ctypes` 调用原生 SDK。要从 CPU 切换到 TensorRT、CoreML 或 Rockchip NPU，先编译对应的动态库，再让 Python 加载它，或把它装进 wheel。Python 封装与原生库应来自同一份 SDK 源码版本。
+Python API 通过 `ctypes` 调用原生 SDK。从 CPU 切换到 TensorRT 或 Rockchip NPU 时，可在 [SDK 下载](./README.md#prebuilt-sdks)中获取对应的 **1.2.4 动态库**，也可以按目标设备自行构建。CoreML 需要源码构建。让 Python 加载这份库，或将它装进 wheel，并保持 Python 封装与原生 SDK 配套。
 
 使用 CPU 时，运行 `python -m pip install inspireface opencv-python` 即可安装已发布的 **1.2.4.post1** 包，其中包含 **1.2.4** 原生库。本章介绍替换原生库和自行制作 wheel 的方法；现成的安装包见 [SDK 概述](./README.md#python-and-android-packages)。
 
@@ -12,7 +12,9 @@ Python API 通过 `ctypes` 调用原生 SDK。要从 CPU 切换到 TensorRT、Co
 
 ## 准备原生 SDK 与 Python 封装 {#prepare-the-native-sdk-and-wrapper}
 
-完成[源码准备](./source.md)，再按 [Linux](./linux.md)、[macOS](./macos.md)、[NVIDIA](./nvidia.md) 或 [Rockchip](./rockchip.md) 章节编译。Python 需要设置 `ISF_BUILD_SHARED_LIBS=ON` 生成的**动态库**：Linux 使用 `libInspireFace.so`，macOS 使用 `libInspireFace.dylib`。
+Python 需要**动态库**：Linux 使用 `libInspireFace.so`，macOS 使用 `libInspireFace.dylib`。已经安装当前 PyPI 包，并准备好配套的 1.2.4 发布库时，可以直接进入[指定动态库](#select-or-replace-a-shared-library)步骤。
+
+需要自行编译库或修改 Python 封装时，先完成[源码准备](./source.md)，再按 [Linux](./linux.md)、[macOS](./macos.md)、[NVIDIA](./nvidia.md) 或 [Rockchip](./rockchip.md) 章节编译，启用 `ISF_BUILD_SHARED_LIBS=ON`，并按下文准备源码封装。
 
 Apple 新增的 Objective-C / Swift framework 用于原生应用接入。Python 仍然加载 **macOS 原始 dylib**，不使用 `InspireFace.xcframework`、`InspireFaceSwift.framework` 或 iOS 静态库。`build_macos_arm64.sh` 和 `build_macos_x86.sh` 会生成该动态库；arm64 CoreML 脚本生成的原始库是 `.a`，Python 应改用[自定义动态库构建](./macos.md#set-architecture-and-deployment-target)。
 

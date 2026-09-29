@@ -7,8 +7,9 @@ checkouts, then update the English and Chinese developer documentation. Source r
 are read-only inputs to this task.
 
 - InspireFace: `1a6c87b1013ded1aeb930d3a0e023ed6dd0f54b2` (2026-09-29), CMake version 1.2.4.
+- Published native SDK: `v1.2.4`, tag commit `98f9e958c11ec9254ca68eaa251a6caf8842c5ba` (release assets checked 2026-09-30).
 - Android SDK: `7675e3eb339bfb93d07586a6bfbff24a94cd85fa`, tag `v1.2.4.post1`.
-- Current documentation revision: 1.2.4.d6. Earlier dated sections retain their audit baselines.
+- Current documentation revision: 1.2.4.d7. Earlier dated sections retain their audit baselines.
 - InspireCV: `361574e` (2026-09-28), README version 1.0.2.
 - Preserve existing document URLs, the default light theme, Android demo QR code
   and the recently selected cloud illustrations.
@@ -842,3 +843,60 @@ Python-package status recorded during the d5 review above.
 Evidence: /private/tmp/inspireface-docs-pypi124/ contains the PyPI JSON,
 verified wheels, dylib metadata, environment details, runtime output and
 site-check log. No SDK source files were changed or remote deployment run.
+
+## Published native SDK 1.2.4 (2026-09-30, 1.2.4.d7)
+
+Verified the public GitHub v1.2.4 release and its tag commit
+`98f9e958c11ec9254ca68eaa251a6caf8842c5ba`. The release was published at
+2026-09-29 16:14:39 UTC (September 30 in Asia/Shanghai). This supersedes
+the earlier 1.2.3 native download baseline.
+
+Changes:
+
+- Updated both languages across the downloads overview, Introduction,
+  C/C++, Apple, Android, HarmonyOS, Linux, TensorRT, Rockchip, Python native
+  library replacement, model compatibility and API coverage. All 12 native
+  archive links in each downloads overview match the release asset list.
+- Documented the unified Apple CPU archive, Objective-C and Swift
+  XCFrameworks, simulator slices, raw C/C++ SDKs and actual minimum OS
+  versions. Source builds remain available for custom targets and CoreML.
+- Documented the Android native ZIP separately from the v1.2.4.post1 AAR.
+  Its JAR contains portable JNI classes and is not the complete Android
+  facade. The Python package also remains 1.2.4.post1.
+- Added the published HarmonyOS native SDK and HAR project. Inspected the
+  archive instead of relying on the release body's stale availability
+  note: it contains prebuilt native libraries and an importable HAR project,
+  but no finished `.har` file. Scoped its CMake 3.x advice to the v1.2.4 tag.
+- Fixed a blank line that had separated the CPU power mode row from the
+  API coverage table. Updated documentation metadata to 1.2.4.d7.
+
+Validation:
+
+- All 12 release downloads returned HTTP 200 after redirects. Downloaded
+  Apple, Android and HarmonyOS archives and matched their SHA-256 hashes
+  against the official release metadata.
+- Inspected Apple manifests, headers and Mach-O metadata. Minimum OS
+  versions are iOS 11 for device arm64 and simulator x86_64, iOS 14 for
+  simulator arm64, macOS 14 for arm64 and macOS 15 for x86_64.
+- Compiled and ran the documented Swift diagnostics and complete Swift
+  and Objective-C detection functions against the released macOS arm64
+  frameworks on macOS 15.6.1. Diagnostics reported C API level 2; both
+  detection examples found one face using Pikachu and kun.jpg.
+- Confirmed the Android archive's three ABI libraries have 16 KB-aligned
+  ELF load segments and its portable JNI JAR uses Java 8 class files.
+  This does not validate alignment of an application's final APK.
+  Confirmed the HarmonyOS libraries are AArch64 and its module reports
+  version 1.2.4. No Android/HarmonyOS/iOS device run or full SDK source
+  rebuild was performed.
+- Final site checks passed: 89 HTML pages, 15,406 local references,
+  92 Python fences, 44 bilingual pairs, 394 matching code fences and
+  44 complete inline examples. Version metadata agrees on 1.2.4.d7.
+- Reviewed the downloads overview on desktop and at 390px. The page stays
+  within the viewport; wide tables scroll within their containers. Confirmed
+  the CPU power mode row renders as nine cells in the API coverage matrix.
+  Reset the viewport and left the local downloads preview available.
+
+Evidence: `/private/tmp/inspireface-docs-release124/` contains the release
+and tag JSON, asset link checks, verified archives, Apple runtime check
+and site-check output. No SDK source files were changed or remote deployment
+run during this update.

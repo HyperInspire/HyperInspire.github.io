@@ -2,7 +2,7 @@
 
 Find examples by feature and API. Start with the platform guide to install and initialize the SDK, then choose your API in each feature guide's code tabs.
 
-The examples use **InspireFace 1.2.4**, **InspireCV 1.0.2**, **Android Java SDK 1.2.4.post1**, and **HarmonyOS ArkTS SDK 1.2.4**. [Python](../using-with/python.md) uses the **1.2.4.post1 PyPI package**, including the 1.2.4 native SDK. Objective-C and Swift use the Apple frameworks built from the [1.2.4 source revision](../build/source.md). [Java (JVM)](../using-with/java.md) uses the portable JNI build from the 1.2.4 source and is listed separately from Android. The table lists the operations available through each interface.
+The examples use **InspireFace 1.2.4**, **InspireCV 1.0.2**, **Android Java SDK 1.2.4.post1**, and **HarmonyOS ArkTS SDK 1.2.4**. [Python](../using-with/python.md) uses the **1.2.4.post1 PyPI package**, including the 1.2.4 native SDK. Objective-C and Swift use the [1.2.4 Apple package](../build/README.md#apple-sdk-packaging); the HarmonyOS release includes its native SDK and HAR project. [Java (JVM)](../using-with/java.md) uses the portable JNI build from the 1.2.4 source and is listed separately from Android. The table lists the operations available through each interface.
 
 ## Feature examples by API
 
@@ -27,7 +27,6 @@ The examples use **InspireFace 1.2.4**, **InspireCV 1.0.2**, **Android Java SDK 
 | Similarity display conversion | [Example](./api-recipes.md) | [Example](./api-recipes.md) | [Example](./api-recipes.md) | [Example](./api-recipes.md) | [Example](./api-recipes.md) | [Example](./api-recipes.md) | [Example](./api-recipes.md) | [Example](./api-recipes.md) |
 | Detection snapshots | [Example](./face-capture.md) | [Value copy](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) |
 | Face capture | [Example](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) |
-
 | CPU power mode | — | [Example](../using-with/cpp.md#cpu-power-mode) | [Example](../using-with/java.md#cpu-power-mode) | [Example](../using-with/android.md#cpu-power-mode) | — | — | — | — |
 
 </div>

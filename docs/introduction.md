@@ -96,7 +96,7 @@ For hardware acceleration, use the SDK build and resource pack for your target b
 
 InspireCV handles image operations and preprocessing. Its standalone [Image and Task APIs](./guides/inspirecv.md) are useful even when an application does not need face recognition.
 
-For prebuilt platforms, versions and download sources, see [Overview and downloads](./build/README.md). To compile your own SDK, choose a [platform build guide](./build/README.md#choose-a-build-guide); replacing Python’s `.so`/`.dylib` and creating a wheel have a [dedicated chapter](./build/python.md).
+Prebuilt **1.2.4** SDKs are available for Linux, Android, Apple and HarmonyOS; see [Overview and downloads](./build/README.md) for the packages and integration paths. To compile your own SDK, choose a [platform build guide](./build/README.md#choose-a-build-guide); replacing Python’s `.so`/`.dylib` and creating a wheel have a [dedicated chapter](./build/python.md).
 
 ## About these examples
 

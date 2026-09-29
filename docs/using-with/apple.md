@@ -2,7 +2,7 @@
 
 Use the same Apple API on iOS and macOS. Objective-C classes own the native handles; the Swift overlay adds `throws`, feature options and scoped access to borrowed results. C structs remain available when you need to work directly with buffers.
 
-Start with the platform setup for [iOS](./ios.md) or [macOS](./macos.md). These interfaces belong to the current development SDK; an older prebuilt package may contain only the C/C++ library. See [Get and build the SDK](../build/README.md) for available downloads and source builds.
+Download [inspireface-apple-1.2.4.zip](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-apple-1.2.4.zip) for the CPU SDK, including both Objective-C and Swift interfaces. Follow the platform setup for [iOS](./ios.md) or [macOS](./macos.md), then use the examples below. CoreML builds are covered in [Get and build the SDK](../build/README.md).
 
 ## Modules and types {#modules-and-types}
 

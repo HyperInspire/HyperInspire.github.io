@@ -6,6 +6,8 @@ Android Java API 可以直接处理位图和相机输入。**1.2.4.post1** 包�
 
 ## 选择安装包或源码构建 {#choose-a-package-or-source-build}
 
+Android 应用可以使用下面的 AAR。C/C++ 或可移植 Java 接入也可以下载原生 [1.2.4 Release ZIP](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-android-1.2.4.zip)，其中包含头文件、JAR 和三种 ABI 的库；模型和完整的 Android 便捷接口则随 AAR 提供。ZIP 目录与 Gradle 配置见[原生包接入](../build/android.md#download-the-prebuilt-sdk)。
+
 在 `settings.gradle` 的依赖仓库中添加 JitPack：
 
 ```groovy
@@ -217,7 +219,7 @@ Android 依赖版本为 **1.2.4.post1**，原生版本返回 **1.2.4**，C API l
 
 ## 构建原生库 {#build-the-native-library}
 
-[准备源码与第三方依赖](../build/source.md#develop-source)后，安装 JDK、Python 3 和 Android NDK，在 SDK 目录中执行：
+需要修改原生 SDK 时，[准备源码与第三方依赖](../build/source.md)后，安装 JDK、Python 3 和 Android NDK，在 SDK 目录中执行：
 
 ```bash
 export ANDROID_NDK=/absolute/path/to/android-ndk

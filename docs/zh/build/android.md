@@ -1,12 +1,24 @@
 # 构建 Android SDK {#build-for-android}
 
-普通应用接入可以直接添加 [1.2.4.post1 AAR](../using-with/android.md#choose-a-package-or-source-build)。需要修改原生实现或制作自己的 SDK 包时，再从源码构建。Rockchip Android 的构建方法见 [RKNN 章节](./rockchip.md)。
+Android 应用可以直接添加 [1.2.4.post1 AAR](../using-with/android.md#choose-a-package-or-source-build)。C/C++ 或可移植 Java 接入可以下载下面的 **1.2.4 原生 SDK**。需要修改原生实现或制作自己的 SDK 包时，再从源码构建。Rockchip Android 的构建方法见 [RKNN 章节](./rockchip.md)。
 
 标准脚本现在会一起生成 C/C++ SDK 和可移植 Java JAR。每个 ABI 只有一份 `libInspireFace.so`，包含原生核心、Android JNI 和可移植 JNI 接口。
 
+## 下载预编译 SDK {#download-the-prebuilt-sdk}
+
+[Android 1.2.4 ZIP](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-android-1.2.4.zip) 的目录与下方源码构建产物一致，只是不带开头的 `build/`。直接使用时无需再通过 NDK 编译：
+
+```bash
+curl -fL -o inspireface-android-1.2.4.zip \
+  https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-android-1.2.4.zip
+unzip inspireface-android-1.2.4.zip
+```
+
+原生接入使用 `include/` 和 `lib/<abi>/libInspireFace.so`。可移植 Java 还需要 `java/inspireface.jar` 和 `java/consumer-rules.pro`，具体配置见[应用打包](#package-the-native-library)。[模型包](../guides/models-and-builds.md)需要单独下载。ZIP 不包含 AAR 或完整的 Android 便捷接口；Android 指南中的 `InspireFace`、`Session` 和 `Bitmap` 示例使用 AAR。
+
 ## 准备工具链 {#prepare-the-toolchain}
 
-先完成[源码准备](./source.md#develop-source)，再安装 CMake 3.20 或更新版本、Make、Python 3、JDK（8 或更新版本）及 Android NDK。以下命令均从 SDK 目录运行。JDK 用于编译兼容 Java 8 的 JAR，Python 用于生成和检查接口绑定。
+先完成[源码准备](./source.md)，再安装 CMake 3.20 或更新版本、Make、Python 3、JDK（8 或更新版本）及 Android NDK。以下命令均从 SDK 目录运行。JDK 用于编译兼容 Java 8 的 JAR，Python 用于生成和检查接口绑定。
 
 `ANDROID_NDK` 应指向包含 `build/cmake/android.toolchain.cmake` 的 NDK 目录，而不是 Android SDK 或 Android Studio 的安装目录。如果 CMake 找不到 JDK，可通过 `JAVA_HOME` 指定其安装路径。
 
@@ -177,7 +189,7 @@ export NDK_HOST_TAG=HOST_TAG
   -h -d -l build/inspireface-android-1.2.4/lib/arm64-v8a/libInspireFace.so
 ```
 
-`arm64-v8a` 的 machine 应为 AArch64。再用 Android Studio 的 APK Analyzer 确认最终 APK 中，每个选定 ABI 的目录只有一份 `libInspireFace.so`。CMake 目标设置了 16 KB ELF 页对齐；应用的页面大小验证还应覆盖其他 native 依赖和最终 APK 的对齐情况。
+`arm64-v8a` 的 machine 应为 AArch64。再用 Android Studio 的 APK Analyzer 确认最终 APK 中，每个选定 ABI 的目录只有一份 `libInspireFace.so`。1.2.4 Release ZIP 的三种 ABI 均使用 16 KB ELF 加载段对齐，源码构建目标也设置了这一对齐值；应用的页面大小验证还应覆盖其他 native 依赖和最终 APK 的对齐情况。
 
 | Symptom | Check |
 | --- | --- |
@@ -190,4 +202,4 @@ export NDK_HOST_TAG=HOST_TAG
 
 在目标设备上先验证模型加载和单张图像检测，再接相机。[Android 指南](../using-with/android.md)介绍初始化、CPU 策略、帧数据生命周期与版本诊断。
 
-源码：[Android 构建脚本](https://github.com/HyperInspire/InspireFace/blob/e0505017c8c798db3ed7a4503408256e22e28964/command/build_android.sh)、[Java/JNI 构建规则](https://github.com/HyperInspire/InspireFace/blob/e0505017c8c798db3ed7a4503408256e22e28964/cpp/inspireface/platform/jni/portable/CMakeLists.txt)。
+源码：[Android 构建脚本](https://github.com/HyperInspire/InspireFace/blob/v1.2.4/command/build_android.sh)、[Java/JNI 构建规则](https://github.com/HyperInspire/InspireFace/blob/v1.2.4/cpp/inspireface/platform/jni/portable/CMakeLists.txt)。

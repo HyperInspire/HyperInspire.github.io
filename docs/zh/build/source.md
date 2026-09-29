@@ -38,7 +38,7 @@ git clone --recurse-submodules https://github.com/tunmx/inspireface-3rdparty.git
 | Build tool | 直接使用 CMake 时可选 Make 或 Ninja；多数 `command/` 脚本调用 Make。 |
 | Platform SDK | 按平台准备 Android NDK、Xcode、OpenHarmony Native SDK 或板端工具链。 |
 
-部分依赖使用较早的 CMake policy 设置。本文直接调用 CMake 的命令通过 `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` 兼容 CMake 4。统一的 Apple 构建脚本也带有此项。HarmonyOS HAR 脚本尚未传入该设置，运行该脚本时请使用 CMake 3.20–3.x。
+部分依赖使用较早的 CMake policy 设置。本文直接调用 CMake 的命令通过 `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` 兼容 CMake 4。统一的 Apple 构建脚本也带有此项。`v1.2.4` tag 中的 HarmonyOS HAR 脚本没有传入该设置，构建该版本时请使用 CMake 3.20–3.x。
 
 ## 构建 CPU SDK {#build-a-cpu-sdk}
 

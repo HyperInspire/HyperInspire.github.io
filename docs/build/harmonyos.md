@@ -1,12 +1,42 @@
 # Build for HarmonyOS {#build-for-harmonyos}
 
-The HarmonyOS build has two outputs: a native C/C++ SDK and an ArkTS HAR module. Choose the HAR module for an ArkTS app; choose the native SDK when you provide your own native integration. See [SDK downloads](./README.md) for the available prebuilt packages.
+The **1.2.4 Release** includes both the native C/C++ SDK and an ArkTS HAR project with a compiled native library. Choose the HAR project for an ArkTS app; choose the native SDK when you provide your own native integration. Build from source when you need to change the native implementation or build configuration.
 
-The configurations below use InspireFace `1.2.4`, target `arm64-v8a`, and run inference with MNN on the CPU. They use raw pixel buffers for image input. Build locally and validate the packaged app on the devices you plan to support.
+The package and configurations below use InspireFace `1.2.4`, target `arm64-v8a`, and run CPU inference with raw pixel buffers for image input. Validate the packaged app on the devices you plan to support.
+
+## Download the prebuilt SDK {#download-the-prebuilt-sdk}
+
+Download the [HarmonyOS 1.2.4 ZIP](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-harmonyos-arm64-v8a-1.2.4.zip):
+
+```bash
+curl -fL -o inspireface-harmonyos-arm64-v8a-1.2.4.zip \
+  https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-harmonyos-arm64-v8a-1.2.4.zip
+unzip inspireface-harmonyos-arm64-v8a-1.2.4.zip
+```
+
+The extracted directory contains:
+
+```text
+inspireface-harmonyos-arm64-v8a-1.2.4/
+  InspireFace/
+    include/
+    lib/libInspireFace.so
+  HarmonyOS/
+    libs/arm64-v8a/libinspireface_napi.so
+    har/
+      Index.ets
+      oh-package.json5
+      src/main/ets/InspireFace.ets
+      src/main/cpp/types/libinspireface_napi/
+      src/main/libs/arm64-v8a/libinspireface_napi.so
+  version.txt
+```
+
+For ArkTS, go straight to [adding the HAR to an app](#add-the-har-to-an-app) using `HarmonyOS/har`. This is a HAR **project directory** with the `.so` already compiled; DevEco Studio/Hvigor packages it for your app. It does not require the separate `InspireFace/lib/libInspireFace.so`. For native C/C++, use that core library and its matching `InspireFace/include` headers. Download the [model pack](../guides/models-and-builds.md) separately.
 
 ## Prepare the Native SDK {#prepare-the-native-sdk}
 
-Complete [source preparation](./source.md), then install an OpenHarmony Native SDK, CMake 3.20–3.x, Make and Node.js. The HAR script does not pass the additional policy setting needed by its dependencies under CMake 4. DevEco Studio is used later to integrate and package the HAR module.
+Complete [source preparation](./source.md), then install an OpenHarmony Native SDK, CMake 3.20–3.x, Make and Node.js. Use CMake 3.x with the `v1.2.4` tag: its HAR script does not pass the additional policy setting needed by its dependencies under CMake 4. DevEco Studio is used later to integrate and package the HAR module.
 
 Set `OHOS_NATIVE_HOME` to the Native SDK directory containing the toolchain file:
 
@@ -62,7 +92,7 @@ build/inspireface-harmonyos-napi-arm64-v8a/install/HarmonyOS/
 
 ## Add the HAR to an app {#add-the-har-to-an-app}
 
-Copy the installed `har/` directory into your DevEco Studio app as an `inspireface` module, register that module in the project and add a local dependency from the entry module. For sibling `entry/` and `inspireface/` directories, use:
+Copy the Release package's `HarmonyOS/har/` directory, or the installed `har/` from a source build, into your DevEco Studio app as an `inspireface` module. Register that module in the project and add a local dependency from the entry module. For sibling `entry/` and `inspireface/` directories, use:
 
 ```json
 {
@@ -74,7 +104,7 @@ Copy the installed `har/` directory into your DevEco Studio app as an `inspirefa
 
 Sync the project dependencies, then build the app or HAR using the selected DevEco SDK and your project's Hvigor configuration. Keep `Index.ets`, the ArkTS wrapper, native declarations and compiled `.so` together when distributing the module.
 
-The `harmony/inspireface/` source directory is the template for this package. Use the **installed** `har/` directory for integration because it also contains the native library produced by the build.
+The `harmony/inspireface/` source directory is the template for this package. Use `HarmonyOS/har/` from the Release ZIP or the **installed** `har/` directory from a source build; both contain the native library as well as the wrapper.
 
 Both `oh-package.json5` manifests must match the native SDK version. The CMake configuration checks the top-level module manifest and the `libinspireface_napi` type-package manifest against the source version (`1.2.4` in this checkout). Upgrade these pieces together when changing SDK versions.
 
@@ -129,4 +159,4 @@ The Node-API target runs checks after linking: the library must be AArch64, regi
 
 After packaging, check model launch, one RGBA detection, result release and shutdown on a target device. Then test camera format conversion and worker scheduling in the app. See [HarmonyOS usage](../using-with/harmonyos.md) for the complete flow.
 
-Source: [native build script](https://github.com/HyperInspire/InspireFace/blob/1cb2c1e44bde56253fe9eb5bbc8e14dc5e72dee9/command/build_harmonyos.sh), [Node-API build script](https://github.com/HyperInspire/InspireFace/blob/1cb2c1e44bde56253fe9eb5bbc8e14dc5e72dee9/command/build_harmonyos_napi.sh), [HAR install and version checks](https://github.com/HyperInspire/InspireFace/blob/1cb2c1e44bde56253fe9eb5bbc8e14dc5e72dee9/cpp/inspireface/platform/ohos/napi/CMakeLists.txt).
+Source: [native build script](https://github.com/HyperInspire/InspireFace/blob/v1.2.4/command/build_harmonyos.sh), [Node-API build script](https://github.com/HyperInspire/InspireFace/blob/v1.2.4/command/build_harmonyos_napi.sh), [HAR install and version checks](https://github.com/HyperInspire/InspireFace/blob/v1.2.4/cpp/inspireface/platform/ohos/napi/CMakeLists.txt).

@@ -96,7 +96,7 @@ SDK 库提供运行时，**资源包**包含模型及其配置，两者缺一不
 
 InspireCV 负责图像操作和预处理。即使应用不需要人脸识别，也可以单独使用它的 [Image 和 Task API](./guides/inspirecv.md)。
 
-预编译 SDK 的平台、版本和下载源见[概述与下载](./build/README.md)。需要自行编译时，按[获取和编译](./build/README.md#choose-a-build-guide)中的平台章节操作；Python 更换 `.so` / `.dylib` 和制作 wheel 有[独立章节](./build/python.md)。
+**1.2.4** 已提供 Linux、Android、Apple 和 HarmonyOS 的预编译 SDK，下载和接入方式见[概述与下载](./build/README.md)。需要自行编译时，按[获取和编译](./build/README.md#choose-a-build-guide)中的平台章节操作；Python 更换 `.so` / `.dylib` 和制作 wheel 有[独立章节](./build/python.md)。
 
 ## 示例对应的版本 {#about-these-examples}
 

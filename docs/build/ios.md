@@ -2,7 +2,20 @@
 
 The Apple build now includes **Objective-C and Swift interfaces**, an arm64 device build, and arm64 / x86_64 simulator builds. The main outputs are `InspireFace.xcframework` and `InspireFaceSwift.xcframework`. Xcode selects the matching platform and architecture when you add them to an app.
 
-`InspireFace` contains the C API and Objective-C classes; `InspireFaceSwift` adds the Swift API. Existing C/C++ applications can keep using the headers and archives under `SDKs/`. For a ready-made package, see [SDK downloads](./README.md); for application code, see [Objective-C and Swift](../using-with/apple.md).
+`InspireFace` contains the C API and Objective-C classes; `InspireFaceSwift` adds the Swift API. Existing C/C++ applications can keep using the headers and archives under `SDKs/`. Use the published CPU package below, or build from source to change the configuration. Application code is in [Objective-C and Swift](../using-with/apple.md).
+
+## Download the CPU SDK {#download-the-cpu-sdk}
+
+[inspireface-apple-1.2.4.zip](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-apple-1.2.4.zip) includes iOS device, simulator and macOS slices. To use the paths shown on this page, extract it into `build/`:
+
+```bash
+mkdir -p build
+curl -L --fail -o build/inspireface-apple-1.2.4.zip \
+  https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-apple-1.2.4.zip
+ditto -x -k build/inspireface-apple-1.2.4.zip build
+```
+
+The two XCFrameworks are in `build/inspireface-apple-1.2.4/`. The iOS device slice requires iOS 11.0; simulator slices require iOS 14.0 for arm64 and iOS 11.0 for x86_64. Continue with [Add the result to an app](#add-the-result-to-an-app) for a CPU integration. Download a [model resource](./README.md#download-the-model-separately) separately; the archive contains the SDK libraries only. CoreML uses the source build below.
 
 ## Prepare Xcode and dependencies {#prepare-xcode-and-dependencies}
 
@@ -71,7 +84,7 @@ VERSION=1.2.4 bash command/build_ios_coreml.sh --jobs 4
 
 This enables `ISF_ENABLE_APPLE_EXTENSION` and produces the same device / simulator layout at `build/inspireface-apple-coreml-1.2.4/`. Use an Apple resource pack for CoreML inference. Enabling the extension does not convert a CPU resource pack.
 
-CPU and CoreML packages have the same module names. Select one package per app target, and keep its two XCFrameworks together. Local scripts can build and package both variants; the current release workflow publishes the CPU Apple package.
+CPU and CoreML packages have the same module names. Select one package per app target, and keep its two XCFrameworks together. The 1.2.4 release includes the CPU Apple package; build the CoreML variant locally with this script.
 
 ## Select slices and build settings {#select-slices-and-build-settings}
 

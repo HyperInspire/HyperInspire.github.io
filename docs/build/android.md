@@ -1,12 +1,24 @@
 # Build for Android {#build-for-android}
 
-For an application using the packaged SDK, add the [1.2.4.post1 AAR](../using-with/android.md#choose-a-package-or-source-build). Build from source when you need a native change or your own SDK package. Rockchip Android builds have their own [RKNN instructions](./rockchip.md).
+For an Android application, add the [1.2.4.post1 AAR](../using-with/android.md#choose-a-package-or-source-build). For C/C++ or portable Java, download the **1.2.4 native SDK** below. Build from source when you need a native change or your own SDK package. Rockchip Android builds have their own [RKNN instructions](./rockchip.md).
 
 The standard script now produces the C/C++ SDK and a portable Java JAR together. Each ABI has one `libInspireFace.so` containing the core, Android JNI and portable JNI functions.
 
+## Download the prebuilt SDK {#download-the-prebuilt-sdk}
+
+The [Android 1.2.4 ZIP](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-android-1.2.4.zip) contains the same SDK layout shown below, without the leading `build/` directory. No NDK build is needed to use it:
+
+```bash
+curl -fL -o inspireface-android-1.2.4.zip \
+  https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-android-1.2.4.zip
+unzip inspireface-android-1.2.4.zip
+```
+
+Use `include/` and `lib/<abi>/libInspireFace.so` for native integration. For portable Java, also use `java/inspireface.jar` and `java/consumer-rules.pro`, then follow [application packaging](#package-the-native-library). Download a [model pack](../guides/models-and-builds.md) separately. The ZIP contains neither an AAR nor the complete Android convenience API; use the AAR for the `InspireFace`, `Session` and `Bitmap` examples in the Android guide.
+
 ## Prepare the toolchain {#prepare-the-toolchain}
 
-Complete [source preparation](./source.md#develop-source), then install CMake 3.20 or newer, Make, Python 3, a JDK (8 or newer) and the Android NDK. Run the following commands from the SDK directory. The JDK compiles the Java 8-compatible JAR; Python generates and checks the bindings.
+Complete [source preparation](./source.md), then install CMake 3.20 or newer, Make, Python 3, a JDK (8 or newer) and the Android NDK. Run the following commands from the SDK directory. The JDK compiles the Java 8-compatible JAR; Python generates and checks the bindings.
 
 `ANDROID_NDK` must point to the NDK directory containing `build/cmake/android.toolchain.cmake`, rather than the Android SDK or Android Studio directory. If CMake cannot locate the JDK, set `JAVA_HOME` to its installation directory.
 
@@ -177,7 +189,7 @@ export NDK_HOST_TAG=HOST_TAG
   -h -d -l build/inspireface-android-1.2.4/lib/arm64-v8a/libInspireFace.so
 ```
 
-Check that the machine is AArch64 for `arm64-v8a`, then use Android Studio's APK Analyzer to confirm one `libInspireFace.so` reached each selected ABI directory. The CMake target sets 16 KB ELF page alignment; check other native dependencies and final APK alignment as part of the application's page-size validation too.
+Check that the machine is AArch64 for `arm64-v8a`, then use Android Studio's APK Analyzer to confirm one `libInspireFace.so` reached each selected ABI directory. The 1.2.4 Release ZIP uses 16 KB ELF load-segment alignment for all three ABIs. The source target also sets this alignment; check other native dependencies and final APK alignment as part of the application's page-size validation too.
 
 | Symptom | Check |
 | --- | --- |
@@ -190,4 +202,4 @@ Check that the machine is AArch64 for `arm64-v8a`, then use Android Studio's APK
 
 Finish with model launch and single-image detection on the target device, then connect camera input. The [Android guide](../using-with/android.md) covers initialization, CPU policy, frame ownership and version diagnostics.
 
-Source: [Android build script](https://github.com/HyperInspire/InspireFace/blob/e0505017c8c798db3ed7a4503408256e22e28964/command/build_android.sh), [Java/JNI build rules](https://github.com/HyperInspire/InspireFace/blob/e0505017c8c798db3ed7a4503408256e22e28964/cpp/inspireface/platform/jni/portable/CMakeLists.txt).
+Source: [Android build script](https://github.com/HyperInspire/InspireFace/blob/v1.2.4/command/build_android.sh), [Java/JNI build rules](https://github.com/HyperInspire/InspireFace/blob/v1.2.4/cpp/inspireface/platform/jni/portable/CMakeLists.txt).

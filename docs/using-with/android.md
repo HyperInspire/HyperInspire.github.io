@@ -6,6 +6,8 @@ Start with a bitmap to verify model loading, then connect the camera. The [Andro
 
 ## Choose a package or source build {#choose-a-package-or-source-build}
 
+For an Android app, use the AAR below. The native [1.2.4 Release ZIP](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-android-1.2.4.zip) is also available for C/C++ or portable Java integration. It includes headers, a JAR and libraries for all three ABIs; models and the complete Android convenience API come with the AAR instead. See [native package setup](../build/android.md#download-the-prebuilt-sdk) for the ZIP layout and Gradle configuration.
+
 Add JitPack to your dependency repositories in `settings.gradle`:
 
 ```groovy
@@ -217,7 +219,7 @@ The Android dependency is **1.2.4.post1**, while the native version reports **1.
 
 ## Build the native library {#build-the-native-library}
 
-After [preparing the source and third-party dependencies](../build/source.md#develop-source), install a JDK, Python 3 and the Android NDK, then run from the SDK directory:
+To modify the native SDK, [prepare the source and third-party dependencies](../build/source.md), install a JDK, Python 3 and the Android NDK, then run from the SDK directory:
 
 ```bash
 export ANDROID_NDK=/absolute/path/to/android-ndk

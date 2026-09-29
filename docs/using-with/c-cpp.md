@@ -8,7 +8,7 @@ For an iOS or macOS app written in Objective-C or Swift, see the [Apple API guid
 
 ## Link the SDK
 
-Download a matching SDK from the [release page](https://github.com/HyperInspire/InspireFace/releases), or [build it yourself](../build/source.md). Locate the directory containing `include/inspireface.h` and `lib/libInspireFace.so` (or the macOS `.dylib`).
+Download the matching SDK from [Release 1.2.4](https://github.com/HyperInspire/InspireFace/releases/tag/v1.2.4), or [build it yourself](../build/source.md). Locate the directory containing `include/inspireface.h` and `lib/libInspireFace.so` (or the macOS `.dylib`).
 
 Save the [detection program below](#a-complete-detection-program) as `detect.c`, and save this configuration as `CMakeLists.txt` in the same directory.
 

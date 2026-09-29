@@ -129,7 +129,7 @@ Android 1.2.4.post1 提供 `InspireFace.GlobalReload(packPath)`，返回 `false`
 
 ## 下载 SDK {#download-an-sdk}
 
-[获取和编译：概述与下载](../build/README.md)列出当前预编译版本、各平台下载链接、Python 包和 Android 依赖。选择时同时检查设备与**进程架构**，并使用配套的头文件、封装和原生库。API level 2 示例需要 1.2.4 原生 SDK，Python 1.2.4.post1 wheel 和 Android 1.2.4.post1 AAR 都已包含对应原生库。
+[获取和编译：概述与下载](../build/README.md)列出 **1.2.4 原生发布包**、Python 包和 Android 依赖。选择时同时检查设备与**进程架构**，并使用配套的头文件、封装和原生库。原生发布包已支持 API level 2 示例，Python 1.2.4.post1 wheel 和 Android 1.2.4.post1 AAR 也包含这一版 SDK。
 
 ## 构建 CPU SDK {#build-a-cpu-sdk}
 

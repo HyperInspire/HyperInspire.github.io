@@ -2,6 +2,8 @@
 
 Rockchip 部署需要板端 CPU ABI 对应的原生 SDK、SoC 对应的 NPU 模型包，以及板端 RK 运行库和内核驱动。模型包与构建脚本的对应关系见下表。
 
+[1.2.4 SDK 下载](../build/README.md)已提供 RK356x/RK3588、RV1109/RV1126、RV1106 的 Linux 包，以及 RK356x/RK3588 的 Android 包。ABI 和运行依赖符合板端环境时，可以直接使用；需要更换工具链或调整 SDK 配置时，再按下文编译。
+
 [Rockchip 构建章节](../build/rockchip.md)介绍各板型的工具链、Linux / Android 产物和原生依赖。
 
 检测、跟踪、识别和 FeatureHub 使用常规 SDK 接口。RKNN 负责模型推理，RGA 负责缩放、旋转等图像操作，分别配置。

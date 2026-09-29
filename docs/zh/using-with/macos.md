@@ -14,9 +14,16 @@ JVM 应用使用 JAR 与配套的 `.dylib`，按 [Java 接入](./java.md)操作�
 | Swift | 同一次构建的 `InspireFace` 与 `InspireFaceSwift`。 |
 | 已有 C/C++ 程序 | 继续使用原始头文件和库，或使用核心 Framework 中的 C 头文件。 |
 
-如果[已发布的下载包](../build/README.md)尚未包含新接口，使用当前源码构建。CPU 与 CoreML 选择其中一套；两者模块名相同，不能同时链接到一个应用。
+下载 [inspireface-apple-1.2.4.zip](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-apple-1.2.4.zip) 即可使用 CPU SDK。包内包含两套接口，以及合并了两个架构的 macOS Framework。各架构的最低系统版本如下：
 
-组合包可以包含 `arm64` 和 `x86_64`，单架构构建则只包含指定架构。通过 `sdk-manifest.json` 或单架构的 `sdk-info.json` 确认架构和最低系统版本。macOS deployment target 可以配置，并不是包装接口固定要求某个系统版本。
+| Architecture | Minimum OS | Raw SDK directory |
+| --- | --- | --- |
+| `arm64` | macOS 14.0 | `SDKs/macosx-arm64/` |
+| `x86_64` | macOS 15.0 | `SDKs/macosx-x86_64/` |
+
+可以使用包根目录下的两个 XCFramework，也可以使用 `Frameworks/macosx/` 中合并架构后的 Framework。C/C++ 程序可使用对应原始 SDK 目录内的 `InspireFace/include/` 和 `InspireFace/lib/`。模型需[单独下载](../build/README.md#download-the-model-separately)。
+
+需要 CoreML 或自定义最低系统版本时，参考 [macOS 构建](../build/macos.md)。CPU 与 CoreML 包的模块名相同，不能同时链接到一个应用。
 
 ## 在 Xcode 中链接与嵌入 {#link-and-embed-in-xcode}
 

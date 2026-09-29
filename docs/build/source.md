@@ -38,7 +38,7 @@ Continue with the build guide for your target platform.
 | Build tool | Make or Ninja for direct CMake builds; most `command/` scripts call Make. |
 | Platform SDK | Android NDK, Xcode, OpenHarmony Native SDK or board toolchain as applicable. |
 
-Some bundled dependencies use older CMake policy settings. The direct CMake commands here pass `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` for CMake 4 compatibility. The unified Apple builder also passes this setting. The HarmonyOS HAR script does not, so use CMake 3.20–3.x for that script.
+Some bundled dependencies use older CMake policy settings. The direct CMake commands here pass `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` for CMake 4 compatibility. The unified Apple builder also passes this setting. The HarmonyOS HAR script in the `v1.2.4` tag does not pass this setting; use CMake 3.20–3.x when building that version.
 
 ## Build a CPU SDK {#build-a-cpu-sdk}
 

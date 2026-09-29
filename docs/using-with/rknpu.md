@@ -2,6 +2,8 @@
 
 A Rockchip deployment needs a native SDK built for the board's CPU ABI, an NPU model pack for its SoC, and the board's RK runtime and kernel driver. The table below pairs the model packs with the build scripts.
 
+The [1.2.4 SDK downloads](../build/README.md) include Linux packages for RK356x/RK3588, RV1109/RV1126 and RV1106, plus an Android RK356x/RK3588 package. Use the matching package when its ABI and runtime dependencies fit the board; the build steps below cover a custom toolchain or SDK configuration.
+
 The [Rockchip build chapter](../build/rockchip.md) covers each board toolchain, Linux/Android outputs and native dependencies.
 
 Detection, tracking, recognition and FeatureHub use the usual SDK APIs. RKNN runs model inference; RGA handles image operations such as resize and rotation and is configured separately.

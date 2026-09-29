@@ -14,9 +14,16 @@ See [Build for macOS](../build/macos.md) for architecture selection, CPU / CoreM
 | Swift | Both `InspireFace` and `InspireFaceSwift` from the same build. |
 | Existing C/C++ consumer | Keep the raw headers and library route, or use the core framework's C header. |
 
-Use the current source build for the new interfaces if the [published download](../build/README.md) predates them. Choose the CPU package or the CoreML package as a unit: the two variants use the same module names and cannot be linked together.
+Download [inspireface-apple-1.2.4.zip](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-apple-1.2.4.zip) for the CPU SDK. It includes both interfaces and a universal macOS framework slice. The macOS binaries have these minimum system versions:
 
-A combined package can contain both `arm64` and `x86_64`; an architecture-specific build contains only the requested one. Confirm the architectures and minimum system version in `sdk-manifest.json` or the individual `sdk-info.json`. The macOS deployment target is configurable and is not fixed by the wrapper API.
+| Architecture | Minimum OS | Raw SDK directory |
+| --- | --- | --- |
+| `arm64` | macOS 14.0 | `SDKs/macosx-arm64/` |
+| `x86_64` | macOS 15.0 | `SDKs/macosx-x86_64/` |
+
+Use the two XCFrameworks at the package root, or the merged frameworks in `Frameworks/macosx/`. C/C++ applications can use `InspireFace/include/` and `InspireFace/lib/` within the matching raw SDK directory. Models are [downloaded separately](../build/README.md#download-the-model-separately).
+
+For CoreML or a custom deployment target, follow [Build for macOS](../build/macos.md). CPU and CoreML packages use the same module names and cannot be linked together.
 
 ## Link and embed in Xcode {#link-and-embed-in-xcode}
 

@@ -1,12 +1,42 @@
 # 构建 HarmonyOS SDK {#build-for-harmonyos}
 
-HarmonyOS 有两种构建产物：C/C++ native SDK 和 ArkTS HAR 模块。ArkTS 应用选择 HAR 模块，自行编写 native 接入层时选择 native SDK。已提供的预编译包见 [SDK 下载概述](./README.md)。
+**1.2.4 Release** 已提供 C/C++ native SDK，以及包含编译好原生库的 ArkTS HAR 工程。ArkTS 应用选择 HAR 工程，自行编写 native 接入层时选择 native SDK。需要修改原生实现或构建配置时，再从源码编译。
 
-下面的配置使用 InspireFace `1.2.4`，目标 ABI 为 `arm64-v8a`，通过 MNN 在 CPU 上推理，以原始像素缓冲作为图像输入。本地构建并打包应用后，应在计划支持的设备上验证。
+发布包和下面的配置使用 InspireFace `1.2.4`，目标 ABI 为 `arm64-v8a`，通过 CPU 推理，以原始像素缓冲作为图像输入。打包应用后，在计划支持的设备上验证。
+
+## 下载预编译 SDK {#download-the-prebuilt-sdk}
+
+下载 [HarmonyOS 1.2.4 ZIP](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-harmonyos-arm64-v8a-1.2.4.zip)：
+
+```bash
+curl -fL -o inspireface-harmonyos-arm64-v8a-1.2.4.zip \
+  https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-harmonyos-arm64-v8a-1.2.4.zip
+unzip inspireface-harmonyos-arm64-v8a-1.2.4.zip
+```
+
+解压后的主要目录如下：
+
+```text
+inspireface-harmonyos-arm64-v8a-1.2.4/
+  InspireFace/
+    include/
+    lib/libInspireFace.so
+  HarmonyOS/
+    libs/arm64-v8a/libinspireface_napi.so
+    har/
+      Index.ets
+      oh-package.json5
+      src/main/ets/InspireFace.ets
+      src/main/cpp/types/libinspireface_napi/
+      src/main/libs/arm64-v8a/libinspireface_napi.so
+  version.txt
+```
+
+ArkTS 接入可以直接使用 `HarmonyOS/har`，跳到[将 HAR 加入应用](#add-the-har-to-an-app)。它是已编译好 `.so` 的 **HAR 工程目录**，通过 DevEco Studio/Hvigor 为应用打包，不需要额外附带 `InspireFace/lib/libInspireFace.so`。原生 C/C++ 接入则使用这份核心库及配套的 `InspireFace/include` 头文件。[模型包](../guides/models-and-builds.md)需要单独下载。
 
 ## 准备 Native SDK {#prepare-the-native-sdk}
 
-先完成[源码准备](./source.md)，再安装 OpenHarmony Native SDK、CMake 3.20–3.x、Make 和 Node.js。HAR 脚本没有传入依赖在 CMake 4 下所需的额外 policy 设置。后续通过 DevEco Studio 接入和打包 HAR 模块。
+先完成[源码准备](./source.md)，再安装 OpenHarmony Native SDK、CMake 3.20–3.x、Make 和 Node.js。构建 `v1.2.4` tag 时使用 CMake 3.x：该版本的 HAR 脚本没有传入依赖在 CMake 4 下所需的额外 policy 设置。后续通过 DevEco Studio 接入和打包 HAR 模块。
 
 将 `OHOS_NATIVE_HOME` 指向包含 toolchain 文件的 Native SDK 目录：
 
@@ -62,7 +92,7 @@ build/inspireface-harmonyos-napi-arm64-v8a/install/HarmonyOS/
 
 ## 将 HAR 加入应用 {#add-the-har-to-an-app}
 
-将安装后的 `har/` 目录复制到 DevEco Studio 应用中，作为 `inspireface` 模块注册，并在 entry 模块中添加本地依赖。`entry/` 和 `inspireface/` 位于同一级目录时，可以使用：
+将 Release 包中的 `HarmonyOS/har/`，或源码构建安装后的 `har/` 目录复制到 DevEco Studio 应用中，作为 `inspireface` 模块注册，并在 entry 模块中添加本地依赖。`entry/` 和 `inspireface/` 位于同一级目录时，可以使用：
 
 ```json
 {
@@ -74,7 +104,7 @@ build/inspireface-harmonyos-napi-arm64-v8a/install/HarmonyOS/
 
 同步工程依赖，再按项目选定的 DevEco SDK 和 Hvigor 配置构建应用或 HAR。分发模块时，将 `Index.ets`、ArkTS 包装层、native 类型声明和编译后的 `.so` 一起更新。
 
-源码目录 `harmony/inspireface/` 是这个包的模板。接入时应使用**安装后的** `har/` 目录，因为这里还包含构建生成的 native 库。
+源码目录 `harmony/inspireface/` 是这个包的模板。接入时使用 Release ZIP 中的 `HarmonyOS/har/`，或源码构建**安装后的** `har/` 目录，两者都包含原生库和包装层。
 
 两个 `oh-package.json5` 的版本都必须与 native SDK 一致。CMake 会将顶层模块 manifest 和 `libinspireface_napi` 类型包 manifest 与源码版本比较（此份源码为 `1.2.4`）。切换 SDK 版本时，一起更新这些文件。
 
@@ -129,4 +159,4 @@ Node-API 目标链接后会进行检查：库必须是 AArch64、注册 Node-API
 
 打包后，在目标设备上检查模型启动、单张 RGBA 图像检测、结果释放和关闭流程，再测试应用中的相机格式转换和 worker 调度。完整接入流程见 [HarmonyOS 使用指南](../using-with/harmonyos.md)。
 
-源码：[native 构建脚本](https://github.com/HyperInspire/InspireFace/blob/1cb2c1e44bde56253fe9eb5bbc8e14dc5e72dee9/command/build_harmonyos.sh)、[Node-API 构建脚本](https://github.com/HyperInspire/InspireFace/blob/1cb2c1e44bde56253fe9eb5bbc8e14dc5e72dee9/command/build_harmonyos_napi.sh)、[HAR 安装和版本检查](https://github.com/HyperInspire/InspireFace/blob/1cb2c1e44bde56253fe9eb5bbc8e14dc5e72dee9/cpp/inspireface/platform/ohos/napi/CMakeLists.txt)。
+源码：[native 构建脚本](https://github.com/HyperInspire/InspireFace/blob/v1.2.4/command/build_harmonyos.sh)、[Node-API 构建脚本](https://github.com/HyperInspire/InspireFace/blob/v1.2.4/command/build_harmonyos_napi.sh)、[HAR 安装和版本检查](https://github.com/HyperInspire/InspireFace/blob/v1.2.4/cpp/inspireface/platform/ohos/napi/CMakeLists.txt)。

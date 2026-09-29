@@ -2,7 +2,7 @@
 
 iOS 和 macOS 使用同一套 Apple 接口。Objective-C 类负责持有原生句柄，Swift 在此基础上提供 `throws`、功能选项，以及限定作用域的结果访问方式。需要直接处理缓冲区时，仍可使用 C 结构体。
 
-先按 [iOS](./ios.md) 或 [macOS](./macos.md) 页面配置工程。这些接口属于当前开发版 SDK，较早的预编译包可能只有 C/C++ 库。下载源和源码构建入口见[获取和编译](../build/README.md)。
+下载 [inspireface-apple-1.2.4.zip](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-apple-1.2.4.zip) 即可使用 CPU SDK，包内已包含 Objective-C 和 Swift 接口。先按 [iOS](./ios.md) 或 [macOS](./macos.md) 页面配置工程，再运行下方示例。CoreML 构建方式见[获取和编译](../build/README.md)。
 
 ## 模块与类型 {#modules-and-types}
 

@@ -129,7 +129,7 @@ Android 1.2.4.post1 provides `InspireFace.GlobalReload(packPath)`, which returns
 
 ## Download an SDK
 
-[Get and build the SDK: overview and downloads](../build/README.md) lists the current prebuilt versions, platform downloads, Python package and Android dependency. Check the device and **process architecture**, and use matching headers, wrappers and native libraries. API-level-2 examples need the 1.2.4 native SDK, already included in the Python 1.2.4.post1 wheels and Android 1.2.4.post1 AAR.
+[Get and build the SDK: overview and downloads](../build/README.md) lists the **1.2.4 native release**, Python package and Android dependency. Check the device and **process architecture**, and use matching headers, wrappers and native libraries. The native release supports the API-level-2 examples; Python 1.2.4.post1 wheels and the Android 1.2.4.post1 AAR also include this SDK version.
 
 ## Build a CPU SDK
 

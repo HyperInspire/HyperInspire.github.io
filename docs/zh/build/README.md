@@ -4,38 +4,37 @@
 
 ## 预编译 SDK {#prebuilt-sdks}
 
-下方原生 SDK 压缩包列表使用 [GitHub release v1.2.3](https://github.com/HyperInspire/InspireFace/releases/tag/v1.2.3)。Python 和 Android 已提供包含 **1.2.4** 原生库的 **1.2.4.post1** 包，安装方式与下载入口见[下方单独说明](#python-and-android-packages)。
+当前 [GitHub Release 为 v1.2.4](https://github.com/HyperInspire/InspireFace/releases/tag/v1.2.4)，下方提供 Linux、Android、Apple 和 HarmonyOS 的原生 SDK。Python 和 Android AAR 的包版本为 **1.2.4.post1**，原生 SDK 同为 **1.2.4**，安装方式见[下方说明](#python-and-android-packages)。
 
-::: warning 注意接口版本
-文档示例使用 **1.2.4 接口**，包括快照、抓拍和诊断。Python 可直接安装当前 PyPI 包，Android 可使用当前 AAR，两者均包含配套原生库。直接使用原生接口时，请编译 1.2.4 库并使用同版本头文件。下方 v1.2.3 压缩包不包含这里展示的全部接口。
+::: tip 直接使用预编译包
+**1.2.4** 下载包已提供文档中的快照、抓拍和诊断接口，使用同一个包内的头文件和库即可。需要更换后端、工具链或调整最低系统版本时，再从源码构建。
 :::
 
 <div class="sdk-table">
 
 | Platform | Backend | Download |
 | --- | --- | --- |
-| Linux x86_64 | CPU / MNN | [Ubuntu 18.04](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.3/inspireface-linux-x86-ubuntu18-1.2.3.zip) · [manylinux2014](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.3/inspireface-linux-x86-manylinux2014-1.2.3.zip) |
-| Linux ARM64 | CPU / MNN | [aarch64](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.3/inspireface-linux-aarch64-1.2.3.zip) |
-| Linux ARMv7 | CPU / MNN | [armhf](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.3/inspireface-linux-armv7-armhf-1.2.3.zip) |
-| macOS Intel | CPU / MNN | [x86_64](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.3/inspireface-macos-intel-x86-64-1.2.3.zip) |
-| macOS Apple Silicon | CPU / MNN | [arm64](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.3/inspireface-macos-apple-silicon-arm64-1.2.3.zip) |
-| Android | CPU / MNN | [Android SDK](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.3/inspireface-android-1.2.3.zip) |
-| iOS | CPU / MNN | [iOS SDK](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.3/inspireface-ios-1.2.3.zip) |
-| Linux x86_64 | TensorRT | [CUDA 12.2 / Ubuntu 22.04](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.3/inspireface-linux-tensorrt-cuda12.2_ubuntu22.04-1.2.3.zip) |
-| Linux ARM64 | RK356x / RK3588 | [aarch64 / RKNPU2](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.3/inspireface-linux-aarch64-rk356x-rk3588-1.2.3.zip) |
-| Linux ARMv7 | RV1109 / RV1126 | [armhf / RKNPU1](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.3/inspireface-linux-armv7-rv1109rv1126-armhf-1.2.3.zip) |
-| Linux ARMv7 | RV1106 | [armhf / uClibc / RKNPU2](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.3/inspireface-linux-armv7-rv1106-armhf-uclibc-1.2.3.zip) |
-| Android | RK356x / RK3588 | [Android / RKNPU2](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.3/inspireface-android-rk356x-rk3588-1.2.3.zip) |
+| Linux x86_64 | CPU | [Ubuntu 18.04](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-linux-x86-ubuntu18-1.2.4.zip) · [manylinux2014](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-linux-x86-manylinux2014-1.2.4.zip) |
+| Linux ARM64 | CPU | [aarch64](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-linux-aarch64-1.2.4.zip) |
+| Linux ARMv7 | CPU | [armhf](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-linux-armv7-armhf-1.2.4.zip) |
+| macOS / iOS | CPU | [Apple XCFrameworks + C/C++](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-apple-1.2.4.zip) |
+| Android | CPU | [Native SDK + Java/JNI](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-android-1.2.4.zip) |
+| HarmonyOS ARM64 | CPU | [Native SDK + HAR project](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-harmonyos-arm64-v8a-1.2.4.zip) |
+| Linux x86_64 | TensorRT | [CUDA 12.2 / Ubuntu 22.04](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-linux-tensorrt-cuda12.2_ubuntu22.04-1.2.4.zip) |
+| Linux ARM64 | RK356x / RK3588 | [aarch64 / RKNPU2](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-linux-aarch64-rk356x-rk3588-1.2.4.zip) |
+| Linux ARMv7 | RV1109 / RV1126 | [armhf / RKNPU1](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-linux-armv7-rv1109rv1126-armhf-1.2.4.zip) |
+| Linux ARMv7 | RV1103 / RV1106 | [armhf / uClibc / RKNPU2](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-linux-armv7-rv1106-armhf-uclibc-1.2.4.zip) |
+| Android | RK356x / RK3588 | [Android / RKNPU2](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-android-rk356x-rk3588-1.2.4.zip) |
 
 </div>
 
-表中的 CUDA / Ubuntu 版本来自发布文件名，部署时仍需检查库依赖。这个发布版本没有独立的 HarmonyOS、Windows 或 CoreML 压缩包；HarmonyOS 和 Apple 平台的源码构建方式见下方对应章节。本章暂不提供 Windows 构建步骤。
+表中的 CUDA / Ubuntu 版本来自发布文件名，部署时仍需检查库的实际依赖。HarmonyOS 包内包含 arm64 原生 SDK、HAR 工程和配套的 Node-API 库，导入方式见 [HarmonyOS 接入](../using-with/harmonyos.md)。此版本没有 Windows、CoreML 或独立桌面 Java 的预编译包，CoreML 和 Java 的构建方式见下方对应章节。
 
 按**应用进程**选择架构和 C 运行库。64 位设备上的应用也可能是 32 位进程。使用同一压缩包中的头文件和库；静态 Framework、GPU / NPU 库的链接方式见对应平台章节。
 
 ## Apple SDK 产物 {#apple-sdk-packaging}
 
-1.2.4 源码加入了 Objective-C、Swift 接口、iOS 模拟器构建和配套的 XCFramework。上面的 v1.2.3 下载包仍采用旧产物结构；运行本文档的 Apple 示例时，请按 [Develop 版本的获取方式](./source.md#develop-source)拉取源码并构建。
+CPU 版本直接下载 [inspireface-apple-1.2.4.zip](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-apple-1.2.4.zip)。一个包同时覆盖 macOS Intel / Apple Silicon、iOS arm64 真机以及 arm64 / x86_64 模拟器，包含示例使用的 Objective-C、Swift Framework 和 C/C++ 头文件、库。
 
 | Application | 需要添加的库 | 接入指南 |
 | --- | --- | --- |
@@ -48,7 +47,7 @@
 
 真机与模拟器的构建见 [iOS](./ios.md)，Intel、Apple Silicon 与通用架构的构建见 [macOS](./macos.md)。iOS Framework 是静态库，macOS Framework 是动态库，在 Xcode 中采用不同的嵌入设置。新版 iOS Framework 已合入推理依赖，应用 target 无需再添加 `MNN.framework`。
 
-Apple 发布工作流生成的 CPU 压缩包名为 `inspireface-apple-<version>.zip`；v1.2.3 发布中不包含该文件。CoreML 产物可以通过同一构建脚本在本地生成，运行时需搭配兼容的 CoreML 模型资源包。
+包内 macOS 库的最低版本为 **arm64 14.0**、**x86_64 15.0**；iOS 真机最低为 **11.0**，模拟器分别为 **arm64 14.0**、**x86_64 11.0**。CoreML 版本需要本地构建，并搭配兼容的 CoreML 模型资源包；自定义构建见 [iOS](./ios.md) 和 [macOS](./macos.md)。
 
 ## Python 与 Android 包 {#python-and-android-packages}
 

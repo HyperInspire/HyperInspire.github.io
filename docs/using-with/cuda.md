@@ -2,6 +2,8 @@
 
 The TensorRT build runs compatible models on an NVIDIA GPU. It uses the same detection, tracking and recognition APIs as the CPU SDK, but needs a GPU-enabled native library, the matching model pack and the CUDA/TensorRT runtime dependencies.
 
+For Linux x86_64, download the [1.2.4 TensorRT SDK for CUDA 12.2 / Ubuntu 22.04](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-linux-tensorrt-cuda12.2_ubuntu22.04-1.2.4.zip). Check its native dependencies on the target before use. When they match your environment, you can skip SDK compilation and proceed to [model loading](#load-the-matching-model).
+
 For complete compiler settings and container configuration, see [NVIDIA TensorRT builds](../build/nvidia.md).
 
 For Python, install the matching wrapper and point `INSPIREFACE_LIBRARY_PATH` to the TensorRT-enabled native library, as shown below.
@@ -48,7 +50,7 @@ The repository also provides `command/build_linux_tensorrt.sh`, which enables it
 
 ### Other build and deployment routes
 
-A prebuilt TensorRT SDK from the [release page](https://github.com/HyperInspire/InspireFace/releases) can skip compilation, but the target still needs the CUDA/TensorRT dependencies expected by that binary. Check the package's architecture and dependency versions before using it.
+The prebuilt SDK and a custom build both need their matching CUDA/TensorRT dependencies on the target. Use the selected SDK's `lib/libInspireFace.so` when configuring the application or Python library path below.
 
 The repository also includes a Docker Compose build service. First align the base image, TensorRT package and output label using the [container build instructions](../build/nvidia.md#build-in-a-container), then run:
 

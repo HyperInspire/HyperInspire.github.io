@@ -4,6 +4,8 @@ Python 与 C 应用调用相同的原生 SDK。使用 NPU 时，需要将 Python
 
 本页适用于运行 **aarch64 Linux / glibc** 的 RK356x、RK3588 设备，通过 1.2.4 封装的 `INSPIREFACE_LIBRARY_PATH` 选择 Rockchip 原生 SDK。需要对比 CPU 性能时，可以在独立环境中安装兼容的通用 CPU wheel。
 
+原生库可使用 [1.2.4 Linux RK356x/RK3588 SDK](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-linux-aarch64-rk356x-rk3588-1.2.4.zip)。解压后使用其中的 `lib/libInspireFace.so`，保留配套头文件和版本文件。板端运行依赖和 SoC 对应的模型包仍需单独准备；需要更换工具链或调整配置时，再[编译 SDK](../build/rockchip.md)。
+
 ## 准备设备 {#prepare-the-device}
 
 先运行原生 [Rockchip 检测示例](../using-with/rknpu.md#start-with-a-still-image)，再确认 Python 解释器、原生库和根文件系统使用一致的架构与 libc。
