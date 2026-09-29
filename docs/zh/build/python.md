@@ -2,7 +2,7 @@
 
 Python API 通过 `ctypes` 调用原生 SDK。要从 CPU 切换到 TensorRT、CoreML 或 Rockchip NPU，先编译对应的动态库，再让 Python 加载它，或把它装进 wheel。Python 封装与原生库应来自同一份 SDK 源码版本。
 
-本文使用 **1.2.4 源码中的 Python 封装**。已发布的预编译包及下载地址见 [SDK 概述](./README.md)。
+使用 CPU 时，运行 `python -m pip install inspireface opencv-python` 即可安装已发布的 **1.2.4.post1** 包，其中包含 **1.2.4** 原生库。本章介绍替换原生库和自行制作 wheel 的方法；现成的安装包见 [SDK 概述](./README.md#python-and-android-packages)。
 
 | 需求 | 做法 |
 | --- | --- |
@@ -115,7 +115,7 @@ python -m build --wheel --outdir "$PWD/python/dist" "$ISF_WHEEL_STAGE"
 
 Linux aarch64 改用 `arm64` 和 `linux_aarch64`。macOS 请按下文的[完整打包示例](#package-the-current-macos-sdk)操作，并显式设置最低系统版本标签。
 
-wheel 的版本号由 `python/version.txt` 与 `python/post` 中的后缀拼接而成。例如，版本为 `1.2.4`、后缀为空时，会生成 `inspireface-1.2.4-py3-none-linux_x86_64.whl`。
+wheel 的版本号由 `python/version.txt` 与 `python/post` 中的后缀拼接而成。当前源码使用 `1.2.4` 和 `.post1`，生成 `inspireface-1.2.4.post1-py3-none-linux_x86_64.whl`；原生 SDK 的版本号仍为 `1.2.4`。
 
 ### 选择打包目录与 wheel 标签 {#choose-the-directory-and-wheel-tag}
 
@@ -167,7 +167,7 @@ python -m build --wheel --outdir "$PWD/python/dist" "$ISF_WHEEL_STAGE"
 
 </details>
 
-`python/post` 为空时，输出为 `inspireface-1.2.4-py3-none-macosx_14_0_arm64.whl`。Intel 改用 `build_macos_x86.sh` 及其 `inspireface-macos-intel-x86-64-1.2.4` 输出目录，包内目录和目标架构变量使用 `x64`，标签使用匹配的 `macosx_<major>_<minor>_x86_64`。构建时同样应显式设置最低系统版本。
+使用当前的 `.post1` 后缀时，输出为 `inspireface-1.2.4.post1-py3-none-macosx_14_0_arm64.whl`。Intel 改用 `build_macos_x86.sh` 及其 `inspireface-macos-intel-x86-64-1.2.4` 输出目录，包内目录和目标架构变量使用 `x64`，标签使用匹配的 `macosx_<major>_<minor>_x86_64`。构建时同样应显式设置最低系统版本。
 
 复用已有 Apple XCFramework 包时，从 `SDKs/macosx-arm64/InspireFace/lib/` 或 `SDKs/macosx-x86_64/InspireFace/lib/` 中取原始 dylib，并使用同一 slice 的 `version.txt`。两种架构分别打 wheel；把 XCFramework 放进 Python 包并不会让 wheel 自动支持两种架构。
 
@@ -182,7 +182,7 @@ arm64 CoreML 打包前，先按 [CoreML 动态库 CMake 配置](./macos.md#set-a
 将下面的文件名替换为刚生成的 wheel，检查包中是否包含预期的原生库与平台标签：
 
 ```bash
-python -m zipfile -l python/dist/inspireface-1.2.4-py3-none-linux_x86_64.whl
+python -m zipfile -l python/dist/inspireface-1.2.4.post1-py3-none-linux_x86_64.whl
 ```
 
 找到以 `inspireface/modules/core/libs/linux/x64/libInspireFace.so` 结尾的条目；在 wheel 中，它前面可能带有 `.data/purelib/` 前缀。模型包与 wheel 分开发放，部署时还需要为应用准备对应模型包。
@@ -194,7 +194,7 @@ python -m zipfile -l python/dist/inspireface-1.2.4-py3-none-linux_x86_64.whl
 ```bash
 python3 -m venv .venv-wheel-check
 source .venv-wheel-check/bin/activate
-python -m pip install python/dist/inspireface-1.2.4-py3-none-linux_x86_64.whl
+python -m pip install python/dist/inspireface-1.2.4.post1-py3-none-linux_x86_64.whl
 unset INSPIREFACE_LIBRARY_PATH
 unset PYTHONPATH
 ```

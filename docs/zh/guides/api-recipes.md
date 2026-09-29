@@ -1,6 +1,6 @@
 # API 实用示例 {#api-recipes}
 
-本页介绍对齐人脸图像、转换显示分数、查询运行库和检查资源释放。运行前，先按[语言接入指南](../using-with/c-cpp.md)初始化 Session 并准备输入图像。Native、[Objective-C / Swift](../using-with/apple.md)、Python 和 [HarmonyOS](../using-with/harmonyos.md) 示例使用 1.2.4，Android 示例使用 Java SDK 1.2.0。
+本页介绍对齐人脸图像、转换显示分数、查询运行库和检查资源释放。运行前，先按[语言接入指南](../using-with/c-cpp.md)初始化 Session 并准备输入图像。Native、[Java JVM](../using-with/java.md)、[Objective-C / Swift](../using-with/apple.md)、Python 和 [HarmonyOS](../using-with/harmonyos.md) 示例使用 1.2.4，Android 示例使用 Android SDK 1.2.4.post1。
 
 ## 获取对齐后的人脸图像 {#get-an-aligned-face-image}
 
@@ -99,6 +99,32 @@ func extractAligned(session: FaceSession, source: ImageStream,
 }
 ```
 
+@tab Java
+
+使用下面 [Java JVM SDK](../using-with/java.md) 的 import，将方法放入应用类中。`session` 需开启识别，`output` 需通过 `HFCreateFaceFeature` 分配，token 应来自这份输入图像。方法会释放临时裁剪图和 stream，`output` 由调用方使用后释放。只想保存裁剪图时，在释放前调用 `HFImageBitmapWriteToFile(crop[0], path)`。
+
+```java
+import com.insightface.sdk.inspireface.jni.NativeTypes.*;
+import static com.insightface.sdk.inspireface.jni.Native.*;
+import static com.insightface.sdk.inspireface.jni.NativeConstants.*;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+```
+
+```java
+static void extractAligned(long session, long source, HFFaceBasicToken token,
+                           HFFaceFeature output) {
+    long[] crop = new long[1], aligned = new long[1];
+    check(HFFaceGetFaceAlignmentImage(session, source, token, crop));
+    try {
+        check(HFCreateImageStreamFromImageBitmap(crop[0], HF_CAMERA_ROTATION_0, aligned));
+        check(HFFaceFeatureExtractWithAlignmentImage(session, aligned[0], output));
+    } finally {
+        if (aligned[0] != 0) HFReleaseImageStream(aligned[0]);
+        HFReleaseImageBitmap(crop[0]);
+    }
+}
+```
+
 @tab Android
 
 ```java
@@ -118,6 +144,44 @@ static android.graphics.Bitmap alignedFace(
 ```
 
 导入 `com.insightface.sdk.inspireface.InspireFace` 后即可使用。应用可以显示或保存返回的 bitmap，处理完成后释放原始 `ImageStream`。识别时调用 `ExtractFaceFeature(session, stream, token)`，由接口完成对齐和特征提取。
+
+需要从这张 SDK 生成的对齐图继续提取特征时，可调用 AAR 内的 `jni.Native` 接口。会话需启用识别，裁剪图的尺寸和像素保持不变。下方方法返回复制后的 `FaceFeature`，关闭临时 stream 与特征存储；传入的 bitmap 由调用方管理。
+
+<details>
+<summary>从对齐后的 bitmap 提取特征 — 完整方法</summary>
+
+```java
+import com.insightface.sdk.inspireface.base.FaceFeature;
+import com.insightface.sdk.inspireface.base.ImageStream;
+import com.insightface.sdk.inspireface.base.Session;
+import com.insightface.sdk.inspireface.jni.Native;
+import com.insightface.sdk.inspireface.jni.NativeTypes.HFFaceFeature;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+```
+
+```java
+static FaceFeature extractAligned(Session session, android.graphics.Bitmap crop) {
+    try (ImageStream aligned = InspireFace.CreateImageStreamFromBitmap(
+            crop, InspireFace.CAMERA_ROTATION_0)) {
+        if (aligned == null) throw new IllegalStateException("Cannot open crop");
+        HFFaceFeature output = new HFFaceFeature();
+        check(Native.HFCreateFaceFeature(output));
+        try {
+            check(Native.HFFaceFeatureExtractWithAlignmentImage(
+                    session.handle, aligned.handle, output));
+            FaceFeature result = new FaceFeature();
+            result.data = new float[output.size];
+            output.data.order(java.nio.ByteOrder.nativeOrder())
+                    .asFloatBuffer().get(result.data);
+            return result;
+        } finally {
+            output.close();
+        }
+    }
+}
+```
+
+</details>
 
 @tab HarmonyOS
 
@@ -146,7 +210,7 @@ function extractAligned(session: Session, image: ImageStream,
 
 @tab Python
 
-识别时调用 `session.face_feature_extract(image, face)`，由接口完成对齐和特征提取。绘制调试图时，可以用 `get_face_five_key_points` 读取五点坐标。需要保存对齐图本身时，可使用上方的 C、C++、Objective-C、Swift 或 Android 示例。
+识别时调用 `session.face_feature_extract(image, face)`，由接口完成对齐和特征提取。绘制调试图时，可以用 `get_face_five_key_points` 读取五点坐标。需要保存对齐图本身时，可使用上方的 C、C++、Java、Objective-C、Swift 或 Android 示例。
 
 :::
 
@@ -226,6 +290,21 @@ func printDisplayScore(cosine: Float) throws {
     try FaceFeatureBuffer.getSimilarityConverter(&config)
     try FaceFeatureBuffer.convert(similarity: cosine, percentage: &display)
     print("cosine=\(cosine) display=\(display) range=[\(config.outputMin), \(config.outputMax)]")
+}
+```
+
+@tab Java
+
+传入原始余弦分数。需要调整共享转换曲线时，在工作线程启动前调用 `HFUpdateCosineSimilarityConverter`。
+
+```java
+static void printDisplayScore(float cosine) {
+    HFSimilarityConverterConfig config = new HFSimilarityConverterConfig();
+    check(HFGetCosineSimilarityConverter(config));
+    float[] display = new float[1];
+    check(HFCosineSimilarityConvertToPercentage(cosine, display));
+    System.out.printf("cosine=%.4f display=%.4f range=[%.2f, %.2f]%n",
+            cosine, display[0], config.outputMin, config.outputMax);
 }
 ```
 
@@ -388,6 +467,28 @@ func logSDKError(_ error: Error) {
 // do { try printDiagnostics() } catch { logSDKError(error) }
 ```
 
+@tab Java
+
+先查询所需字节数，再分配可写的 direct buffer。诊断文本使用 UTF-8，并包含末尾的 NUL。`check(status)` 会抛出带 SDK 错误说明的 `InspireFaceException`，可通过 `getCode()` 记录原始错误码。
+
+```java
+static void printRuntime() {
+    HFInspireFaceVersion version = new HFInspireFaceVersion();
+    check(HFQueryInspireFaceVersion(version));
+    int[] apiLevel = new int[1];
+    check(HFQueryCAPILevel(apiLevel));
+    System.out.printf("SDK %d.%d.%d, C API level %d%n",
+            version.major, version.minor, version.patch, apiLevel[0]);
+    int[] required = new int[1];
+    check(HFQueryInspireFaceDiagnosticInformation(null, 0, required));
+    java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocateDirect(required[0]);
+    check(HFQueryInspireFaceDiagnosticInformation(buffer, buffer.capacity(), required));
+    byte[] text = new byte[required[0] - 1]; // Exclude the trailing NUL.
+    buffer.get(text);
+    System.out.println(new String(text, java.nio.charset.StandardCharsets.UTF_8));
+}
+```
+
 @tab Android
 
 ```java
@@ -395,13 +496,15 @@ static void printDiagnostics() {
     com.insightface.sdk.inspireface.base.InspireFaceVersion version =
             InspireFace.QueryInspireFaceVersion();
     if (version == null) throw new IllegalStateException("Version query failed");
-    android.util.Log.i("FaceSDK", version.major + "." + version.minor + "."
-            + version.patch + " " + version.information);
+    android.util.Log.i("FaceSDK", "native=" + version.major + "." + version.minor
+            + "." + version.patch + " C API level=" + InspireFace.QueryCAPILevel());
+    android.util.Log.i("FaceSDK", InspireFace.QueryInspireFaceDiagnosticInformation());
+    android.util.Log.i("FaceSDK", InspireFace.QueryInspireFaceComponentVersions());
     InspireFace.SetLogLevel(InspireFace.LOG_INFO);
 }
 ```
 
-Java SDK 1.2.0 提供版本信息和日志设置。每次调用都检查 `null` 或 boolean 结果，并在应用日志中记录具体操作和输入格式。
+Android 1.2.4.post1 可以通过这些高层方法直接读取诊断信息和组件版本，加载模型前也可调用。原生版本返回 `1.2.4`，`post1` 表示 Android 包的修订号，应在应用构建信息中单独记录依赖版本。新增诊断方法在原生调用失败时抛出 `jni.InspireFaceException`；兼容接口仍按各自约定返回 `null` 或 boolean。
 
 @tab HarmonyOS
 
@@ -515,9 +618,51 @@ func printOpenHandles() throws {
 }
 ```
 
+@tab Java
+
+查询期间不要让其他线程创建或释放资源，保证数量和列表对应同一状态。这些计数器统计会话与 stream；抓拍、snapshot、bitmap 和独立分配的特征仍需调用各自的释放接口，Java 垃圾回收不会释放这些原生资源。
+
+```java
+static void printLiveResources() {
+    int[] count = new int[1];
+    check(HFDeBugGetUnreleasedSessionsCount(count));
+    long[] sessions = new long[count[0]];
+    if (sessions.length > 0) check(HFDeBugGetUnreleasedSessions(sessions, sessions.length));
+    check(HFDeBugGetUnreleasedStreamsCount(count));
+    long[] streams = new long[count[0]];
+    if (streams.length > 0) check(HFDeBugGetUnreleasedStreams(streams, streams.length));
+    System.out.println("sessions=" + sessions.length + " streams=" + streams.length);
+}
+```
+
 @tab Android
 
-每个 `CreateSession` 对应一个 `ReleaseSession`，每个 stream 创建操作对应一个 `ReleaseImageStream`，一般放在 `finally` 中释放。较新的 `FaceCapture` 和 `FaceDetectionSnapshot` 支持 try-with-resources，使用时配套更新 JNI 库。
+Android 1.2.4.post1 的 `Session`、`ImageStream`、`FaceCapture` 和 `FaceDetectionSnapshot` 都支持 try-with-resources。先关闭抓拍对象，再关闭父会话。由 Android bitmap/byte[] 方法创建的 stream，应通过 `ImageStream.close()` 或 `InspireFace.ReleaseImageStream()` 释放，连同它管理的像素缓冲区一起清理。
+
+完整 AAR 也包含 portable API 的资源查询。可在处理前后各调用一次，查询期间不要让其他线程创建或释放资源。这些计数器统计原生会话和 stream；snapshot、capture、bitmap 和独立分配的特征仍需调用各自的关闭或释放接口。
+
+```java
+import com.insightface.sdk.inspireface.jni.Native;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+```
+
+```java
+static void printResources() {
+    int[] count = new int[1];
+    check(Native.HFDeBugGetUnreleasedSessionsCount(count));
+    long[] sessions = new long[count[0]];
+    if (sessions.length > 0) {
+        check(Native.HFDeBugGetUnreleasedSessions(sessions, sessions.length));
+    }
+    check(Native.HFDeBugGetUnreleasedStreamsCount(count));
+    long[] streams = new long[count[0]];
+    if (streams.length > 0) {
+        check(Native.HFDeBugGetUnreleasedStreams(streams, streams.length));
+    }
+    android.util.Log.i("FaceSDK", "sessions=" + java.util.Arrays.toString(sessions)
+            + " streams=" + java.util.Arrays.toString(streams));
+}
+```
 
 @tab HarmonyOS
 

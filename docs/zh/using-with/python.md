@@ -8,6 +8,10 @@ Python 接口可直接处理 NumPy 图像，完成人脸检测、特征提取和
 python -m pip install inspireface opencv-python
 ```
 
+[PyPI 当前版本](https://pypi.org/project/inspireface/1.2.4.post1/)为 **1.2.4.post1**，已包含 **1.2.4** CPU 原生库，可直接使用检测、识别、分析、快照、抓拍和诊断接口，无需单独编译 SDK。已经安装过 InspireFace 的环境，使用 `python -m pip install --upgrade inspireface` 升级。
+
+已提供 Linux x86_64 / ARM64 和 macOS Intel / Apple Silicon 的 wheel。当前 macOS 原生库要求 **arm64 使用 macOS 14+**、**Intel 使用 macOS 15+**，平台文件与 wheel 标签说明见[安装包下载](../build/README.md#python-and-android-packages)。模型可在首次使用时下载，也可以从本地资源包加载。
+
 ## 初始化一次，复用会话 {#initialize-once-and-reuse-the-session}
 
 ```python
@@ -138,7 +142,7 @@ if len(faces) == 1:
 
 ## 原始缓冲区与 ImageStream {#raw-buffers-and-imagestream}
 
-下文的上下文管理器和快照示例使用 1.2.4 封装与配套原生库。如果已安装的包尚未包含这些接口，按[本地构建接入](#use-a-local-native-build)准备。
+PyPI 包已支持通过 `with` 管理图像流。离开代码块时会自动释放图像流，处理过程中抛出异常也一样。
 
 直接传入三通道 `uint8` 数组时，按 BGR 处理，与 `cv2.imread` 的输出一致。四通道数组按 BGRA 处理。使用其他像素格式时，在创建图像流时指定：
 
@@ -192,7 +196,7 @@ except isf.InspireFaceError as error:
 
 ## 使用本地原生构建 {#use-a-local-native-build}
 
-替换原生库、制作和验证 wheel 的完整步骤见 [Python 打包](../build/python.md)。使用快照、抓拍等开发版接口时，Python 封装与原生库应来自同一次构建。
+使用 TensorRT、CoreML、Rockchip 或自行编译的 CPU 库时，参照 [Python 打包](../build/python.md)，并让 Python 封装与原生库来自同一份 SDK 源码版本。上文示例所需的 CPU 原生库已包含在 PyPI 包中。
 
 wheel 自带原生库。使用 1.2.4 封装加载本地构建时，在**导入** `inspireface` **之前**设置 `INSPIREFACE_LIBRARY_PATH`：
 

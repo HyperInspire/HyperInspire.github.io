@@ -33,7 +33,7 @@ For a live camera, measure both SDK processing time and the age of the displayed
 
 ## A video loop
 
-Choose your integration below. Each example reuses one session across frames. The native, Objective-C, Swift, HarmonyOS and Python examples use the 1.2.4 APIs; Android uses the Java 1.2.0 package. Use the matching Apple framework build for the Objective-C and Swift tabs.
+Choose your integration below. Each example reuses one session across frames. The examples target native SDK 1.2.4; Android uses the [1.2.4.post1 AAR](../using-with/android.md). Use the matching Apple framework build for the Objective-C and Swift tabs.
 
 ::: tabs #api-language
 
@@ -126,9 +126,40 @@ func trackFrame(session: FaceSession, stream: ImageStream) throws {
 // After the camera worker stops: try session.close()
 ```
 
+@tab Java
+
+After [Java setup](../using-with/java.md), call `createTracker()` once and pass each frame's stream handle to `trackFrame`. Process frames in order on one worker. The caller releases each stream after processing and the session when the sequence ends. `trackIds` and `trackCounts` are borrowed `ByteBuffer` views in native byte order; `getInt` takes a **byte offset**. Read them before tracking the next frame or resetting or releasing the session.
+
+```java
+import com.insightface.sdk.inspireface.jni.NativeTypes.*;
+import static com.insightface.sdk.inspireface.jni.Native.*;
+import static com.insightface.sdk.inspireface.jni.NativeConstants.*;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+
+public final class TrackingExample {
+    public static long createTracker() {
+        long[] session = new long[1];
+        check(HFCreateInspireFaceSessionOptional(
+                HF_ENABLE_NONE, HF_DETECT_MODE_LIGHT_TRACK, 5, 320, -1, session));
+        return session[0];
+    }
+
+    public static void trackFrame(long session, long stream) {
+        HFMultipleFaceData faces = new HFMultipleFaceData();
+        check(HFExecuteFaceTrack(session, stream, faces));
+        for (int i = 0; i < faces.detectedNum; i++) {
+            int offset = i * Integer.BYTES;
+            System.out.println("track=" + faces.trackIds.getInt(offset)
+                    + " observations=" + faces.trackCounts.getInt(offset));
+        }
+    }
+    // After the camera worker stops: check(HFReleaseInspireFaceSession(session));
+}
+```
+
 @tab Android
 
-Create this session once after `GlobalLaunch`. Each invocation of `trackFrame` consumes a stream created from the current camera frame. See [camera input](../using-with/android.md#process-camera-frames) for conversion and cleanup. Java types are from `com.insightface.sdk.inspireface.base`.
+Create this session once after `GlobalLaunch`. Each invocation of `trackFrame` consumes a stream created from the current camera frame. See [camera input](../using-with/android.md#process-camera-frames) for conversion and cleanup. Java types are from `com.insightface.sdk.inspireface.base`. `trackIds` associate faces across frames; `trackCounts` records how many times each tracked face has been observed. Returned arrays and tokens are copied into Java memory. Still process each session serially, in frame order.
 
 ```java
 static Session createTracker() {
@@ -145,7 +176,8 @@ static void trackFrame(Session session, ImageStream stream) {
     MultipleFaceData faces = InspireFace.ExecuteFaceTrack(session, stream);
     if (faces == null) throw new IllegalStateException("Tracking failed");
     for (int i = 0; i < faces.detectedNum; i++) {
-        System.out.println("track=" + faces.trackIds[i]);
+        System.out.println("track=" + faces.trackIds[i]
+                + " observations=" + faces.trackCounts[i]);
     }
 }
 // After the camera worker stops: InspireFace.ReleaseSession(session);
@@ -227,7 +259,7 @@ finally:
 | Detector interval | Detector cadence in tracking | Balance new-face recovery with per-frame work. |
 | Landmark smoothing | Temporal stability of points | More smoothing can make overlays steadier but slower to respond. |
 
-Supported detector levels come from the loaded pack. Use `HFQuerySupportedPixelLevelsForFaceDetection` in C, `IFRuntime.getSupportedDetectionPixelLevels:error:` in Objective-C or `InspireFaceRuntime.getSupportedDetectionPixelLevels(_:)` in Swift to read the available levels, then choose one for the session.
+Supported detector levels come from the loaded pack. Use `HFQuerySupportedPixelLevelsForFaceDetection` in C, `InspireFace.QuerySupportedPixelLevelsForFaceDetection()` in Android, `IFRuntime.getSupportedDetectionPixelLevels:error:` in Objective-C or `InspireFaceRuntime.getSupportedDetectionPixelLevels(_:)` in Swift to read the available levels, then choose one for the session.
 
 The equivalent settings in each interface:
 
@@ -300,17 +332,44 @@ func tuneTracking(session: FaceSession) throws {
 }
 ```
 
-@tab Android
+@tab Java
 
-The Java 1.2.0 wrapper exposes these setters. They return `void`.
+Use the same `long` session handle as the frame loop. Each call returns a status; `check` throws if it fails. Apply settings before starting the loop or between completed frames.
 
 ```java
+import com.insightface.sdk.inspireface.jni.NativeTypes.*;
+import static com.insightface.sdk.inspireface.jni.Native.*;
+import static com.insightface.sdk.inspireface.jni.NativeConstants.*;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+
+public final class TrackingSettings {
+    public static void tune(long session) {
+        check(HFSessionSetFaceDetectThreshold(session, 0.5f));
+        check(HFSessionSetFilterMinimumFacePixelSize(session, 32));
+        check(HFSessionSetTrackPreviewSize(session, 320));
+        check(HFSessionSetTrackModeDetectInterval(session, 20));
+        check(HFSessionSetTrackModeSmoothRatio(session, 0.05f));
+        check(HFSessionSetTrackModeNumSmoothCacheFrame(session, 5));
+    }
+}
+```
+
+@tab Android
+
+Apply these settings to an existing `Session`. `QuerySupportedPixelLevelsForFaceDetection()` reads detector sizes from the loaded pack; `GetTrackPreviewSize()` reads the actual preview size. The example also configures detection after track loss and the tracking-confidence threshold. Evaluate the threshold with video from the target camera. With recovery enabled, losing all tracked faces on a frame that skipped detection triggers another detection pass on that same frame, which can increase that frame’s latency.
+
+```java
+System.out.println(java.util.Arrays.toString(
+        InspireFace.QuerySupportedPixelLevelsForFaceDetection()));
 InspireFace.SetFaceDetectThreshold(session, 0.5f);
 InspireFace.SetFilterMinimumFacePixelSize(session, 32);
 InspireFace.SetTrackPreviewSize(session, 320);
 InspireFace.SetTrackModeDetectInterval(session, 20);
 InspireFace.SetTrackModeSmoothRatio(session, 0.05f);
 InspireFace.SetTrackModeNumSmoothCacheFrame(session, 5);
+InspireFace.SetTrackLostRecoveryMode(session, true);
+InspireFace.SetLightTrackConfidenceThreshold(session, 0.6f);
+System.out.println("preview=" + InspireFace.GetTrackPreviewSize(session));
 ```
 
 @tab HarmonyOS
@@ -350,6 +409,6 @@ Adjust these example values using representative video from the target camera. T
 
 ## Resetting a sequence
 
-If a camera switches, a video seeks or the input orientation changes, reset the temporal history. The C API has `HFSessionClearTrackingFace`; C++ has `Session::ClearTrackingFace`; Objective-C has `[session clearTrackingWithError:&error]`; Swift has `try session.clearTracking()`; HarmonyOS has `session.clearTracking()`. With the Python high-level wrapper or Java 1.2.0 package, recreate the session to begin a fresh sequence.
+If a camera switches, a video seeks or the input orientation changes, reset the temporal history. C and Java have `HFSessionClearTrackingFace`; C++ has `Session::ClearTrackingFace`; Objective-C has `[session clearTrackingWithError:&error]`; Swift has `try session.clearTracking()`; HarmonyOS has `session.clearTracking()`; Android has `InspireFace.ClearTrackingFace(session)`. Finish processing the preceding frame before clearing, then reuse the same session. With the Python high-level wrapper, recreate the session to begin a fresh sequence.
 
 Enable pose, quality, recognition and pipeline models according to the outputs the application uses. Profile [detection, tracking and analysis separately](./benchmark-remark(updating).md) before optimizing the complete loop.

@@ -36,7 +36,63 @@ Several SDK optimizations help ARM deployments as well as other CPU platforms:
 
 Keep the session and model alive across a video sequence. Borrowed pixels and result views still need valid storage until their consumers finish; [ownership and lifetime](../guides/arch.md) explains when to retain or copy them.
 
-## Optional Task preprocessing {#optional-task-preprocessing}
+## CPU power mode {#cpu-power-mode}
+
+CPU inference now defaults to `NORMAL`. Android 1.2.4.post1, Java and C++ can configure this process-wide policy before creating sessions. It selects the inference runtime's power/scheduling policy while leaving model thread counts and precision unchanged.
+
+| Mode | When to use it |
+| --- | --- |
+| `NORMAL` | Default policy; start here for continuous camera processing. |
+| `HIGH` | High-power policy; compare latency, idle CPU between frames and temperature before selecting it. |
+| `LOW` | Low-power policy; check throughput and response time on the target device. |
+
+::: tabs #api-language
+
+@tab C++
+
+```cpp
+#include <inspireface/launch.h>
+#include <stdexcept>
+
+void configureCpuEngine() {
+    auto runtime = inspire::Launch::GetInstance();
+    int status = runtime->SetGlobalCPUEnginePowerMode(
+        inspire::Launch::CPU_ENGINE_POWER_NORMAL);
+    if (status != 0) throw std::runtime_error("Cannot set CPU policy");
+    auto selected = runtime->GetGlobalCPUEnginePowerMode();
+    (void)selected;
+}
+```
+
+@tab Java
+
+```java
+import com.insightface.sdk.inspireface.jni.CPUEngine;
+
+// Run during startup, before creating sessions.
+CPUEngine.setGlobalPowerMode(CPUEngine.PowerMode.NORMAL);
+CPUEngine.PowerMode selected = CPUEngine.getGlobalPowerMode();
+System.out.println("CPU policy: " + selected);
+```
+
+@tab Android
+
+```java
+import com.insightface.sdk.inspireface.jni.CPUEngine;
+
+// Run during startup, before creating sessions.
+CPUEngine.setGlobalPowerMode(CPUEngine.PowerMode.NORMAL);
+CPUEngine.PowerMode selected = CPUEngine.getGlobalPowerMode();
+System.out.println("CPU policy: " + selected);
+```
+
+:::
+
+Put the Java and Android calls in application startup; in C++, call `configureCpuEngine()` before session creation. Subsequently initialized CPU runtimes read the policy. Close old sessions and create new ones before comparing the changed setting. Global launch, reload and terminate preserve it; serialize policy changes with model/session initialization.
+
+Measure sustained frame time as well as CPU use after frame submission stops and temperature over time. The effect depends on the device, so choose based on measurements. See the [JVM](./java.md#cpu-power-mode) and [Android](./android.md#cpu-power-mode) integration pages for package setup.
+
+## Task preprocessing {#optional-task-preprocessing}
 
 InspireCV Task brings geometric sampling, color conversion, normalization and tensor layout into one preprocessing flow. Its general execution path works in small tiles with reusable temporary buffers, reducing the need to create a full intermediate image for every stage.
 
@@ -47,7 +103,7 @@ InspireCV Task brings geometric sampling, color conversion, normalization and te
 | Tensor layout | Write HWC or CHW output directly into the caller's tensor buffer. |
 | Repeated execution | Reuse pipeline configuration and existing output storage with `RunInto` or `TensorBuffer`. |
 
-These are Task capabilities for application preprocessing. InspireFace can also use Task for its camera-stream preprocessing when built with `ISF_ENABLE_INSPIRECV_TASK_PREPROCESS=ON`; that SDK option is **off by default**. The switch selects the stream preprocessing backend. Model-specific normalization and tensor preparation still follow the model adapter. See [Task examples](../guides/inspirecv.md#task-preprocessing) to use the API directly.
+These are Task capabilities for application preprocessing. Current InspireFace source enables `ISF_ENABLE_INSPIRECV_TASK_PREPROCESS=ON` by default for image preprocessing; `OFF` retains the earlier image-processing path. The switch selects the stream preprocessing backend. Model-specific normalization and tensor preparation still follow the model adapter. See [Task examples](../guides/inspirecv.md#task-preprocessing) to use the API directly.
 
 ### Build the Task path on ARM64 Linux {#build-the-task-path-on-arm64-linux}
 
@@ -68,7 +124,7 @@ cmake --install build/arm-cpu-task
 
 The SDK is installed at `build/arm-cpu-task/install/InspireFace`. For cross-compilation or mobile targets, use the corresponding [platform build guide](../build/README.md#choose-a-build-guide) and apply these options to that toolchain configuration.
 
-`INSPIRECV_TASK_ENABLE_ARM_NEON` defaults to `ON` and controls the explicit Task NEON paths. It does not control all Image operators or compiler auto-vectorization. NEON support is selected at build time; ARMv7 binaries compiled with NEON require a processor that supports those instructions. Compare the Task and default preprocessing paths using the same input formats and transformations on your device.
+`INSPIRECV_TASK_ENABLE_ARM_NEON` defaults to `ON` and controls the explicit Task NEON paths. It does not control all Image operators or compiler auto-vectorization. NEON support is selected at build time; ARMv7 binaries compiled with NEON require a processor that supports those instructions. Compare Task with the earlier preprocessing path using the same input formats and transformations on your device.
 
 ## Choose the SDK for the device {#choose-the-sdk-for-the-device}
 

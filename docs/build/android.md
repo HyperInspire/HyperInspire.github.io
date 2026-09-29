@@ -1,20 +1,24 @@
 # Build for Android {#build-for-android}
 
-Build the Android native SDK when you need a different ABI, a local native change, or a library for your own JNI layer. For a ready-made package, start with the [SDK downloads](./README.md). Rockchip Android builds have their own [RKNN instructions](./rockchip.md).
+For an application using the packaged SDK, add the [1.2.4.post1 AAR](../using-with/android.md#choose-a-package-or-source-build). Build from source when you need a native change or your own SDK package. Rockchip Android builds have their own [RKNN instructions](./rockchip.md).
+
+The standard script now produces the C/C++ SDK and a portable Java JAR together. Each ABI has one `libInspireFace.so` containing the core, Android JNI and portable JNI functions.
 
 ## Prepare the toolchain {#prepare-the-toolchain}
 
-Complete [source preparation](./source.md), then install CMake 3.20 or newer, Make and the Android NDK. Run the following commands from the InspireFace repository root.
+Complete [source preparation](./source.md#develop-source), then install CMake 3.20 or newer, Make, Python 3, a JDK (8 or newer) and the Android NDK. Run the following commands from the SDK directory. The JDK compiles the Java 8-compatible JAR; Python generates and checks the bindings.
 
-`ANDROID_NDK` must point to the NDK directory containing `build/cmake/android.toolchain.cmake`. An Android SDK or Android Studio directory is not the same path.
+`ANDROID_NDK` must point to the NDK directory containing `build/cmake/android.toolchain.cmake`, rather than the Android SDK or Android Studio directory. If CMake cannot locate the JDK, set `JAVA_HOME` to its installation directory.
 
 ```bash
 export ANDROID_NDK=/absolute/path/to/android-ndk
 test -f "$ANDROID_NDK/build/cmake/android.toolchain.cmake"
 cmake --version
+javac -version
+python3 --version
 ```
 
-The repository's SDK release workflow uses NDK r18b. The Android example app separately uses NDK `28.1.13356709` for its compatibility bridge, JDK 17 to run Gradle, and Android SDK 35. Keep a record of the NDK used for your native build when comparing binaries or diagnosing device-specific issues.
+The SDK's release workflow currently selects NDK r18b. An application that consumes the prebuilt AAR does not need that NDK: its Java and native libraries are already compiled. The example app uses JDK 17 to run Gradle and Android SDK 35.
 
 ## Build the standard SDK {#build-the-standard-sdk}
 
@@ -22,16 +26,18 @@ The repository's SDK release workflow uses NDK r18b. The Android example app sep
 VERSION=1.2.4 bash command/build_android.sh
 ```
 
-`VERSION` adds a directory suffix; the SDK version itself comes from the source checkout. Without this variable, the output directory is `build/inspireface-android`.
+`VERSION` adds a directory suffix; the native SDK version comes from the source. Without this variable, the output directory is `build/inspireface-android`. The Android publication's `.post1` suffix is separate from the native version.
 
 | Setting | Script value |
 | --- | --- |
 | ABI | `arm64-v8a`, `armeabi-v7a`, `x86_64` |
-| Native API level | `21` for all three ABIs |
+| Native API level | `21` for all three ABIs; the published AAR requires API `24` |
 | Build type | `Release` |
 | C++ runtime | `c++_static` |
-| Library | Shared `libInspireFace.so`, including Android JNI entry points |
-| Samples and tests | Disabled |
+| Library | One shared `libInspireFace.so` per ABI |
+| Java bindings | `ISF_BUILD_JAVA=ON`, Java 8-compatible `inspireface.jar` |
+| Binding checks | C declarations, generated Java/JNI signatures and native exports |
+| Samples, native tests and host JVM tests | Disabled |
 
 The script builds each ABI, installs the SDK and collects the files into one directory:
 
@@ -45,10 +51,19 @@ build/inspireface-android-1.2.4/
     arm64-v8a/libInspireFace.so
     armeabi-v7a/libInspireFace.so
     x86_64/libInspireFace.so
+  java/
+    inspireface.jar
+    api-manifest.json
+    consumer-rules.pro
+    sources/com/insightface/sdk/inspireface/jni/
+    examples/DetectFaces.java
+    com/insightface/sdk/inspireface/
   version.txt
 ```
 
-The final collection step removes the intermediate CMake build directories. Use the direct CMake build below if you want to retain the cache and object files for debugging or repeated compilation.
+`java/sources/` matches the JAR. The separate `java/com/...` directory holds supplementary Android capture/snapshot source files; it is not a complete copy of the Android convenience API. Use the AAR when you need `InspireFace`, `Session` and `Bitmap` helpers together.
+
+The final collection step removes intermediate CMake build directories. Use the direct CMake build below to retain the cache and object files for repeated compilation.
 
 ## Build one ABI {#build-one-abi}
 
@@ -69,6 +84,8 @@ cmake -S . -B build/android-arm64-local \
   -DANDROID_STL=c++_static \
   -DMNN_BUILD_FOR_ANDROID_COMMAND=ON \
   -DISF_BUILD_SHARED_LIBS=ON \
+  -DISF_BUILD_JAVA=ON \
+  -DISF_BUILD_JAVA_TESTS=OFF \
   -DISF_BUILD_WITH_SAMPLE=OFF \
   -DISF_BUILD_WITH_TEST=OFF \
   -DISF_ENABLE_BENCHMARK=OFF \
@@ -80,36 +97,75 @@ cmake --install build/android-arm64-local
 
 </details>
 
-The installed native SDK is under `build/android-arm64-local/install/InspireFace/`. Its `java/` directory contains the additional Java declarations shipped with this checkout, including capture and detection snapshots.
+The C/C++ SDK is installed under `build/android-arm64-local/install/InspireFace/`. The JAR, manifest, portable sources and consumer rules are under `build/android-arm64-local/install/Java/`. Portable JNI is linked into `libInspireFace.so` on Android; no `libInspireFaceJNI.so` is produced. Host JVM contract tests remain disabled for this cross-compilation target.
 
 ## Package the native library {#package-the-native-library}
 
-For an app with its own JNI layer, place each native library in the matching `jniLibs` directory and add the installed headers to your native target's include paths:
+Choose one of these routes:
+
+| Integration | Files to package |
+| --- | --- |
+| Android convenience API | The complete [Android AAR](../using-with/android.md), with its models and consumer rules. |
+| Portable Java API | `java/inspireface.jar`, `lib/<abi>/libInspireFace.so`, model resources and the supplied consumer rules. |
+| Your own JNI / C++ | `lib/<abi>/libInspireFace.so` and the installed headers for compilation. |
+
+For the portable Java route, copy the JAR and libraries into the application module and copy `java/consumer-rules.pro` to `app/proguard-inspireface.pro`:
 
 ```text
-app/src/main/jniLibs/
-  arm64-v8a/libInspireFace.so
-  armeabi-v7a/libInspireFace.so
-  x86_64/libInspireFace.so
+app/
+  libs/inspireface.jar
+  proguard-inspireface.pro
+  src/main/jniLibs/
+    arm64-v8a/libInspireFace.so
+    armeabi-v7a/libInspireFace.so
+    x86_64/libInspireFace.so
 ```
 
-Include only the ABIs that your app and all its native dependencies support. For example, an arm64-only app can use this module setting:
+The corresponding module configuration is:
 
 ```groovy
 android {
     defaultConfig {
-        ndk {
-            abiFilters 'arm64-v8a'
+        minSdk 24
+        // Optional: package only the ABIs your application supports.
+        ndk { abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64' }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),
+                    'proguard-rules.pro', 'proguard-inspireface.pro'
         }
     }
 }
+
+dependencies {
+    implementation files('libs/inspireface.jar')
+}
 ```
 
-The native build does not assemble an AAR. A Java SDK package also needs the base Java API and its matching JNI implementation. The repository's Android example uses the `1.2.0` AAR for that base API and adds its compatibility bridge separately; follow the [Android integration guide](../using-with/android.md) for that configuration.
+Use `com.insightface.sdk.inspireface.jni.Native` as described in the [Java guide](../using-with/java.md). On Android it automatically loads `InspireFace` from the packaged native libraries. Copy the model pack to a readable file path before calling `HFLaunchInspireFace`; Android assets are not ordinary file paths. The JAR itself contains neither models nor Android `Bitmap` helpers.
 
-When maintaining your own Java SDK module, update the native library and Java declarations together. The additional declarations are in `cpp/inspireface/platform/jni/java/`; the multi-ABI script's final output does not retain that directory, so copy them from the same source checkout. They extend the base API and do not replace its classes such as `InspireFace`, `Session` and `ImageStream`.
+::: warning Keep JNI names when shrinking
+A plain JAR does not automatically apply the accompanying Android consumer rules. JNI resolves class names, fields and constructors at runtime, so keep the supplied rules in the application's release configuration. An AAR includes its consumer rules automatically.
+:::
 
-Ensure each ABI contains one selected copy of `libInspireFace.so`. If a dependency AAR already packages it, replace the library in the SDK module you own before assembling the app. Choosing an arbitrary duplicate during Gradle packaging can leave an older JNI implementation in the APK.
+<details>
+<summary>Portable Java JNI rules</summary>
+
+```text
+-keep class com.insightface.sdk.inspireface.jni.Native { *; }
+-keep class com.insightface.sdk.inspireface.jni.CPUEngine { native <methods>; }
+-keep class com.insightface.sdk.inspireface.jni.NativeTypes$* { *; }
+```
+
+</details>
+
+Do not combine the complete AAR with another `inspireface.jar` or a second copy of its native libraries. When upgrading an earlier two-library source package, remove `libInspireFaceJNI.so`. For each ABI, keep the Java classes and `libInspireFace.so` from the same build; using Gradle `pickFirst` to suppress duplicate files can silently retain an older implementation.
 
 ## Check the result {#check-the-result}
 
@@ -121,16 +177,17 @@ export NDK_HOST_TAG=HOST_TAG
   -h -d -l build/inspireface-android-1.2.4/lib/arm64-v8a/libInspireFace.so
 ```
 
-Check that the machine is AArch64 for `arm64-v8a`, then inspect the APK with Android Studio's APK Analyzer to confirm the same library reached `lib/arm64-v8a/`. The CMake target sets 16 KB ELF page alignment; check the other native libraries and the final APK as part of your app's page-size validation too.
+Check that the machine is AArch64 for `arm64-v8a`, then use Android Studio's APK Analyzer to confirm one `libInspireFace.so` reached each selected ABI directory. The CMake target sets 16 KB ELF page alignment; check other native dependencies and final APK alignment as part of the application's page-size validation too.
 
 | Symptom | Check |
 | --- | --- |
-| NDK toolchain file cannot be found | `ANDROID_NDK` points to one installed NDK version, not its parent directory. |
+| CMake cannot find Java or Python | Make the JDK development tools and Python 3 available; check `JAVA_HOME`. |
+| NDK toolchain file cannot be found | `ANDROID_NDK` must point to one installed NDK version. |
 | `UnsatisfiedLinkError` when loading | Device ABI, APK contents and shared-library dependencies. |
-| A JNI method cannot be found | Java declarations and the loaded `.so` belong to the same SDK integration. |
-| Duplicate `.so` during packaging | An AAR and `jniLibs` both provide the same library. |
-| ABI or compiler changed, but CMake uses old settings | Configure a new build directory for the new toolchain. |
+| Missing JNI method or class only in release builds | Matching JAR/native versions and the consumer keep rules. |
+| Duplicate class or `.so` during packaging | Check for both an AAR and manually copied SDK files. |
+| ABI or compiler changed, but CMake uses old settings | Use a new build directory for the new toolchain. |
 
-Finish with model launch and a single-image detection on the target device, then connect camera input. The [Android guide](../using-with/android.md) covers model assets, Java initialization and frame ownership.
+Finish with model launch and single-image detection on the target device, then connect camera input. The [Android guide](../using-with/android.md) covers initialization, CPU policy, frame ownership and version diagnostics.
 
-Source: [Android build script](https://github.com/HyperInspire/InspireFace/blob/1cb2c1e44bde56253fe9eb5bbc8e14dc5e72dee9/command/build_android.sh), [native target and install rules](https://github.com/HyperInspire/InspireFace/blob/1cb2c1e44bde56253fe9eb5bbc8e14dc5e72dee9/cpp/inspireface/CMakeLists.txt).
+Source: [Android build script](https://github.com/HyperInspire/InspireFace/blob/e0505017c8c798db3ed7a4503408256e22e28964/command/build_android.sh), [Java/JNI build rules](https://github.com/HyperInspire/InspireFace/blob/e0505017c8c798db3ed7a4503408256e22e28964/cpp/inspireface/platform/jni/portable/CMakeLists.txt).

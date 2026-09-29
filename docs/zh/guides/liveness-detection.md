@@ -15,7 +15,7 @@ InspireFace 提供 RGB 活体检测和人脸动作分析。前者对人脸图像
 
 ## RGB 活体检测 {#rgb-anti-spoofing}
 
-创建会话时启用活体选项，调用分析流水线时再次请求该功能，返回结果与输入人脸顺序一致。原生头文件和库须匹配；Android 示例使用 Java 1.2.0。
+创建会话时启用活体选项，调用分析流水线时再次请求该功能，返回结果与输入人脸顺序一致。原生头文件和库须匹配；Android 示例使用 1.2.4.post1 AAR。
 
 ::: tabs #api-language
 
@@ -104,6 +104,43 @@ func readRGBLiveness(session: FaceSession, stream: ImageStream) throws {
 }
 ```
 
+@tab Java
+
+按 [Java 接入说明](../using-with/java.md)初始化，创建会话后将图像流句柄传给 `readScores`。检测和分析使用同一条图像流。函数立即读取借用的分数缓冲区；交给后续 UI 任务前，先把分数复制为普通数值。调用方在每帧完成后释放图像流，全部处理结束后释放会话。
+
+```java
+import com.insightface.sdk.inspireface.jni.NativeTypes.*;
+import static com.insightface.sdk.inspireface.jni.Native.*;
+import static com.insightface.sdk.inspireface.jni.NativeConstants.*;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+
+public final class RgbLivenessExample {
+    public static long createSession() {
+        long[] session = new long[1];
+        check(HFCreateInspireFaceSessionOptional(
+                HF_ENABLE_LIVENESS, HF_DETECT_MODE_ALWAYS_DETECT, 5, 320, -1, session));
+        return session[0];
+    }
+
+    public static void readScores(long session, long stream) {
+        HFMultipleFaceData faces = new HFMultipleFaceData();
+        check(HFExecuteFaceTrack(session, stream, faces));
+        if (faces.detectedNum == 0) return;
+        check(HFMultipleFacePipelineProcessOptional(session, stream, faces, HF_ENABLE_LIVENESS));
+        HFRGBLivenessConfidence scores = new HFRGBLivenessConfidence();
+        check(HFGetRGBLivenessConfidence(session, scores));
+        if (scores.num != faces.detectedNum) {
+            throw new IllegalStateException("Incomplete liveness result");
+        }
+        for (int i = 0; i < scores.num; i++) {
+            System.out.println("face=" + i + " liveness="
+                    + scores.confidence.getFloat(i * Float.BYTES));
+        }
+    }
+    // After all frames: check(HFReleaseInspireFaceSession(session));
+}
+```
+
 @tab Android
 
 创建会话时传入 `InspireFace.CreateCustomParameter().enableLiveness(true)`。下面使用已创建的 `ImageStream`，读取完结果后再释放该图像流。
@@ -117,8 +154,9 @@ if (faces.detectedNum > 0) {
         throw new IllegalStateException("Liveness analysis failed");
     }
     RGBLivenessConfidence scores = InspireFace.GetRGBLivenessConfidence(session);
-    if (scores == null) throw new IllegalStateException("No liveness results");
-    for (int i = 0; i < faces.detectedNum && i < scores.num; i++) {
+    if (scores == null || scores.num != faces.detectedNum)
+        throw new IllegalStateException("Incomplete liveness results");
+    for (int i = 0; i < faces.detectedNum; i++) {
         System.out.println(i + " " + scores.confidence[i]);
     }
 }
@@ -277,9 +315,59 @@ func readActions(session: FaceSession, stream: ImageStream) throws {
 }
 ```
 
+@tab Java
+
+启动 SDK 后创建一个跟踪会话，在连续帧间复用。姿态选项为头部动作提供输入。每帧将有效的图像流传给 `readActions`，处理后释放该流，序列结束后释放会话。眼睛分数和动作标记引用会话内存，应在下一次流水线调用前读出需要的值，更新应用的验证步骤。
+
+<details>
+<summary>Java — 展开完整动作示例</summary>
+
+```java
+import com.insightface.sdk.inspireface.jni.NativeTypes.*;
+import static com.insightface.sdk.inspireface.jni.Native.*;
+import static com.insightface.sdk.inspireface.jni.NativeConstants.*;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+
+public final class ActionExample {
+    public static long createTracker() {
+        long[] session = new long[1];
+        check(HFCreateInspireFaceSessionOptional(
+                HF_ENABLE_INTERACTION | HF_ENABLE_FACE_POSE,
+                HF_DETECT_MODE_LIGHT_TRACK, 5, 320, -1, session));
+        return session[0];
+    }
+
+    public static void readActions(long session, long stream) {
+        HFMultipleFaceData faces = new HFMultipleFaceData();
+        check(HFExecuteFaceTrack(session, stream, faces));
+        if (faces.detectedNum == 0) return;
+        check(HFMultipleFacePipelineProcessOptional(session, stream, faces, HF_ENABLE_INTERACTION));
+        HFFaceInteractionState eyes = new HFFaceInteractionState();
+        HFFaceInteractionsActions actions = new HFFaceInteractionsActions();
+        check(HFGetFaceInteractionStateResult(session, eyes));
+        check(HFGetFaceInteractionActionsResult(session, actions));
+        if (eyes.num != faces.detectedNum || actions.num != faces.detectedNum) {
+            throw new IllegalStateException("Incomplete action result");
+        }
+        for (int i = 0; i < faces.detectedNum; i++) {
+            int f = i * Float.BYTES;
+            int n = i * Integer.BYTES;
+            System.out.println("track=" + faces.trackIds.getInt(n)
+                    + " left=" + eyes.leftEyeStatusConfidence.getFloat(f)
+                    + " right=" + eyes.rightEyeStatusConfidence.getFloat(f)
+                    + " blink=" + actions.blink.getInt(n)
+                    + " shake=" + actions.shake.getInt(n));
+        }
+    }
+    // After the sequence: check(HFReleaseInspireFaceSession(session));
+}
+```
+
+</details>
+
 @tab Android
 
-Java 1.2.0 使用 `.enableInteractionLiveness(true).enableFaceQuality(true)` 创建 `DETECT_MODE_LIGHT_TRACK` 会话。在这个版本中，quality 选项还负责加载摇头、抬头所需的姿态模型。整个摄像头序列持续复用会话。
+使用 `.enableInteractionLiveness(true).enableFacePose(true)` 创建 `DETECT_MODE_LIGHT_TRACK` 会话，显式加载头部动作所需的姿态模型。整个摄像头序列持续复用会话；逐帧读取眼睛状态、眨眼、摇头、抬头和张嘴结果，并据此更新应用的验证步骤。
 
 ```java
 MultipleFaceData faces = InspireFace.ExecuteFaceTrack(session, stream);
@@ -292,11 +380,14 @@ if (faces.detectedNum > 0) {
     }
     FaceInteractionState eyes = InspireFace.GetFaceInteractionStateResult(session);
     FaceInteractionsActions actions = InspireFace.GetFaceInteractionActionsResult(session);
-    if (eyes == null || actions == null) throw new IllegalStateException("No action results");
-    for (int i = 0; i < faces.detectedNum && i < actions.num && i < eyes.num; i++) {
+    if (eyes == null || actions == null || eyes.num != faces.detectedNum
+            || actions.num != faces.detectedNum)
+        throw new IllegalStateException("Incomplete action results");
+    for (int i = 0; i < faces.detectedNum; i++) {
         System.out.println(faces.trackIds[i] + " " + eyes.leftEyeStatusConfidence[i]
                 + " " + eyes.rightEyeStatusConfidence[i]
-                + " " + actions.blink[i] + " " + actions.shake[i]);
+                + " " + actions.blink[i] + " " + actions.shake[i]
+                + " " + actions.headRaise[i] + " " + actions.jawOpen[i]);
     }
 }
 ```

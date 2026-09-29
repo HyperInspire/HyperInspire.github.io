@@ -1,13 +1,13 @@
 # 获取和编译 {#build-the-sdk}
 
-平台、后端和接口版本符合要求时，可以直接使用预编译 SDK。需要新接口、更换工具链或调整推理后端时，再从源码构建。本章先介绍原生库的编译，再说明如何用于应用或打包进 Python 环境。
+平台、后端和接口版本符合要求时，可以直接使用预编译 SDK。需要新接口、更换工具链或调整推理后端时，再从源码构建。本章先介绍原生库的编译，再说明如何用于应用，以及制作 Python 和 Java 包。
 
 ## 预编译 SDK {#prebuilt-sdks}
 
-下面按 **2026 年 9 月 29 日**的 [GitHub Releases](https://github.com/HyperInspire/InspireFace/releases) 整理。目前公开的原生 SDK 最新版本为 **v1.2.3**，下载链接固定到该版本，便于接入时选用一致的产物。
+下方原生 SDK 压缩包列表使用 [GitHub release v1.2.3](https://github.com/HyperInspire/InspireFace/releases/tag/v1.2.3)。Python 和 Android 已提供包含 **1.2.4** 原生库的 **1.2.4.post1** 包，安装方式与下载入口见[下方单独说明](#python-and-android-packages)。
 
 ::: warning 注意接口版本
-本文档的原生接口和 Python 示例使用 **1.2.4 源码接口**，其中包含较新的 snapshot、抓拍和诊断接口。运行这些示例时，请从配套源码构建原生库，并使用同版本的头文件或语言封装。v1.2.3 预编译包并不包含这里展示的全部接口。
+文档示例使用 **1.2.4 接口**，包括快照、抓拍和诊断。Python 可直接安装当前 PyPI 包，Android 可使用当前 AAR，两者均包含配套原生库。直接使用原生接口时，请编译 1.2.4 库并使用同版本头文件。下方 v1.2.3 压缩包不包含这里展示的全部接口。
 :::
 
 <div class="sdk-table">
@@ -48,21 +48,44 @@
 
 真机与模拟器的构建见 [iOS](./ios.md)，Intel、Apple Silicon 与通用架构的构建见 [macOS](./macos.md)。iOS Framework 是静态库，macOS Framework 是动态库，在 Xcode 中采用不同的嵌入设置。新版 iOS Framework 已合入推理依赖，应用 target 无需再添加 `MNN.framework`。
 
-Apple 发布工作流生成的 CPU 压缩包名为 `inspireface-apple-<version>.zip`；截至上述检查日期，发布页还没有该文件。CoreML 产物可以通过同一构建脚本在本地生成，运行时需搭配兼容的 CoreML 模型资源包。
+Apple 发布工作流生成的 CPU 压缩包名为 `inspireface-apple-<version>.zip`；v1.2.3 发布中不包含该文件。CoreML 产物可以通过同一构建脚本在本地生成，运行时需搭配兼容的 CoreML 模型资源包。
 
 ## Python 与 Android 包 {#python-and-android-packages}
+
+[PyPI 上的 Python 包](https://pypi.org/project/inspireface/1.2.4.post1/)已更新为 **1.2.4.post1**，包含 **1.2.4 CPU 原生库**，直接安装即可：
 
 ```bash
 python -m pip install inspireface opencv-python
 ```
 
-需要替换原生库或制作 wheel 时，参照 [Python 打包与原生库替换](./python.md)。
+已有安装使用 `python -m pip install --upgrade inspireface` 升级。此版本提供以下 `py3-none` wheel，按 Python 进程的架构选择：
 
-Android 示例使用 JitPack 依赖 `com.github.HyperInspire:inspireface-android-sdk:1.2.0`，仓库地址和 Gradle 配置见 [Android 接入](../using-with/android.md#choose-a-package-or-source-build)。Android 原生构建生成 JNI 库；将 Java 类与原生库组成 AAR 的步骤见 [Android 构建](./android.md)。
+| Platform | Architecture | Published wheel tag |
+| --- | --- | --- |
+| Linux | x86_64 | `manylinux2014_x86_64` |
+| Linux | ARM64 | `manylinux2014_aarch64` |
+| macOS | Apple Silicon | `macosx_11_0_arm64` |
+| macOS | Intel | `macosx_12_0_x86_64` |
+
+下载文件及校验值见 [PyPI 文件列表](https://pypi.org/project/inspireface/1.2.4.post1/#files)。需要替换原生库或制作 wheel 时，参照 [Python 打包与原生库替换](./python.md)。
+
+::: warning 1.2.4.post1 的 macOS 系统要求
+包内原生库要求 **arm64 使用 macOS 14.0 或更新版本**，**x86_64 使用 macOS 15.0 或更新版本**，高于 wheel 文件名标出的版本。需要支持更早的 macOS 时，请按 [Python 打包](./python.md#package-the-current-macos-sdk)构建兼容的动态库，并使用匹配的 wheel 标签。
+:::
+
+Android 使用完整的 **1.2.4.post1 AAR**，依赖为 `com.github.HyperInspire:inspireface-android-sdk:v1.2.4.post1`，保留版本前的 `v`。包内含 Android 封装、完整 Java API、模型与 R8 规则，支持 `arm64-v8a`、`armeabi-v7a` 和 `x86_64`，最低 Android API 24；每个 ABI 只有一份 `libInspireFace.so`。原生版本查询返回 **1.2.4**，C API level 为 **2**。
+
+仓库地址与 Gradle 配置见 [Android 接入](../using-with/android.md#choose-a-package-or-source-build)。需要本地构建时，[Android 构建](./android.md)说明如何生成 JAR、原生库并放入应用；使用 AAR 时无需额外添加这些文件。
+
+## Java SDK {#java-sdk}
+
+Java 版通过 JNI 提供 C API 对应的功能，不依赖 Android。使用包含 `command/build_java.sh` 的 [Develop 源码](./source.md#develop-source)构建，安装目录 `build/java-sdk/install/Java/` 中包含兼容 Java 8 的 `inspireface.jar`、当前目标的原生库、Java 源文件和示例。
+
+JAR 可跨目标使用，原生库按运行 JVM 的系统和架构选择，并与 JAR 保持配套。当前接入使用本地 JAR；构建步骤见 [Java 打包](./java.md)，完整调用示例见 [Java 接入](../using-with/java.md)。
 
 ## 单独下载模型包 {#download-the-model-separately}
 
-SDK 和 Python wheel 运行时还需要模型资源包。通过[模型发布页](https://github.com/HyperInspire/InspireFace/releases/tag/v1.x)下载：CPU 使用 `Pikachu` 或 `Megatron`，TensorRT 使用 `Megatron_TRT`，Rockchip 使用与 SoC 对应的 `Gundam` 文件。完整对应关系和加载方法见[模型选择](../guides/models-and-builds.md#pick-a-resource-pack)。
+原生 SDK、JVM 包和 Python wheel 运行时还需要模型资源包。Android 1.2.4.post1 AAR 已附带 `Pikachu` 与 `Megatron`，可直接按 [Android 初始化步骤](../using-with/android.md#add-the-model-and-initialize)使用；替换模型时再准备外部资源包。通过[模型发布页](https://github.com/HyperInspire/InspireFace/releases/tag/v1.x)下载：CPU 使用 `Pikachu` 或 `Megatron`，TensorRT 使用 `Megatron_TRT`，Rockchip 使用与 SoC 对应的 `Gundam` 文件。完整对应关系和加载方法见[模型选择](../guides/models-and-builds.md#pick-a-resource-pack)。
 
 ## 选择构建章节 {#choose-a-build-guide}
 
@@ -78,6 +101,7 @@ SDK 和 Python wheel 运行时还需要模型资源包。通过[模型发布页]
 | [HarmonyOS](./harmonyos.md) | Native SDK、Node-API 适配层和 HAR 工程。 |
 | [NVIDIA TensorRT](./nvidia.md) | CUDA / TensorRT 依赖和 Linux 构建。 |
 | [Rockchip NPU](./rockchip.md) | 板端工具链、RKNN / RGA 与 Android NPU 构建。 |
+| [Java 打包](./java.md) | JDK、JAR 与 JNI 构建、原生库分发和 JVM 测试。 |
 | [Python 打包](./python.md) | 替换 `.so` / `.dylib`、构建 wheel 和安装验证。 |
 
 </div>

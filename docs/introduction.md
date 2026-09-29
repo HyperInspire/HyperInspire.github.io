@@ -2,7 +2,7 @@
 
 InspireFace is a C/C++ SDK for processing faces in images and video. It detects faces, follows them between frames, extracts landmarks and embeddings, and runs optional analysis such as pose, quality and RGB liveness. Your application supplies the images, manages the camera and UI, and uses the returned results.
 
-The same processing flow is available through C, C++, Python, Android Java, HarmonyOS ArkTS, Objective-C and Swift. The Apple interfaces cover iOS and macOS, including image buffers, tracking, analysis, recognition and capture.
+The same processing flow is available through C, C++, Python, Java, Android, HarmonyOS ArkTS, Objective-C and Swift. The Apple interfaces cover iOS and macOS, including image buffers, tracking, analysis, recognition and capture.
 
 <figure>
 <img class="doc-banner" src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/inspireface-doc-images-web/banner.webp" alt="InspireFace detection, landmarks, recognition, liveness and deployment overview" width="2048" height="683" />
@@ -81,6 +81,7 @@ The Android demos above currently use an online service for verification. Try th
 | [C API](./using-with/c-cpp.md) | Native applications, FFI bindings and integrations that need explicit ownership. It also works from C++. |
 | [Python](./using-with/python.md) | Prototyping, scripts and services. NumPy arrays can be passed directly. |
 | [C++](./using-with/cpp.md) | Applications that want `Session`, `Image` and `FrameProcess` objects. Build headers and libraries from the same version. |
+| [Java](./using-with/java.md) | Desktop applications and services on a regular JVM, using a JAR and matching native libraries. |
 | [Android](./using-with/android.md) | Java or Kotlin applications using the JNI wrapper. |
 | [Objective-C / Swift](./using-with/apple.md) | Native Apple interfaces with NSError / throws, scoped buffer access and explicit cleanup. |
 | [iOS](./using-with/ios.md) | Xcode integration, device and simulator builds, camera pixel buffers. |
@@ -99,7 +100,7 @@ For prebuilt platforms, versions and download sources, see [Overview and downloa
 
 ## About these examples
 
-The native and Python examples use InspireFace **1.2.4**; image-processing examples use InspireCV **1.0.2**. Android examples specify the Java SDK version they need. Keep wrappers, headers and native libraries from matching builds, including when adding snapshot, capture or diagnostic calls.
+The native and Java examples use InspireFace **1.2.4**; image-processing examples use InspireCV **1.0.2**. Python examples use the **1.2.4.post1 PyPI package**, which includes the 1.2.4 native SDK and supports snapshots, capture and diagnostics. Android examples use **1.2.4.post1**, including capture, snapshots and the complete Java API. When using a custom native build, keep its wrappers and headers matched to the library.
 
 Check the [SDK releases](https://github.com/HyperInspire/InspireFace/releases) and [Python package files](https://pypi.org/project/inspireface/#files) for your platform. The [troubleshooting guide](./guides/troubleshooting.md#identify-the-loaded-sdk) shows how to inspect the version actually loaded by your application.
 

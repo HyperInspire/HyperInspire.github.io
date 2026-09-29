@@ -2,7 +2,7 @@
 
 InspireFace separates the common detection and tracking work from optional models. Start with a session that finds faces, then enable recognition, quality or other analysis only when you use those results.
 
-This page maps each feature to the data it returns. Feature guides provide C API, C++, Android, HarmonyOS, Python, Objective-C and Swift tabs where the wrapper supports the operation. Use the [API index](./guides/api-coverage.md) to find a workflow, or copy a program from [Complete examples](./guides/examples.md).
+This page maps each feature to the data it returns. Feature guides provide C API, C++, Java, Android, HarmonyOS, Python, Objective-C and Swift tabs where the wrapper supports the operation. Use the [API index](./guides/api-coverage.md) to find a workflow, or copy a program from [Complete examples](./guides/examples.md).
 
 ## Face Tracking
 

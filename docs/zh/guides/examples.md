@@ -2,7 +2,68 @@
 
 将下面的代码按标注的文件名保存，再运行对应命令。每个程序都读取本地图像或视频，完整代码默认收起，需要时展开即可复制。
 
-按功能查找时，可以从 [API 功能索引](./api-coverage.md)进入跟踪、分析、关键点、识别、活体和抓拍指南，在 tab 中选择 C API、C++、Android、Python、HarmonyOS、Objective-C 或 Swift。[补充 API 示例](./api-recipes.md)介绍对齐图像、分数显示和诊断信息。
+按功能查找时，可以从 [API 功能索引](./api-coverage.md)进入跟踪、分析、关键点、识别、活体和抓拍指南，在 tab 中选择 C API、C++、Java、Android、Python、HarmonyOS、Objective-C 或 Swift。[补充 API 示例](./api-recipes.md)介绍对齐图像、分数显示和诊断信息。
+
+## Java {#java}
+
+普通 JVM 使用 `inspireface.jar` 和配套的 JNI 库，构建方法见 [Java 打包](../build/java.md)。在安装后的 `Java/` 目录中将下方程序保存为 `examples/DetectFaces.java`。它通过 SDK 读取图片、检测人脸并输出人脸框，不依赖 Android 或 OpenCV。
+
+<details>
+<summary>java/DetectFaces.java — 展开完整代码</summary>
+
+```java
+import com.insightface.sdk.inspireface.jni.NativeTypes.*;
+import static com.insightface.sdk.inspireface.jni.Native.*;
+import static com.insightface.sdk.inspireface.jni.NativeConstants.*;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+
+/**
+ * Non-Android JVM example. Run from the installed Java SDK directory:
+ * javac -cp inspireface.jar examples/DetectFaces.java
+ * java -Djava.library.path=native/macos-arm64 -cp inspireface.jar:examples DetectFaces /path/Pikachu /path/face.jpg
+ * Select the native directory matching the JVM OS/architecture; Windows uses ; in the classpath.
+ */
+public final class DetectFaces {
+    public static void main(String[] args) {
+        if (args.length != 2) throw new IllegalArgumentException("Usage: DetectFaces MODEL_FILE IMAGE_FILE");
+        check(HFLaunchInspireFace(args[0]));
+        long[] session = new long[1], bitmap = new long[1], stream = new long[1];
+        try {
+            check(HFCreateInspireFaceSessionOptional(HF_ENABLE_NONE, HF_DETECT_MODE_ALWAYS_DETECT, 10, -1, -1, session));
+            check(HFCreateImageBitmapFromFilePath(args[1], 3, bitmap));
+            HFImageBitmapData pixels = new HFImageBitmapData();
+            check(HFImageBitmapGetData(bitmap[0], pixels));
+            HFImageData input = new HFImageData();
+            input.data = pixels.data; input.width = pixels.width; input.height = pixels.height;
+            input.format = HF_STREAM_BGR; input.rotation = HF_CAMERA_ROTATION_0;
+            check(HFCreateImageStream(input, stream)); // Borrows pixels; keep bitmap alive.
+            HFMultipleFaceData faces = new HFMultipleFaceData();
+            check(HFExecuteFaceTrack(session[0], stream[0], faces));
+            System.out.println("Detected " + faces.detectedNum + " face(s)");
+            for (HFaceRect rect : faces.rects) {
+                System.out.printf("x=%d y=%d width=%d height=%d%n", rect.x, rect.y, rect.width, rect.height);
+            }
+        } finally {
+            if (stream[0] != 0) HFReleaseImageStream(stream[0]);
+            if (bitmap[0] != 0) HFReleaseImageBitmap(bitmap[0]);
+            if (session[0] != 0) HFReleaseInspireFaceSession(session[0]);
+            HFTerminateInspireFace();
+        }
+    }
+}
+```
+
+</details>
+
+从 `Java/` 目录运行（以下使用 macOS arm64 的原生库）：
+
+```bash
+javac -cp inspireface.jar examples/DetectFaces.java
+java -Djava.library.path=native/macos-arm64 -cp inspireface.jar:examples \
+  DetectFaces /absolute/path/to/Pikachu /absolute/path/to/face.jpg
+```
+
+Linux 使用对应的 `native/linux-*` 目录；Windows 的 classpath 分隔符是 `;`。按**运行 JVM** 的架构选择原生库，完整配置与内存规则见 [Java 接入](../using-with/java.md)。
 
 ## Python {#python}
 
@@ -17,7 +78,7 @@ python -m pip install inspireface opencv-python
 | [capture.py](#python-capture) | 抓拍就绪后保存选中的完整帧。 |
 | [benchmark.py](#python-benchmark) | 测量预热后的静态图片检测延迟。 |
 
-抓拍和性能测量示例使用 1.2.4 封装及配套原生库，配置方法见[自定义原生库](../using-with/python.md#use-a-local-native-build)。
+下面的 Python 示例，包括抓拍和性能测量，都可以使用 PyPI 的 **1.2.4.post1 包**运行，包内已包含 1.2.4 原生 SDK。需要更换推理后端或使用自行编译的库时，再按[自定义原生库](../using-with/python.md#use-a-local-native-build)配置。
 
 检测示例省略 `--model` 时可以下载默认 `Pikachu` 模型包，下面的其他命令使用明确的资源路径。图像无法读取属于错误；图像可读但未检测到人脸，是正常检测结果。
 

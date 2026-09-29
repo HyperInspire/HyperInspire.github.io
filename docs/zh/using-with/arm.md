@@ -36,7 +36,63 @@ SDK 还通过以下方式减少连续帧处理的开销，这些优化同样适�
 
 处理一段视频时，持续保留模型和会话。借用的像素与结果视图需要在使用期间保持有效；哪些数据需要保留或复制，见[架构与生命周期](../guides/arch.md)。
 
-## 可选的 Task 预处理 {#optional-task-preprocessing}
+## CPU 运行策略 {#cpu-power-mode}
+
+当前 CPU 推理默认使用 `NORMAL`。Android 1.2.4.post1、Java 和 C++ 均可在创建会话前配置这项进程级策略。它控制推理运行时的功耗与调度策略，模型线程数和数值精度保持原配置。
+
+| Mode | 使用建议 |
+| --- | --- |
+| `NORMAL` | 默认策略，可作为持续相机处理的起点。 |
+| `HIGH` | 高功耗策略；比较延时、帧间空闲 CPU 占用和温度后再选择。 |
+| `LOW` | 低功耗策略；在目标设备上检查吞吐与响应时间。 |
+
+::: tabs #api-language
+
+@tab C++
+
+```cpp
+#include <inspireface/launch.h>
+#include <stdexcept>
+
+void configureCpuEngine() {
+    auto runtime = inspire::Launch::GetInstance();
+    int status = runtime->SetGlobalCPUEnginePowerMode(
+        inspire::Launch::CPU_ENGINE_POWER_NORMAL);
+    if (status != 0) throw std::runtime_error("Cannot set CPU policy");
+    auto selected = runtime->GetGlobalCPUEnginePowerMode();
+    (void)selected;
+}
+```
+
+@tab Java
+
+```java
+import com.insightface.sdk.inspireface.jni.CPUEngine;
+
+// Run during startup, before creating sessions.
+CPUEngine.setGlobalPowerMode(CPUEngine.PowerMode.NORMAL);
+CPUEngine.PowerMode selected = CPUEngine.getGlobalPowerMode();
+System.out.println("CPU policy: " + selected);
+```
+
+@tab Android
+
+```java
+import com.insightface.sdk.inspireface.jni.CPUEngine;
+
+// Run during startup, before creating sessions.
+CPUEngine.setGlobalPowerMode(CPUEngine.PowerMode.NORMAL);
+CPUEngine.PowerMode selected = CPUEngine.getGlobalPowerMode();
+System.out.println("CPU policy: " + selected);
+```
+
+:::
+
+Java 和 Android 代码放在应用启动流程中；C++ 在创建会话前调用 `configureCpuEngine()`。这项设置由随后初始化的 CPU 运行时读取，不会重新配置已有运行时。关闭旧会话并重新创建后，再比较新策略下的结果；全局加载、重新加载和终止操作都会保留设置，修改时与模型/会话初始化保持串行。
+
+测试持续运行时，除了逐帧耗时，也记录停止送帧后的 CPU 占用和设备升温情况。不同设备上的策略效果可能不同，模式名称不能代替实际测量。Java 与 Android 接入分别见 [JVM](./java.md#cpu-power-mode) 和 [Android](./android.md#cpu-power-mode)。
+
+## Task 预处理 {#optional-task-preprocessing}
 
 InspireCV Task 将几何采样、颜色转换、归一化和张量布局写入组织到同一条预处理流程中。通用执行路径按小块处理并复用临时缓冲，减少每个阶段都生成一张完整中间图的开销。
 
@@ -47,7 +103,7 @@ InspireCV Task 将几何采样、颜色转换、归一化和张量布局写入�
 | Tensor layout | 按 HWC 或 CHW 布局直接写入调用方的张量缓冲。 |
 | Repeated execution | 复用 Pipeline 配置，通过 `RunInto` 或 `TensorBuffer` 使用已有输出存储。 |
 
-以上是应用可以直接使用的 Task 能力。InspireFace 设置 `ISF_ENABLE_INSPIRECV_TASK_PREPROCESS=ON` 后，也会使用 Task 处理相机图像流；这个 SDK 选项**默认关闭**。该开关选择图像流预处理后端，模型专用的归一化与张量准备仍由对应适配层处理。直接调用 Task 的方法见[预处理示例](../guides/inspirecv.md#task-preprocessing)。
+以上是应用可以直接使用的 Task 能力。当前 InspireFace 源码默认启用 `ISF_ENABLE_INSPIRECV_TASK_PREPROCESS=ON`，使用 Task 处理图像预处理；设为 `OFF` 时回到旧的图像处理路径。该开关选择图像流预处理后端，模型专用的归一化与张量准备仍由对应适配层处理。直接调用 Task 的方法见[预处理示例](../guides/inspirecv.md#task-preprocessing)。
 
 ### 在 ARM64 Linux 上构建 Task 路径 {#build-the-task-path-on-arm64-linux}
 
@@ -68,7 +124,7 @@ cmake --install build/arm-cpu-task
 
 SDK 安装到 `build/arm-cpu-task/install/InspireFace`。交叉编译或移动平台使用对应的[平台构建方法](../build/README.md#choose-a-build-guide)，在其工具链配置中加入这些选项。
 
-`INSPIRECV_TASK_ENABLE_ARM_NEON` 默认是 `ON`，控制 Task 中显式的 NEON 路径，并不控制全部 Image 算子或编译器自动向量化。NEON 支持在编译时确定；启用 NEON 的 ARMv7 产物需要在支持这些指令的处理器上运行。选择 Task 或默认预处理路径时，在目标设备上用相同输入格式与变换参数进行对比。
+`INSPIRECV_TASK_ENABLE_ARM_NEON` 默认是 `ON`，控制 Task 中显式的 NEON 路径，并不控制全部 Image 算子或编译器自动向量化。NEON 支持在编译时确定；启用 NEON 的 ARMv7 产物需要在支持这些指令的处理器上运行。比较 Task 与旧预处理路径时，在目标设备上用相同输入格式与变换参数进行对比。
 
 ## 选择设备对应的 SDK {#choose-the-sdk-for-the-device}
 

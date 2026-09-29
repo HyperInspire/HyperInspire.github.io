@@ -77,13 +77,15 @@ Record these details alongside a timing result:
 | Item | Example or reason |
 | --- | --- |
 | SDK and model | Native version, source revision, pack name and checksum. |
-| Device and build | CPU/GPU/SoC, operating system, backend, release build and thread settings. |
+| Device and build | CPU/GPU/SoC, operating system, backend, release build, thread settings and CPU policy (`NORMAL` / `HIGH` / `LOW`). |
 | Input | Image size, format, face count and approximate face size. |
 | Session | Detection mode, detector level, maximum face count and enabled options. |
 | Measurement | Warm-up count, timed iterations, included stages and timing method. |
 | Result | Median and p95 latency, plus failures or dropped frames. |
 
 Measure model loading and session creation separately from frame processing, and report them as startup costs.
+
+Current CPU builds default to `NORMAL`. Set the same policy before creating sessions when comparing SDK versions, and record idle CPU between frames and temperature during sustained use. See [CPU policy](../using-with/arm.md#cpu-power-mode). The historical results above retain their original measurements and do not measure this new policy.
 
 ## Time a still-image call
 

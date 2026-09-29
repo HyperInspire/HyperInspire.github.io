@@ -457,7 +457,7 @@ See the exact interfaces in [DeviceImage](https://github.com/tunmx/InspireCV/blo
 
 InspireFace uses InspireCV internally and provides `inspirecv::FrameProcess` through the **InspireFace** SDK. Include the SDK headers to use it, and select its own format and rotation enums.
 
-Build InspireFace with `ISF_ENABLE_INSPIRECV_TASK_PREPROCESS=ON` to use the Task preprocessing path inside the SDK.
+Current InspireFace source enables the Task preprocessing path by default with `ISF_ENABLE_INSPIRECV_TASK_PREPROCESS=ON`.
 
 The FrameProcess example below shows the raw frame, an upright processing preview and an affine region output.
 

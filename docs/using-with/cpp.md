@@ -159,6 +159,26 @@ This block assumes a valid `frame` and a launched runtime. Other getters include
 
 See [Optional analysis](../guides/optional-analysis.md) for per-feature configuration and result handling across the supported APIs.
 
+## CPU power mode {#cpu-power-mode}
+
+Set the CPU inference policy through `Launch` before creating sessions. The default is `CPU_ENGINE_POWER_NORMAL`; `CPU_ENGINE_POWER_HIGH` and `CPU_ENGINE_POWER_LOW` are also available:
+
+```cpp
+#include <inspireface/launch.h>
+#include <stdexcept>
+
+void configureCpuEngine() {
+    auto runtime = inspire::Launch::GetInstance();
+    int status = runtime->SetGlobalCPUEnginePowerMode(
+        inspire::Launch::CPU_ENGINE_POWER_NORMAL);
+    if (status != 0) throw std::runtime_error("Cannot set CPU policy");
+    auto selected = runtime->GetGlobalCPUEnginePowerMode();
+    (void)selected;
+}
+```
+
+Only subsequently initialized CPU runtimes use the new policy; existing runtimes, thread counts and precision stay unchanged. `Load`, `Reload` and `Unload` preserve the setting. Serialize configuration with session/model initialization. Use headers and a native build containing these CPU controls. See [CPU policy](./arm.md#cpu-power-mode) for what to measure when comparing modes.
+
 ## Extract features and landmarks
 
 ```cpp

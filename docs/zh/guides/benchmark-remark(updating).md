@@ -77,13 +77,15 @@ M2 搭配 `Pikachu_Apple` 的记录中，特征比对为 **1 µs/次**。`Megatr
 | Item | 需要记录的内容 |
 | --- | --- |
 | SDK and model | 记录原生版本、源码提交、模型包名称及校验值。 |
-| Device and build | 记录 CPU/GPU/SoC、操作系统、后端、是否使用 Release 构建及线程设置。 |
+| Device and build | 记录 CPU/GPU/SoC、操作系统、后端、是否使用 Release 构建、线程设置，以及 CPU `NORMAL` / `HIGH` / `LOW` 策略。 |
 | Input | 记录图像尺寸、格式、人脸数和大致人脸大小。 |
 | Session | 记录检测模式、检测级别、最大人脸数和已启用选项。 |
 | Measurement | 说明预热次数、计时次数、包含的阶段和计时方式。 |
 | Result | 报告延迟中位数和 p95，以及失败或丢帧情况。 |
 
 模型加载与会话创建单独测量，记录为启动开销；逐帧处理另行计时。
+
+当前 CPU 版本默认使用 `NORMAL`。比较不同 SDK 或策略时，在创建会话前统一设置，并记录帧间空闲 CPU 和持续运行温度，见 [CPU 运行策略](../using-with/arm.md#cpu-power-mode)。上方历史测试保留原始结果，不视为新策略的性能数据。
 
 ## 测量静态图片调用 {#time-a-still-image-call}
 

@@ -2,37 +2,39 @@
 
 按功能和 API 查找示例。先通过平台指南完成安装和初始化，再在功能指南的代码 tab 中选择使用的 API。
 
-示例使用 **InspireFace 1.2.4**、**InspireCV 1.0.2**、**Android Java SDK 1.2.0** 和 **HarmonyOS ArkTS SDK 1.2.4**。Objective-C 和 Swift 使用[对应 1.2.4 源码](../build/source.md)构建的 Apple Framework。下表列出各接口支持的操作。
+示例使用 **InspireFace 1.2.4**、**InspireCV 1.0.2**、**Android Java SDK 1.2.4.post1** 和 **HarmonyOS ArkTS SDK 1.2.4**。[Python](../using-with/python.md) 使用 PyPI 的 **1.2.4.post1 包**，已包含 1.2.4 原生 SDK。Objective-C 和 Swift 使用[对应 1.2.4 源码](../build/source.md)构建的 Apple Framework。[Java（JVM）](../using-with/java.md)使用 1.2.4 源码构建的 portable JNI，与 Android 包分别列出。下表列出各接口支持的操作。
 
 ## 各 API 的功能示例 {#feature-examples-by-api}
 
-“示例”链接指向包含对应 API 代码的指南。“源码接口”需要较新的 Java 源文件和匹配的 JNI 构建。“—”表示上述版本的高层封装没有暴露该操作。
+“示例”链接指向包含对应 API 代码的指南。Android 1.2.4.post1 AAR 同时提供 `InspireFace` 高层封装和完整 `jni.Native` 接口；下方 Android 列包含这两种写法，示例会注明使用哪一层。“—”表示对应接口没有直接提供该操作。
 
 <div class="sdk-table api-coverage-table" role="region" aria-label="各 API 的功能示例" tabindex="0">
 
-| Feature | C API | C++ | Android | Python | HarmonyOS (ArkTS) | Objective-C | Swift |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Launch / Session / release | [示例](../using-with/c-cpp.md) | [示例](../using-with/cpp.md) | [示例](../using-with/android.md) | [示例](../using-with/python.md) | [示例](../using-with/harmonyos.md) | [示例](../using-with/apple.md) | [示例](../using-with/apple.md) |
-| Detection / tracking | [示例](./tracking.md) | [示例](./tracking.md) | [示例](./tracking.md) | [示例](./tracking.md) | [示例](./tracking.md) | [示例](./tracking.md) | [示例](./tracking.md) |
-| Dense landmarks | [示例](./dense-landmark.md) | [示例](./dense-landmark.md) | [示例](./dense-landmark.md) | [示例](./dense-landmark.md) | [示例](./dense-landmark.md) | [示例](./dense-landmark.md) | [示例](./dense-landmark.md) |
-| Five-point landmarks | [示例](./dense-landmark.md) | [示例](./dense-landmark.md) | — | [示例](./dense-landmark.md) | [示例](./dense-landmark.md) | [示例](./dense-landmark.md) | [示例](./dense-landmark.md) |
-| Quality / mask / attributes | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) |
-| Pose | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [Quality 兼容路径](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) |
-| Expression | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | — | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) |
-| RGB liveness / actions | [示例](./liveness-detection.md) | [示例](./liveness-detection.md) | [示例](./liveness-detection.md) | [示例](./liveness-detection.md) | [示例](./liveness-detection.md) | [示例](./liveness-detection.md) | [示例](./liveness-detection.md) |
-| Embedding / comparison | [示例](./recognition.md) | [示例](./recognition.md) | [示例](./recognition.md) | [示例](./recognition.md) | [示例](./recognition.md) | [示例](./recognition.md) | [示例](./recognition.md) |
-| FeatureHub | [示例](./recognition.md) | [示例](./recognition.md) | [示例](./recognition.md) | [示例](./recognition.md) | [示例](./recognition.md) | [示例](./recognition.md) | [示例](./recognition.md) |
-| Alignment crop | [示例](./api-recipes.md) | [示例](./api-recipes.md) | [示例](./api-recipes.md) | — | [示例](./api-recipes.md) | [示例](./api-recipes.md) | [示例](./api-recipes.md) |
-| Aligned-image extraction | [示例](./api-recipes.md) | [示例](./api-recipes.md) | — | — | [示例](./api-recipes.md) | [示例](./api-recipes.md) | [示例](./api-recipes.md) |
-| Similarity display conversion | [示例](./api-recipes.md) | [示例](./api-recipes.md) | [示例](./api-recipes.md) | [示例](./api-recipes.md) | [示例](./api-recipes.md) | [示例](./api-recipes.md) | [示例](./api-recipes.md) |
-| Detection snapshots | [示例](./face-capture.md) | [复制结果值](./face-capture.md) | [源码接口](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) |
-| Face capture | [示例](./face-capture.md) | [示例](./face-capture.md) | [源码接口](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) |
+| Feature | C API | C++ | Java | Android | Python | HarmonyOS (ArkTS) | Objective-C | Swift |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Launch / Session / release | [示例](../using-with/c-cpp.md) | [示例](../using-with/cpp.md) | [示例](../using-with/java.md) | [示例](../using-with/android.md) | [示例](../using-with/python.md) | [示例](../using-with/harmonyos.md) | [示例](../using-with/apple.md) | [示例](../using-with/apple.md) |
+| Detection / tracking | [示例](./tracking.md) | [示例](./tracking.md) | [示例](./tracking.md) | [示例](./tracking.md) | [示例](./tracking.md) | [示例](./tracking.md) | [示例](./tracking.md) | [示例](./tracking.md) |
+| Dense landmarks | [示例](./dense-landmark.md) | [示例](./dense-landmark.md) | [示例](./dense-landmark.md) | [示例](./dense-landmark.md) | [示例](./dense-landmark.md) | [示例](./dense-landmark.md) | [示例](./dense-landmark.md) | [示例](./dense-landmark.md) |
+| Five-point landmarks | [示例](./dense-landmark.md) | [示例](./dense-landmark.md) | [示例](./dense-landmark.md) | [示例](./dense-landmark.md) | [示例](./dense-landmark.md) | [示例](./dense-landmark.md) | [示例](./dense-landmark.md) | [示例](./dense-landmark.md) |
+| Quality / mask / attributes | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) |
+| Pose | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) |
+| Expression | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) | [示例](./optional-analysis.md) |
+| RGB liveness / actions | [示例](./liveness-detection.md) | [示例](./liveness-detection.md) | [示例](./liveness-detection.md) | [示例](./liveness-detection.md) | [示例](./liveness-detection.md) | [示例](./liveness-detection.md) | [示例](./liveness-detection.md) | [示例](./liveness-detection.md) |
+| Embedding / comparison | [示例](./recognition.md) | [示例](./recognition.md) | [示例](./recognition.md) | [示例](./recognition.md) | [示例](./recognition.md) | [示例](./recognition.md) | [示例](./recognition.md) | [示例](./recognition.md) |
+| FeatureHub | [示例](./recognition.md) | [示例](./recognition.md) | [示例](./recognition.md) | [示例](./recognition.md) | [示例](./recognition.md) | [示例](./recognition.md) | [示例](./recognition.md) | [示例](./recognition.md) |
+| Alignment crop | [示例](./api-recipes.md) | [示例](./api-recipes.md) | [示例](./api-recipes.md) | [示例](./api-recipes.md) | — | [示例](./api-recipes.md) | [示例](./api-recipes.md) | [示例](./api-recipes.md) |
+| Aligned-image extraction | [示例](./api-recipes.md) | [示例](./api-recipes.md) | [示例](./api-recipes.md) | [示例](./api-recipes.md) | — | [示例](./api-recipes.md) | [示例](./api-recipes.md) | [示例](./api-recipes.md) |
+| Similarity display conversion | [示例](./api-recipes.md) | [示例](./api-recipes.md) | [示例](./api-recipes.md) | [示例](./api-recipes.md) | [示例](./api-recipes.md) | [示例](./api-recipes.md) | [示例](./api-recipes.md) | [示例](./api-recipes.md) |
+| Detection snapshots | [示例](./face-capture.md) | [复制结果值](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) |
+| Face capture | [示例](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) | [示例](./face-capture.md) |
+
+| CPU power mode | — | [示例](../using-with/cpp.md#cpu-power-mode) | [示例](../using-with/java.md#cpu-power-mode) | [示例](../using-with/android.md#cpu-power-mode) | — | — | — | — |
 
 </div>
 
 [Plus 被动与炫光活体演示](./liveness-detection.md#optional-plus-demos)在移动端采集图像，由服务端完成校验。对应指南介绍 Android 采集、进度提示和结果处理。
 
-代码 tab 共用 API 选择状态：选中 Python、Android、HarmonyOS (ArkTS)、Objective-C 或 Swift 后，其他包含相同选项的代码组也会跟随切换。[完整示例](./examples.md)提供可直接复制的程序；功能指南中的片段会说明需要提前准备的会话、图像或模型。
+代码 tab 共用 API 选择状态：选中 Python、Java、Android、HarmonyOS (ArkTS)、Objective-C 或 Swift 后，其他包含相同选项的代码组也会跟随切换。[完整示例](./examples.md)提供可直接复制的程序；功能指南中的片段会说明需要提前准备的会话、图像或模型。
 
 ## 输入、配置与部署 {#inputs-settings-and-deployment}
 
@@ -44,7 +46,8 @@
 | Session tuning | 检测级别、最小人脸尺寸、置信度、预览尺寸、检测间隔和平滑。 | [会话与跟踪](./tracking.md) |
 | Memory and threads | 缓冲区借用、独立结果、会话复用和工作线程退出。 | [架构与生命周期](./arch.md) |
 | C ABI | 句柄、状态码和 `HFSessionConfigV2`。 | [C API](../using-with/c-cpp.md) |
-| Android deployment | AAR、assets、Gradle/ABI、CameraX 和 JNI 配套。 | [Android](../using-with/android.md) |
+| Java deployment | Java 8 JAR、JNI 路径、进程架构、直接缓冲区与显式释放。 | [Java](../using-with/java.md)、[Java 打包](../build/java.md) |
+| Android deployment | 1.2.4.post1 AAR、每 ABI 单库、R8、CameraX 与两层 Java 接口。 | [Android](../using-with/android.md) |
 | Apple APIs | Objective-C 错误处理、Swift 类型、借用视图和完整检测示例。 | [Objective-C 与 Swift](../using-with/apple.md) |
 | iOS deployment | 真机与模拟器 XCFramework、Xcode 链接、相机缓冲区和 CoreML。 | [iOS](../using-with/ios.md) |
 | macOS deployment | Intel / Apple Silicon Framework、嵌入、签名和原生库。 | [macOS](../using-with/macos.md) |
@@ -55,7 +58,7 @@
 | Diagnostics | 版本、错误文本、运行诊断和资源计数。 | [补充 API 示例](./api-recipes.md)、[常见问题](./troubleshooting.md) |
 | Performance | 预热、计时范围、中位数与 p95，以及排队延迟。 | [性能测量](./benchmark-remark(updating).md) |
 
-参数类型、重载和其他设置可查阅对应 SDK 版本附带的头文件与语言封装。
+参数类型、重载和其他设置可查阅对应 SDK 版本附带的头文件与语言封装。Java 安装包的 `sources/` 提供 `Native.java`、`NativeTypes.java` 和 `NativeConstants.java`，`api-manifest.json` 列出生成的接口。所有 C API 均有 Java 映射；硬件相关调用仍取决于原生库的构建选项和运行环境。
 
 ## InspireCV 图像处理 {#inspirecv-scope}
 
@@ -65,7 +68,8 @@ InspireCV 是独立的 C++ 库。[指南](./inspirecv.md)介绍 Image 读写与�
 
 ## 接入说明 {#known-boundaries}
 
-- 使用 Android 抓拍和快照接口时，将 Java 类和 JNI 库一起更新到指南中使用的版本。
+- Java 的 `long` 句柄需要显式释放；结果中的 `ByteBuffer` 可能借用原生内存，Java 对象仍在并不代表底层数据仍有效。见 [Java 生命周期](./arch.md#java-object-lifetimes)。
+- Android 1.2.4.post1 已包含抓拍与快照。高层返回的数组和 token 是 Java 自有副本，`Native` 缓冲区仍遵循 C 的借用规则。创建与释放图像流必须使用同一 API 层，见 [Android 生命周期](./arch.md#android-object-lifetimes)。
 - 复制 C++ 人脸结果向量可以保留几何信息和 token。后续还要提取特征时，同时保留对应帧的像素。
 - ArkTS 跟踪快照用 `session.releaseFaceResult()` 释放；图像流、位图、抓拍会话和会话使用完后调用 `close()`。各封装对象留在创建它的 worker 中使用。
 - 标准 HarmonyOS HAR 使用 MNN CPU 推理，接收原始图像缓冲区。文件解码和图像显示使用 HarmonyOS 系统 API。

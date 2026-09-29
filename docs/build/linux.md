@@ -2,7 +2,9 @@
 
 Build a shared CPU SDK for Linux x86_64, ARMv7 or ARM64, then link it from a native application or [package it with Python](./python.md). NVIDIA and Rockchip builds have separate [TensorRT](./nvidia.md) and [RKNPU](./rockchip.md) instructions.
 
-Complete [source preparation](./source.md) first. Run the commands below from the InspireFace repository root. For an existing binary package, use the [SDK downloads](./README.md).
+Java applications also need the JAR and JNI adapter; follow [Java packaging](./java.md) to build them.
+
+Complete [source preparation](./source.md) first. Run the commands below from the InspireFace SDK directory. For an existing binary package, use the [SDK downloads](./README.md).
 
 For ARM CPU image processing, feature comparison and camera-loop tuning, see [ARM deployment](../using-with/arm.md).
 

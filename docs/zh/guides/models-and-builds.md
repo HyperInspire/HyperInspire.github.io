@@ -27,7 +27,7 @@ iOS 和 macOS 的 CPU Framework 同样可以从 `Pikachu` 开始。CoreML 构建
 
 ## 创建会话前验证模型包 {#validate-before-creating-sessions}
 
-1.2.4 源码接口提供模型包验证和元信息读取：
+1.2.4 接口提供模型包验证和元信息读取。下面的 Python 示例可直接使用 PyPI 的 **1.2.4.post1 包**：
 
 ```python
 import inspireface as isf
@@ -39,9 +39,41 @@ isf.launch(resource_path="/path/to/Pikachu")
 
 C 中使用 `HFValidateResourcePack` 和配套头文件声明的 `HFResourcePackInfo` 检查资源格式。后端所需的运行库按下方对应平台指南安装。
 
-在 Apple 平台传入模型包的本地文件路径，例如应用 bundle 中资源的路径。创建会话前可以这样验证并加载：
+Java、Android 和 Apple 接口也接受模型包的本地文件路径。先验证资源包，再启动运行时；应用退出前，释放所有会话并终止运行时。
 
 ::: tabs #api-language
+
+@tab Java
+
+```java
+import com.insightface.sdk.inspireface.jni.NativeTypes.HFResourcePackInfo;
+import static com.insightface.sdk.inspireface.jni.Native.*;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+
+public final class PackRuntime {
+    public static void launch(String path) {
+        HFResourcePackInfo info = new HFResourcePackInfo();
+        check(HFValidateResourcePack(path, info));
+        check(HFLaunchInspireFace(path));
+    }
+}
+```
+
+@tab Android
+
+```java
+import com.insightface.sdk.inspireface.InspireFace;
+
+public final class AndroidPackRuntime {
+    // Call on a worker before creating sessions; path names a local pack file.
+    public static void launch(String path) {
+        InspireFace.ValidateResourcePack(path);
+        if (!InspireFace.GlobalLaunch(path)) {
+            throw new IllegalStateException("Cannot load model pack");
+        }
+    }
+}
+```
 
 @tab Objective-C
 
@@ -83,11 +115,12 @@ func launchValidatedPack(path: String) throws {
 | C++ | `inspire::Launch::GetInstance()->Reload(pack_path)` | 返回 `0`。 |
 | Objective-C | `[IFRuntime reloadAtPath:path error:&error]` | 返回 `YES`；失败时返回 `NO` 并提供 `NSError`。 |
 | Swift | `try InspireFaceRuntime.reload(path: path)` | 正常返回；失败时抛出错误。 |
+| Java | `check(HFReloadInspireFace(packPath))` | 成功时正常返回；失败时抛出 `InspireFaceException`。 |
 | Python | `isf.reload(resource_path=pack_path)` | 返回 `True`；失败时抛出异常。 |
 
 1.2.4 中，已有 Session 会继续持有创建时的资源。整个应用切换时，先停止提交帧，释放旧 Session，验证并重新加载模型包，成功后再创建新 Session。加载失败时先处理错误，再恢复图像处理。识别模型发生变化后，还需要重建特征库。
 
-使用 Android Java SDK 1.2.0 时，在初始化前选定模型包，更换时重新启动应用进程。
+Android 1.2.4.post1 提供 `InspireFace.GlobalReload(packPath)`，返回 `false` 表示加载失败。切换前停止工作线程并关闭抓拍、快照、图像流和会话，加载成功后重新创建会话。AAR 自带的模型可通过 `GlobalLaunch(Context, model)` 初始化；外部模型可先用 `InspireFace.ValidateResourcePack(path)` 验证。
 
 <figure>
 <img class="feature-illustration" src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/inspireface-doc-images-web/deploy.webp" alt="桌面、移动设备、服务器和边缘硬件的部署示意" width="1536" height="1024" loading="lazy" />
@@ -96,7 +129,7 @@ func launchValidatedPack(path: String) throws {
 
 ## 下载 SDK {#download-an-sdk}
 
-[获取和编译：概述与下载](../build/README.md)列出当前预编译版本、各平台下载链接、Python 包和 Android 依赖。选择时同时检查设备与**进程架构**，并使用配套的头文件、封装和原生库。本文档的 API level 2 示例需要 1.2.4 源码构建。
+[获取和编译：概述与下载](../build/README.md)列出当前预编译版本、各平台下载链接、Python 包和 Android 依赖。选择时同时检查设备与**进程架构**，并使用配套的头文件、封装和原生库。API level 2 示例需要 1.2.4 原生 SDK，Python 1.2.4.post1 wheel 和 Android 1.2.4.post1 AAR 都已包含对应原生库。
 
 ## 构建 CPU SDK {#build-a-cpu-sdk}
 
@@ -108,6 +141,7 @@ func launchValidatedPack(path: String) throws {
 
 ## 各平台的构建方式 {#target-specific-builds}
 
+- [Java](../build/java.md)：JAR、JNI 库和本机 JVM 验证。
 - [Android](../build/android.md)：NDK、ABI、JNI 与 AAR 打包。
 - [iOS](../build/ios.md)：真机与模拟器切片、XCFramework 和 CoreML。
 - [macOS](../build/macos.md)：Intel / Apple Silicon Framework、Swift 模块和原生库。

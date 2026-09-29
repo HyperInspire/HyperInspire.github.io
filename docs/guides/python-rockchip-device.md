@@ -46,7 +46,7 @@ python -c 'import inspireface as isf; print("Wrapper:", isf.__version__, "Native
 
 `INSPIREFACE_LIBRARY_PATH` selects the SDK library, and `LD_LIBRARY_PATH` supplies its dependency directories. Use the same library path in the application and deployment scripts.
 
-For this guide, both printed SDK versions should be `1.2.4`. Keep the source revision and native build matched as well; a shared version number alone does not identify the exact commit. See [Python packaging](../build/python.md#prepare-the-native-sdk-and-wrapper) when preparing a wheel for other devices.
+With the current source, the Python package version is `1.2.4.post1` and the native version is `1.2.4`. The `.post1` suffix comes from `python/post`. Keep the source revision and native build matched as well; a shared version number alone does not identify the exact commit. See [Python packaging](../build/python.md#prepare-the-native-sdk-and-wrapper) when preparing a wheel for other devices.
 
 ## Load a local pack
 

@@ -93,20 +93,49 @@ func readLandmarks(token: FaceToken) throws {
 }
 ```
 
-@tab Android
+@tab Java
 
-The 1.2.0 Java package provides dense landmarks through a `DETECT_MODE_LIGHT_TRACK` session. For unrelated still images, create a fresh session for each image. For five-point alignment data, use the C, C++ or Python tab.
+Call `readLandmarks(faces.tokens[i])` after successful tracking using the [Java SDK](../using-with/java.md). The token borrows native memory: keep its session or snapshot open and finish reading before that result is replaced. The JNI calls fill the `HPoint2f[]` elements; the returned coordinates are Java values that can be retained. Query the dense point count instead of fixing it in the application.
 
 ```java
-// session is a LIGHT_TRACK session; stream is the current image.
+import com.insightface.sdk.inspireface.jni.NativeTypes.*;
+import static com.insightface.sdk.inspireface.jni.Native.*;
+import static com.insightface.sdk.inspireface.jni.NativeConstants.*;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+
+public final class LandmarkExample {
+    public static void readLandmarks(HFFaceBasicToken token) {
+        int[] count = new int[1];
+        check(HFGetNumOfFaceDenseLandmark(count));
+        if (count[0] <= 0) throw new IllegalStateException("No landmark model");
+        HPoint2f[] five = new HPoint2f[5];
+        HPoint2f[] dense = new HPoint2f[count[0]];
+        check(HFGetFaceFiveKeyPointsFromFaceToken(token, five, five.length));
+        check(HFGetFaceDenseLandmarkFromFaceToken(token, dense, dense.length));
+        System.out.println("five=" + five.length + " dense=" + dense.length);
+        for (HPoint2f point : dense) {
+            System.out.println(point.x + ", " + point.y);
+        }
+    }
+}
+```
+
+@tab Android
+
+Android 1.2.4.post1 provides both five-point and dense landmarks. Use `DETECT_MODE_ALWAYS_DETECT` for independent photos, or reuse a `DETECT_MODE_LIGHT_TRACK` session for video. Detection tokens and the returned `Point2f[]` use Java-owned storage. Transform the points to preview coordinates before drawing.
+
+```java
+// Use ALWAYS_DETECT for independent photos, or LIGHT_TRACK for video.
 MultipleFaceData faces = InspireFace.ExecuteFaceTrack(session, stream);
 if (faces == null) throw new IllegalStateException("Detection failed");
 for (int i = 0; i < faces.detectedNum; i++) {
-    Point2f[] points = InspireFace.GetFaceDenseLandmarkFromFaceToken(faces.tokens[i]);
-    if (points == null || points.length == 0) {
-        throw new IllegalStateException("Dense landmarks are unavailable");
+    Point2f[] five = InspireFace.GetFaceFiveKeyPointsFromFaceToken(faces.tokens[i]);
+    Point2f[] dense = InspireFace.GetFaceDenseLandmarkFromFaceToken(faces.tokens[i]);
+    if (five == null || five.length != 5 || dense == null || dense.length == 0) {
+        throw new IllegalStateException("Landmarks are unavailable");
     }
-    for (Point2f point : points) {
+    System.out.println("five=" + five.length + " dense=" + dense.length);
+    for (Point2f point : dense) {
         System.out.println(point.x + ", " + point.y);
     }
 }
@@ -185,6 +214,10 @@ static HResult print_landmarks(HFFaceBasicToken token) {
 
 Call this with `faces.tokens[i]` before a later tracking call replaces the session's borrowed results. An owned detection snapshot is another option when processing results after the next frame.
 
+::: warning Snapshot and latency
+A snapshot keeps detection results stable across later frames and is easier to pass between processing stages. Creating it copies data and adds latency. Reading the current session result directly avoids that copy and suits a single video stream; finish using its tokens before the next tracking call or session reset.
+:::
+
 In the native C++ API, use `session.GetFaceDenseLandmark(face)` and `session.GetFaceFiveKeyPoints(face)` with a `FaceTrackWrap`. See [C++ integration](../using-with/cpp.md) for the surrounding detection loop.
 
 ## Select a landmark engine
@@ -197,7 +230,18 @@ Available landmark engines:
 | HyperLandmarkV2 0.50 | `HF_LANDMARK_HYPLMV2_0_50` |
 | InsightFace 2D106 tracking | `HF_LANDMARK_INSIGHTFACE_2D106_TRACK` |
 
-Select the engine **before creating the session**: `HFSwitchLandmarkEngine` in C, `[IFRuntime setLandmarkEngine:HF_LANDMARK_HYPLMV2_0_25 error:&error]` in Objective-C, `try InspireFaceRuntime.setLandmarkEngine(.hyperLandmark025)` in Swift, `InspireFace.switchLandmarkEngine` in HarmonyOS or `isf.switch_landmark_engine` in Python. The selection applies to newly created sessions. Use a resource pack containing the selected model.
+Select the engine **before creating the session**: `HFSwitchLandmarkEngine` in C and Java, `[IFRuntime setLandmarkEngine:HF_LANDMARK_HYPLMV2_0_25 error:&error]` in Objective-C, `try InspireFaceRuntime.setLandmarkEngine(.hyperLandmark025)` in Swift, `InspireFace.switchLandmarkEngine` in HarmonyOS or `isf.switch_landmark_engine` in Python. The selection applies to newly created sessions. Use a resource pack containing the selected model.
+
+The Android AAR also includes the complete JNI API. Select an engine with `Native.HFSwitchLandmarkEngine`:
+
+```java
+import com.insightface.sdk.inspireface.jni.InspireFaceException;
+import com.insightface.sdk.inspireface.jni.Native;
+import static com.insightface.sdk.inspireface.jni.NativeConstants.*;
+
+// After GlobalLaunch and before CreateSession.
+InspireFaceException.check(Native.HFSwitchLandmarkEngine(HF_LANDMARK_HYPLMV2_0_25));
+```
 
 Start video integration with the default engine, then compare landmark stability and processing time on representative clips when choosing an engine.
 
@@ -216,7 +260,7 @@ Point coordinates belong to the input frame. Apply the preview's crop, scale and
 
 Use a tracking mode for an ordered video sequence and tune the smoothing ratio and cache length through the [tracking settings](./tracking.md#tune-one-setting-at-a-time). More smoothing can reduce jitter but also adds lag during fast movement. Evaluate the setting on a short sequence containing still poses, turns and temporary occlusion.
 
-Use a separate session for each camera so each tracker keeps its own history.
+Use a separate session for each camera so each tracker keeps its own history. On Android, `InspireFace.SetLandmarkAugmentationNum(session, num)` adjusts landmark augmentation passes. The default is `1`; the value must be greater than zero. More passes add computation; compare point stability and per-frame latency together.
 
 ## More landmark model options {#more-landmark-model-options}
 

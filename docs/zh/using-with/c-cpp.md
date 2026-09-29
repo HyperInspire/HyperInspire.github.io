@@ -244,7 +244,7 @@ if (status == HSUCCEED) {
 | Attributes | `HFGetFaceAttributeResult` |
 | Expression | `HFGetFaceEmotionResult` |
 
-质量、口罩、姿态、属性与表情的完整写法见[可选分析](../guides/optional-analysis.md)，可以切换 C、C++、Python 和 Android 示例。
+质量、口罩、姿态、属性与表情的完整写法见[可选分析](../guides/optional-analysis.md)，可以切换 C、C++、Java、Python 和 Android 等示例。
 
 ## 提取独立持有的特征 {#extract-an-owned-embedding}
 

@@ -8,6 +8,8 @@
 python -m pip install inspireface opencv-python
 ```
 
+当前 PyPI 包为 **1.2.4.post1**，已包含 **1.2.4 CPU SDK**。已有安装使用 `python -m pip install --upgrade inspireface` 升级，平台安装包与要求见 [Python 指南](./using-with/python.md#install)。
+
 ## 检测图片中的人脸 {#detect-faces-in-an-image}
 
 把下面的代码保存为 `first_face.py`，并在同一目录放一张名为 `face.jpg` 的人脸图片：
@@ -139,6 +141,7 @@ python detect.py face.jpg --model /path/to/Pikachu --output detected.jpg
 ## 继续接入 {#continue-from-here}
 
 - [Python](./using-with/python.md)：执行可选分析、处理原始图像流和管理资源。
+- [Java](./using-with/java.md)：在普通 JVM 中加载 SDK，运行完整的图片检测程序。
 - [C API](./using-with/c-cpp.md)：编译不依赖 OpenCV 的完整原生示例。
 - [Objective-C 与 Swift](./using-with/apple.md)：通过 iOS 或 macOS Framework 接入 Apple 应用。
 - [会话与跟踪](./guides/tracking.md)：处理视频序列并调整检测开销。

@@ -1,13 +1,13 @@
 # Get and build the SDK {#build-the-sdk}
 
-Use a prebuilt SDK when its platform, backend and API version fit your application. Build from source when you need newer interfaces, a different toolchain or custom backend options. This section covers the native libraries first, then packaging them for an application or Python environment.
+Use a prebuilt SDK when its platform, backend and API version fit your application. Build from source when you need newer interfaces, a different toolchain or custom backend options. This section covers the native libraries first, then packaging them for an application, Python environment or JVM.
 
 ## Prebuilt SDKs {#prebuilt-sdks}
 
-The download list below reflects [GitHub Releases](https://github.com/HyperInspire/InspireFace/releases) on **September 29, 2026**. The latest published native SDK is **v1.2.3**. Links point to that release so the selected package does not change underneath an integration.
+The native archive list below uses [GitHub release v1.2.3](https://github.com/HyperInspire/InspireFace/releases/tag/v1.2.3). Python and Android have newer **1.2.4.post1** packages with the **1.2.4** runtime; their installation and download links are [listed separately below](#python-and-android-packages).
 
 ::: warning Match the API version
-The native and Python examples in this documentation use the **1.2.4 source API**, including newer snapshot, capture and diagnostic interfaces. For those examples, build the native library and use the headers or wrapper from the same source revision. A v1.2.3 archive does not provide every interface shown here.
+The examples use the **1.2.4 API**, including snapshots, capture and diagnostics. Python users can install the current PyPI package, and Android users can use the current AAR; both include the matching native runtime. For native development, build the 1.2.4 library with its matching headers. The v1.2.3 archives below do not provide every interface shown here.
 :::
 
 <div class="sdk-table">
@@ -48,21 +48,44 @@ The 1.2.4 source adds Objective-C and Swift APIs, iOS simulator slices and paire
 
 Use the [iOS build guide](./ios.md) for device and simulator packages, and the [macOS build guide](./macos.md) for Intel, Apple Silicon and universal packages. iOS frameworks are static; macOS frameworks are dynamic. This distinction controls Xcode's embedding settings. The new iOS framework already incorporates its inference dependency, so it does not need an additional `MNN.framework` in the application target.
 
-The Apple release workflow prepares a CPU archive named `inspireface-apple-<version>.zip`; no such archive is present in the published release checked above. CoreML packages can be built locally with the same builder and require a compatible CoreML resource pack.
+The Apple release workflow prepares a CPU archive named `inspireface-apple-<version>.zip`; the v1.2.3 release does not contain that archive. CoreML packages can be built locally with the same builder and require a compatible CoreML resource pack.
 
 ## Python and Android packages {#python-and-android-packages}
+
+The [Python package on PyPI](https://pypi.org/project/inspireface/1.2.4.post1/) is **1.2.4.post1** and includes the **1.2.4 CPU runtime**. Install it with:
 
 ```bash
 python -m pip install inspireface opencv-python
 ```
 
-For a custom native library or wheel, see [Python packaging and library replacement](./python.md).
+To upgrade an existing installation, run `python -m pip install --upgrade inspireface`. The release provides these `py3-none` wheels; select the architecture of the Python process:
 
-The Android example uses the JitPack dependency `com.github.HyperInspire:inspireface-android-sdk:1.2.0`. Its [integration page](../using-with/android.md#choose-a-package-or-source-build) includes the repository and Gradle configuration. Building a native Android SDK produces JNI libraries; assembling Java classes and libraries into an AAR is a separate packaging step explained in [Android builds](./android.md).
+| Platform | Architecture | Published wheel tag |
+| --- | --- | --- |
+| Linux | x86_64 | `manylinux2014_x86_64` |
+| Linux | ARM64 | `manylinux2014_aarch64` |
+| macOS | Apple Silicon | `macosx_11_0_arm64` |
+| macOS | Intel | `macosx_12_0_x86_64` |
+
+The [PyPI file list](https://pypi.org/project/inspireface/1.2.4.post1/#files) contains the downloads and checksums. For a custom native library or wheel, see [Python packaging and library replacement](./python.md).
+
+::: warning macOS requirements for 1.2.4.post1
+The bundled native libraries target **macOS 14.0 or later on arm64** and **macOS 15.0 or later on x86_64**. These requirements are higher than the wheel filenames indicate. For an earlier macOS version, build a compatible library and use a matching wheel tag as described in [Python packaging](./python.md#package-the-current-macos-sdk).
+:::
+
+For Android, use the complete **1.2.4.post1 AAR**: `com.github.HyperInspire:inspireface-android-sdk:v1.2.4.post1`, including the leading `v`. It contains the Android wrappers, complete Java API, models and R8 rules. It supports `arm64-v8a`, `armeabi-v7a` and `x86_64`, with a minimum Android API of 24 and one `libInspireFace.so` per ABI. Native version queries report **1.2.4**, with C API level **2**.
+
+The [Android integration page](../using-with/android.md#choose-a-package-or-source-build) includes the repository and Gradle configuration. For local builds, [Android builds](./android.md) explains how to produce the JAR and native libraries and add them to an app. Those files are already included when using the AAR.
+
+## Java SDK {#java-sdk}
+
+The Java binding exposes the C API through JNI and runs without Android. Build from the [Develop source](./source.md#develop-source) containing `command/build_java.sh`. The installed `build/java-sdk/install/Java/` directory includes a Java 8-compatible `inspireface.jar`, native libraries for the target, Java sources and an example.
+
+The JAR is shared across targets; select native libraries for the running JVM’s OS and architecture and keep them paired with the JAR. Integration currently uses this local JAR. See [Java packaging](./java.md) for the build and [Java integration](../using-with/java.md) for a complete program.
 
 ## Download the model separately {#download-the-model-separately}
 
-SDK libraries and Python wheels need a resource pack at runtime. Download packs from the [model release](https://github.com/HyperInspire/InspireFace/releases/tag/v1.x): `Pikachu` and `Megatron` for CPU, `Megatron_TRT` for TensorRT, or the `Gundam` file for the target Rockchip SoC. See [model selection and loading](../guides/models-and-builds.md#pick-a-resource-pack) for the full mapping.
+Native SDKs, JVM packages and Python wheels need a resource pack at runtime. The Android 1.2.4.post1 AAR includes `Pikachu` and `Megatron`; follow [Android initialization](../using-with/android.md#add-the-model-and-initialize) to use them, or supply an external pack when changing models. Download packs from the [model release](https://github.com/HyperInspire/InspireFace/releases/tag/v1.x): `Pikachu` and `Megatron` for CPU, `Megatron_TRT` for TensorRT, or the `Gundam` file for the target Rockchip SoC. See [model selection and loading](../guides/models-and-builds.md#pick-a-resource-pack) for the full mapping.
 
 ## Choose a build guide {#choose-a-build-guide}
 
@@ -78,6 +101,7 @@ SDK libraries and Python wheels need a resource pack at runtime. Download packs 
 | [HarmonyOS](./harmonyos.md) | Native SDK, Node-API adapter and HAR staging. |
 | [NVIDIA TensorRT](./nvidia.md) | CUDA/TensorRT dependencies and Linux builds. |
 | [Rockchip NPU](./rockchip.md) | Board toolchains, RKNN/RGA and Android NPU builds. |
+| [Java packaging](./java.md) | JDK setup, JAR and JNI builds, native-library distribution and JVM tests. |
 | [Python packaging](./python.md) | Replace `.so`/`.dylib`, build wheels and verify installation. |
 
 </div>

@@ -2,6 +2,8 @@
 
 Use Objective-C or Swift for an AppKit / SwiftUI application, or retain the C/C++ interface in an existing native program. The Apple SDK ships the same wrapper API as iOS and can package Apple Silicon and Intel in one macOS framework slice.
 
+JVM applications use the JAR and matching `.dylib` libraries; see [Java integration](./java.md).
+
 See [Build for macOS](../build/macos.md) for architecture selection, CPU / CoreML builds and command-line checks. The [Objective-C and Swift guide](./apple.md) contains the complete file-detection example and shared ownership rules.
 
 ## Select the package {#select-the-package}

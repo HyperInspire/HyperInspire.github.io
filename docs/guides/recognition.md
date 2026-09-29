@@ -166,6 +166,47 @@ func compareImages(session: FaceSession, first: ImageStream,
 
 </details>
 
+@tab Java
+
+Use the [Java JVM SDK](../using-with/java.md). Add these imports and put the helper methods in your application class. Create `session` with `HF_ENABLE_FACE_RECOGNITION`; the caller owns both input streams. Each feature has independent native storage, released by `try`-with-resources even if extraction fails.
+
+```java
+import com.insightface.sdk.inspireface.jni.NativeTypes.*;
+import static com.insightface.sdk.inspireface.jni.Native.*;
+import static com.insightface.sdk.inspireface.jni.NativeConstants.*;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+```
+
+```java
+static HFFaceFeature allocateFeature() {
+    HFFaceFeature feature = new HFFaceFeature();
+    check(HFCreateFaceFeature(feature));
+    return feature;
+}
+
+static void extractOne(long session, long stream, HFFaceFeature output) {
+    HFMultipleFaceData faces = new HFMultipleFaceData();
+    check(HFExecuteFaceTrack(session, stream, faces));
+    if (faces.detectedNum != 1) {
+        throw new IllegalArgumentException("Expected exactly one face");
+    }
+    check(HFFaceFeatureExtractTo(session, stream, faces.tokens[0], output));
+}
+
+static float compareImages(long session, long first, long second) {
+    try (HFFaceFeature enrolled = allocateFeature();
+         HFFaceFeature query = allocateFeature()) {
+        extractOne(session, first, enrolled);
+        extractOne(session, second, query);
+        float[] score = new float[1], threshold = new float[1];
+        check(HFFaceComparison(enrolled, query, score));
+        check(HFGetRecommendedCosineThreshold(threshold));
+        System.out.println("score=" + score[0] + " match=" + (score[0] >= threshold[0]));
+        return score[0];
+    }
+}
+```
+
 @tab Android
 
 Create a session with `InspireFace.CreateCustomParameter().enableRecognition(true)`. The helper receives an open stream and returns an owned Java feature. Read the feature before releasing the stream; release the session when finished.
@@ -332,7 +373,7 @@ Before enrollment, check image quality, face size and pose. A higher-quality enr
 
 FeatureHub stores embeddings with integer IDs. Keep names, account records and other application data in your own database, keyed by that ID.
 
-The following examples assume the SDK is launched and `enrolled` and `query` are embeddings extracted with the corresponding interface. C, C++, Objective-C, Swift, Python and HarmonyOS use the 1.2.4 APIs; Android uses the 1.2.0 Java package.
+The following examples assume the SDK is launched and `enrolled` and `query` are embeddings extracted with the corresponding interface. C, C++, Objective-C, Swift, Python and HarmonyOS use the 1.2.4 APIs; Android uses the 1.2.4.post1 AAR.
 
 ::: tabs #api-language
 
@@ -459,9 +500,43 @@ func searchGallery(enrolled: FaceFeatureBuffer, query: FaceFeatureBuffer) throws
 }
 ```
 
+@tab Java
+
+Pass the two owned features from the comparison example. This helper opens an in-memory gallery, inserts ID 1001 and searches it. In an application, enable the process-wide hub once and disable it after all users have stopped. `found` determines whether the search matched; ID zero is not a failure marker.
+
+```java
+static void searchGallery(HFFaceFeature enrolled, HFFaceFeature query) {
+    float[] threshold = new float[1];
+    check(HFGetRecommendedCosineThreshold(threshold));
+    HFFeatureHubConfiguration config = new HFFeatureHubConfiguration();
+    config.primaryKeyMode = HF_PK_MANUAL_INPUT;
+    config.enablePersistence = 0;
+    config.persistenceDbPath = "";
+    config.searchThreshold = threshold[0];
+    config.searchMode = HF_SEARCH_MODE_EXHAUSTIVE;
+    check(HFFeatureHubDataEnable(config));
+    try {
+        HFFaceFeatureIdentity identity = new HFFaceFeatureIdentity();
+        identity.id = 1001L;
+        identity.feature = enrolled;
+        long[] insertedId = new long[1];
+        check(HFFeatureHubInsertFeature(identity, insertedId));
+        HFFeatureHubSearchResultV2 result = new HFFeatureHubSearchResultV2();
+        check(HFFeatureHubFaceSearchV2(query, result));
+        if (result.found != 0) {
+            System.out.println("id=" + result.id + " score=" + result.confidence);
+        } else {
+            System.out.println("No match above threshold");
+        }
+    } finally {
+        check(HFFeatureHubDataDisable());
+    }
+}
+```
+
 @tab Android
 
-`enrolled` and `query` are Java `FaceFeature` objects. The 1.2.0 Java wrapper returns an identity ID and score. Check for a non-null result, then use `id != -1` to identify a match. A null object indicates an API failure.
+`enrolled` and `query` are Java `FaceFeature` objects. The Android 1.2.4.post1 wrapper uses the V2 search internally and returns an identity ID and score. Check for a non-null result, then use `id != -1` to identify a match. A successful search without a match returns `id == -1`, `searchConfidence == -1` and `feature == null`; a null result object indicates an API failure.
 
 ```java
 FeatureHubConfiguration config = InspireFace.CreateFeatureHubConfiguration()
@@ -559,7 +634,7 @@ finally:
 
 :::
 
-An empty gallery or no qualifying entry is a normal search outcome. Check the match indicator before using the identity: `found` in C/C++, Objective-C, Swift and ArkTS, `matched` in Python, and a non-null result with `id != -1` in Java 1.2.0. Top-k search also applies the configured threshold, so it may return fewer than `k` entries.
+An empty gallery or no qualifying entry is a normal search outcome. Check the match indicator before using the identity: `found` in C/C++, Java JVM, Objective-C, Swift and ArkTS, `matched` in Python, and a non-null result with `id != -1` in Android 1.2.4.post1. Top-k search also applies the configured threshold, so it may return fewer than `k` entries.
 
 | Choice | Behavior |
 | --- | --- |
@@ -674,9 +749,43 @@ func maintainGallery(replacement: FaceFeatureBuffer, query: FaceFeatureBuffer) t
 }
 ```
 
+@tab Java
+
+The hub is already enabled and ID 1001 exists. Top-k scores and IDs are borrowed native `ByteBuffer` views. Read or copy them before another top-k search; byte offsets are `i * Float.BYTES` and `i * Long.BYTES`. Read the ID list before changing the gallery.
+
+```java
+static void maintainGallery(HFFaceFeature replacement, HFFaceFeature query) {
+    HFFaceFeatureIdentity stored = new HFFaceFeatureIdentity();
+    check(HFFeatureHubGetFaceIdentity(1001L, stored));
+    float[] copied = new float[stored.feature.size];
+    stored.feature.data.asFloatBuffer().get(copied);
+    System.out.println("copied feature length=" + copied.length);
+    HFFaceFeatureIdentity identity = new HFFaceFeatureIdentity();
+    identity.id = 1001L;
+    identity.feature = replacement;
+    check(HFFeatureHubFaceUpdate(identity));
+    HFSearchTopKResults top = new HFSearchTopKResults();
+    check(HFFeatureHubFaceSearchTopK(query, 5, top));
+    for (int i = 0; i < top.size; i++) {
+        long id = top.ids.getLong(i * Long.BYTES);
+        float score = top.confidence.getFloat(i * Float.BYTES);
+        System.out.println("id=" + id + " score=" + score);
+    }
+    int[] count = new int[1];
+    check(HFFeatureHubGetFaceCount(count));
+    System.out.println("entries=" + count[0]);
+    HFFeatureHubExistingIds ids = new HFFeatureHubExistingIds();
+    check(HFFeatureHubGetExistingIds(ids));
+    for (int i = 0; i < ids.size; i++) {
+        System.out.println("stored=" + ids.ids.getLong(i * Long.BYTES));
+    }
+    check(HFFeatureHubFaceRemove(1001L));
+}
+```
+
 @tab Android
 
-The Java 1.2.0 wrapper returns `SearchTopKResults`. A zero `num` is valid; a null object indicates a failed call.
+Android 1.2.4.post1 returns `SearchTopKResults`. A zero `num` is valid; a null object indicates a failed call. `FeatureHubGetExistingIds()` and `FeatureHubGetFaceIdentity()` return independent Java copies. Keep IDs as `long`. Serialize all gallery operations, including enable/disable, on the same worker or with one application lock.
 
 ```java
 if (!InspireFace.FeatureHubFaceUpdate(FaceFeatureIdentity.create(1001L, replacement))) {
@@ -690,6 +799,15 @@ for (int i = 0; i < top.num; i++) {
 int count = InspireFace.FeatureHubGetFaceCount();
 if (count < 0) throw new IllegalStateException("Count failed");
 System.out.println("entries=" + count);
+long[] ids = InspireFace.FeatureHubGetExistingIds();
+if (ids == null) throw new IllegalStateException("Cannot list IDs");
+for (long id : ids) {
+    FaceFeatureIdentity stored = InspireFace.FeatureHubGetFaceIdentity(id);
+    if (stored == null || stored.feature == null) {
+        throw new IllegalStateException("Cannot read feature " + id);
+    }
+    System.out.println("stored=" + id + " dimensions=" + stored.feature.data.length);
+}
 if (!InspireFace.FeatureHubFaceRemove(1001L)) {
     throw new IllegalStateException("Cannot remove feature");
 }
@@ -738,6 +856,8 @@ For a persistent gallery, set `enable_persistence=True` and provide a writable d
 
 On Apple, configure `HFFeatureHubConfiguration.enablePersistence` and `persistenceDbPath` before enabling the hub. Use a database file in the app’s writable Application Support directory. In Swift, keep the path’s C string inside `withCString` until `FeatureHub.enable(configuration:)` returns. The enable call consumes the path synchronously.
 
+For Java JVM, set `enablePersistence = 1` and `persistenceDbPath` to a writable database file before enabling FeatureHub. Use a Java `String` for the path; the JNI call reads it synchronously.
+
 Sessions in one process share FeatureHub. Initialize it once, reuse it across frame processing and close it after the workers using it have stopped.
 
 Store the recognition model identity and SDK version with the enrollment metadata. Keep each gallery’s enrollment and query vectors on the same model. When changing models, re-extract the enrollment images and evaluate the threshold again.
@@ -749,5 +869,7 @@ Store the recognition model identity and SDK version with the enrollment metadat
 `HFFeatureHubFaceSearchV2` reports an explicit `found` flag. Its returned feature data is a borrowed cache valid until the next single-face search on the same thread. Copy it if you need to retain it. The current Python wrapper copies native feature arrays into Python-owned memory.
 
 On Apple, `IFFeatureBuffer` / `FaceFeatureBuffer` owns an independent feature allocation. Its `borrowedFeature` property only returns a view; keep the owner open while that view is used. `IFSession` feature getters and Swift `withUnsafeFeature(in:token:)` borrow the session’s extraction cache. Use separate feature buffers for enrollment and query vectors that must coexist. ARC releases wrapper objects, but does not extend the validity of a borrowed pointer after a later extraction or explicit `close()`.
+
+The Java JVM binding keeps these native lifetimes. `HFFaceFeature.data` is a direct `ByteBuffer` view, not a Java-owned copy. Only features initialized by `HFCreateFaceFeature` may be closed or released; use the same descriptor object that was allocated. Features returned by `HFFaceFeatureExtract`, gallery lookup or search are borrowed. Copy their values into a Java `float[]` or an application-owned direct buffer before keeping them across later calls. Holding a `ByteBuffer` reference does not keep its native owner alive.
 
 See the [C ownership table](../using-with/c-cpp.md#image-buffers-and-ownership) before combining extraction, search and asynchronous processing.

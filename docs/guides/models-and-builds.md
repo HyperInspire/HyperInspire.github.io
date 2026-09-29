@@ -27,7 +27,7 @@ A pack is a file, sometimes without an extension. If you downloaded a ZIP archiv
 
 ## Validate before creating sessions
 
-The 1.2.4 source API includes pack validation and metadata inspection:
+The 1.2.4 API includes pack validation and metadata inspection. The Python example works with the **1.2.4.post1 PyPI package**:
 
 ```python
 import inspireface as isf
@@ -39,9 +39,41 @@ isf.launch(resource_path="/path/to/Pikachu")
 
 In C, use `HFValidateResourcePack` with `HFResourcePackInfo` as declared in the matching header. This checks the resource format. Install backend runtime dependencies using the target platform's guide below.
 
-On Apple platforms, pass a local filesystem path to the pack, such as the path of a resource included in the application bundle. Validate it before creating sessions:
+Java, Android and the Apple interfaces accept a local filesystem path to the pack. Validate it before launching the runtime. At shutdown, release all sessions before terminating the runtime.
 
 ::: tabs #api-language
+
+@tab Java
+
+```java
+import com.insightface.sdk.inspireface.jni.NativeTypes.HFResourcePackInfo;
+import static com.insightface.sdk.inspireface.jni.Native.*;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+
+public final class PackRuntime {
+    public static void launch(String path) {
+        HFResourcePackInfo info = new HFResourcePackInfo();
+        check(HFValidateResourcePack(path, info));
+        check(HFLaunchInspireFace(path));
+    }
+}
+```
+
+@tab Android
+
+```java
+import com.insightface.sdk.inspireface.InspireFace;
+
+public final class AndroidPackRuntime {
+    // Call on a worker before creating sessions; path names a local pack file.
+    public static void launch(String path) {
+        InspireFace.ValidateResourcePack(path);
+        if (!InspireFace.GlobalLaunch(path)) {
+            throw new IllegalStateException("Cannot load model pack");
+        }
+    }
+}
+```
 
 @tab Objective-C
 
@@ -83,11 +115,12 @@ Use the reload entry point when an already initialized process needs a different
 | C++ | `inspire::Launch::GetInstance()->Reload(pack_path)` | Return code `0`. |
 | Objective-C | `[IFRuntime reloadAtPath:path error:&error]` | Returns `YES`; failures return `NO` with an `NSError`. |
 | Swift | `try InspireFaceRuntime.reload(path: path)` | Returns normally; failures throw. |
+| Java | `check(HFReloadInspireFace(packPath))` | Returns normally; failures throw `InspireFaceException`. |
 | Python | `isf.reload(resource_path=pack_path)` | Returns `True`; failures raise an exception. |
 
 In 1.2.4, existing sessions retain the resources they were created with. To switch the whole application, stop submitting frames, release the old sessions, validate and reload the new pack, then create new sessions after loading succeeds. Handle any loading error before resuming processing. Rebuild the gallery when the recognition model changes.
 
-With Android Java SDK 1.2.0, choose the pack before initialization and restart the application process when changing it.
+Android 1.2.4.post1 provides `InspireFace.GlobalReload(packPath)`, which returns `false` on failure. Stop workers and close capture objects, snapshots, streams and sessions before switching, then create new sessions after loading succeeds. Use `GlobalLaunch(Context, model)` for the AAR’s bundled models; validate an external pack with `InspireFace.ValidateResourcePack(path)` first.
 
 <figure>
 <img class="feature-illustration" src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/inspireface-doc-images-web/deploy.webp" alt="Deployment across desktops, mobile devices, servers and edge hardware" width="1536" height="1024" loading="lazy" />
@@ -96,7 +129,7 @@ With Android Java SDK 1.2.0, choose the pack before initialization and restart t
 
 ## Download an SDK
 
-[Get and build the SDK: overview and downloads](../build/README.md) lists the current prebuilt versions, platform downloads, Python package and Android dependency. Check the device and **process architecture**, and use matching headers, wrappers and native libraries. The API-level-2 examples in these pages require a 1.2.4 source build.
+[Get and build the SDK: overview and downloads](../build/README.md) lists the current prebuilt versions, platform downloads, Python package and Android dependency. Check the device and **process architecture**, and use matching headers, wrappers and native libraries. API-level-2 examples need the 1.2.4 native SDK, already included in the Python 1.2.4.post1 wheels and Android 1.2.4.post1 AAR.
 
 ## Build a CPU SDK
 
@@ -108,6 +141,7 @@ With Android Java SDK 1.2.0, choose the pack before initialization and restart t
 
 ## Target-specific builds
 
+- [Java](../build/java.md): JAR, JNI libraries and host JVM checks.
 - [Android](../build/android.md): NDK, ABIs, JNI and AAR packaging.
 - [iOS](../build/ios.md): device / simulator slices, XCFrameworks and CoreML.
 - [macOS](../build/macos.md): Intel / Apple Silicon frameworks, Swift modules and native libraries.

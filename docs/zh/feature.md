@@ -2,7 +2,7 @@
 
 InspireFace 将基础检测、跟踪和可选分析模型分开。可以先创建一个检测人脸的会话，再根据实际需要启用识别、质量或其他分析功能。
 
-这一页说明各项功能返回什么数据。功能指南提供 C API、C++、Android、HarmonyOS、Python、Objective-C 和 Swift 示例，可按支持的接口切换查看。可以通过 [API 功能索引](./guides/api-coverage.md)查找具体流程，也可以在[完整示例](./guides/examples.md)中直接复制代码。
+这一页说明各项功能返回什么数据。功能指南提供 C API、C++、Java、Android、HarmonyOS、Python、Objective-C 和 Swift 示例，可按支持的接口切换查看。可以通过 [API 功能索引](./guides/api-coverage.md)查找具体流程，也可以在[完整示例](./guides/examples.md)中直接复制代码。
 
 ## 人脸跟踪 {#face-tracking}
 

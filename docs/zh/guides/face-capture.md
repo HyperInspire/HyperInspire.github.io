@@ -2,7 +2,7 @@
 
 人脸抓拍从视频中选择可用的人脸图像。它持续检查人脸的位置、大小和稳定性，再保留合适的候选帧，适用于人脸录入、头像采集等需要少量合格图像的场景。
 
-本页使用 **1.2.4** 的抓拍和快照接口，封装类、头文件与原生库需使用同一版本。Android 接入时，从 1.2.4 一起构建 Java 类和 JNI 库。
+以下示例使用 **1.2.4** 的抓拍与快照接口，请配套使用同版本封装、头文件和原生库。Android **1.2.4.post1** 的[完整 AAR](../using-with/android.md) 已包含抓拍与快照类。
 
 ## 抓拍如何推进 {#how-capture-progresses}
 
@@ -174,9 +174,57 @@ func makeCaptureResultBuffer() -> UnsafeMutableBufferPointer<HFFaceCaptureResult
 // After the loop: results.deallocate(); try capture.close(); try session.close()
 ```
 
+@tab Java
+
+使用下面 [Java JVM SDK](../using-with/java.md) 的 import，将方法放入应用类中。传入 `HF_DETECT_MODE_LIGHT_TRACK` 会话、按帧排序的 stream，以及递增的毫秒时间戳。调用方保持 stream 和像素有效。方法在结束或异常时释放抓拍对象，会话和 stream 仍由调用方释放。
+
+```java
+import com.insightface.sdk.inspireface.jni.NativeTypes.*;
+import static com.insightface.sdk.inspireface.jni.Native.*;
+import static com.insightface.sdk.inspireface.jni.NativeConstants.*;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+```
+
+<details>
+<summary>展开完整方法</summary>
+
+```java
+static void selectFromFrames(long session, long[] streams, long[] timestampMs) {
+    if (streams.length != timestampMs.length) {
+        throw new IllegalArgumentException("Each frame needs a timestamp");
+    }
+    HFFaceCaptureConfig config = new HFFaceCaptureConfig();
+    check(HFGetDefaultFaceCaptureConfig(config));
+    long[] capture = new long[1];
+    check(HFCreateFaceCaptureSession(session, config, capture));
+    try {
+        HFFaceCaptureProgress progress = new HFFaceCaptureProgress();
+        HFFaceCaptureResult[] results = new HFFaceCaptureResult[HF_FACE_CAPTURE_MAX_RESULTS];
+        int[] count = new int[1];
+        for (int i = 0; i < streams.length; i++) {
+            check(HFUpdateFaceCaptureSession(capture[0], streams[i], i, timestampMs[i], progress));
+            System.out.println("state=" + progress.state + " reject=" + progress.rejectReasons);
+            if (progress.state == HF_CAPTURE_STATE_READY) {
+                check(HFFinishFaceCaptureSession(capture[0], progress));
+            }
+            check(HFGetFaceCaptureResults(capture[0], results, results.length, count));
+            for (int j = 0; j < count[0]; j++) {
+                System.out.println("frame=" + results[j].frameId + " score=" + results[j].score);
+                // Keep the selected frame's pixels in the application cache.
+            }
+            if (progress.state == HF_CAPTURE_STATE_FINISHED) break;
+        }
+    } finally {
+        check(HFReleaseFaceCaptureSession(capture[0]));
+    }
+}
+```
+
+</details>
+
 @tab Android
 
-使用 **1.2.4 的 `FaceCapture` 类及配套 JNI 库**，并先创建跟踪 `Session`。`FaceCapture` 位于 `com.insightface.sdk.inspireface`，结果和配置类位于其 `.base` 包。每帧调用更新方法，摄像头工作线程结束后关闭抓拍对象。
+使用 **Android 1.2.4.post1 AAR**，父会话选择 `LIGHT_TRACK`，并将 `maxDetectFaceNum` 设为大于 1。`FaceCapture` 位于 `com.insightface.sdk.inspireface`，结果和配置类位于其 `.base` 包。每帧调用更新方法，摄像头工作线程结束后关闭抓拍对象。
 
 ```java
 static FaceCapture createCapture(Session session) {
@@ -266,7 +314,7 @@ Python 的 `frame` 是 BGR 图像数组；原生接口传入对应的图像流�
 
 ## 保存选中的图像 {#keep-the-selected-images}
 
-抓拍结果包含帧 ID、时间戳、评分、人脸 token 和指标。**选中帧的像素由应用单独缓存**，各语言可以使用同一策略：每次更新后读取候选 ID，只复制本次被选中的图像，删除已不在候选列表中的缓存。Apple 接入时，在摄像头缓冲区复用前把选中帧的像素复制到应用持有的存储中；保留 token 不会保留图像。C++ 可使用 `Image::Clone()`；Android 应在相机缓冲区被复用前复制 bitmap 或图像字节。ArkTS 可用 `new Uint8Array(bytes)` 复制选中的相机图像，并按 `frameId` 缓存。下面是 Python 写法：
+抓拍结果包含帧 ID、时间戳、评分、人脸 token 和指标。**选中帧的像素由应用单独缓存**，各语言可以使用同一策略：每次更新后读取候选 ID，只复制本次被选中的图像，删除已不在候选列表中的缓存。Apple 接入时，在摄像头缓冲区复用前把选中帧的像素复制到应用持有的存储中；保留 token 不会保留图像。C++ 可使用 `Image::Clone()`；Android 应在相机缓冲区被复用前复制 bitmap 或图像字节。Java JVM 应将入选帧像素复制到应用自己的 `byte[]` 或 direct buffer；`ByteBuffer.duplicate()` 只会建立另一个视图，不会复制像素。ArkTS 可用 `new Uint8Array(bytes)` 复制选中的相机图像，并按 `frameId` 缓存。下面是 Python 写法：
 
 <figure>
 <a href="/images/capture-candidate-cache.svg" target="_blank" rel="noopener"><img class="doc-diagram" src="/images/capture-candidate-cache.svg" alt="output_count 为 1 时，按选中的 frame ID 更新候选图像缓存" loading="lazy" /></a>
@@ -461,9 +509,26 @@ func createFilteredCapture(session: FaceSession) throws -> FaceCaptureSession {
 }
 ```
 
+@tab Java
+
+创建父会话时启用 `HF_ENABLE_QUALITY | HF_ENABLE_FACE_POSE`，再将返回的配置传给 `HFCreateFaceCaptureSession`。先读取 SDK 默认值，其他过滤项和时间设置也会一并初始化。
+
+```java
+static HFFaceCaptureConfig filteredCaptureConfig() {
+    HFFaceCaptureConfig config = new HFFaceCaptureConfig();
+    check(HFGetDefaultFaceCaptureConfig(config));
+    config.filterMask |= HF_CAPTURE_FILTER_QUALITY | HF_CAPTURE_FILTER_POSE;
+    config.minQualityScore = 0.60f;
+    config.maxAbsYaw = 25.0f;
+    config.maxAbsPitch = 25.0f;
+    config.maxAbsRoll = 20.0f;
+    return config;
+}
+```
+
 @tab Android
 
-使用 1.2.4 Java 类及配套 JNI 库。先在父会话中启用质量和姿态，再配置抓拍过滤项：
+先在父会话的 `CustomParameter` 中启用 `enableFaceQuality(true)` 和 `enableFacePose(true)`，再配置抓拍过滤项：
 
 ```java
 FaceCaptureConfig config = FaceCapture.defaultConfig();
@@ -520,7 +585,7 @@ config.max_abs_roll = 20.0
 ## 复用检测快照 {#reuse-a-detection-snapshot}
 
 ::: warning 快照的生命周期与复制开销
-Snapshot 会复制检测结果，生命周期更清晰，保留结果和延后处理时更安全、易用，但也会增加复制开销和延时。单路视频按顺序跟踪时，可以通过 C、Objective-C 或 Swift 读取会话内的借用结果，并在下一次检测前用完，减少这部分复制。借用数据可能被后续调用覆盖，不适合跨帧保留，或在同一会话的多次处理之间交叉复用。检测快照不复制原始图像，后续仍需处理像素时，应另行保留对应帧。
+Snapshot 会复制检测结果，生命周期更清晰，保留结果和延后处理时更安全、易用，但也会增加复制开销和延时。单路视频按顺序跟踪时，可以通过 C、portable Java/JNI、Objective-C 或 Swift 读取会话内的借用结果，并在下一次检测前用完，减少这部分复制。借用数据可能被后续调用覆盖，不适合跨帧保留，或在同一会话的多次处理之间交叉复用。检测快照不复制原始图像，后续仍需处理像素时，应另行保留对应帧。
 :::
 
 如果每帧已经需要检测结果来绘制人脸框，可以避免重复运行跟踪：
@@ -621,12 +686,44 @@ func captureWithSnapshot(session: FaceSession, capture: FaceCaptureSession,
 }
 ```
 
+@tab Java
+
+传入创建 `capture` 的同一个会话，以及该帧原始 stream。snapshot 保存检测结果，不保存图像像素。抓拍更新是同步调用，下面的方法在调用结束后释放 snapshot。调用方应先释放抓拍对象，再释放父会话。
+
+```java
+static HFFaceCaptureProgress updateFromSnapshot(long session, long capture,
+                                                long stream, long frameId,
+                                                long timestampMs) {
+    long[] snapshot = new long[1];
+    check(HFExecuteFaceTrackSnapshot(session, stream, snapshot));
+    try {
+        HFMultipleFaceData faces = new HFMultipleFaceData();
+        check(HFGetFaceResultSnapshotData(snapshot[0], faces));
+        for (HFaceRect rect : faces.rects) {
+            System.out.printf("overlay: x=%d y=%d width=%d height=%d%n",
+                    rect.x, rect.y, rect.width, rect.height);
+        }
+        HFFaceCaptureProgress progress = new HFFaceCaptureProgress();
+        check(HFUpdateFaceCaptureSessionWithSnapshot(
+                capture, stream, snapshot[0], frameId, timestampMs, progress));
+        return progress;
+    } finally {
+        check(HFReleaseFaceResultSnapshot(snapshot[0]));
+    }
+}
+```
+
 @tab Android
 
-将 `FaceDetectionSnapshot` 传给抓拍更新方法，完成本帧更新后关闭快照。
+通过 `snapshot.getFaces()` 读取绘制人脸框所需的结果，再将同一个快照交给抓拍。`getFaces()` 会把人脸框、token 和跟踪次数复制到 Java 数组，快照关闭后这些副本仍然有效。抓拍更新必须在快照关闭前完成，并使用对应的原图 stream。这些调用应与父会话的其他处理按顺序执行。
 
 ```java
 try (FaceDetectionSnapshot snapshot = FaceDetectionSnapshot.create(session, stream)) {
+    MultipleFaceData faces = snapshot.getFaces();
+    for (int i = 0; i < faces.detectedNum; i++) {
+        System.out.println("track=" + faces.trackIds[i]
+                + " count=" + faces.trackCounts[i] + " x=" + faces.rects[i].x);
+    }
     FaceCaptureProgress progress = capture.update(
             stream, snapshot, frameId, timestampMs);
     System.out.println(progress.state + " " + progress.rejectReasons);
@@ -675,4 +772,4 @@ with session.face_detection_snapshot(frame) as snapshot:
 
 C 接口包括 `HFCreateFaceCaptureSession`、`HFUpdateFaceCaptureSession`、`HFGetFaceCaptureResults`、`HFFinishFaceCaptureSession`、`HFResetFaceCaptureSession` 和 `HFReleaseFaceCaptureSession`。使用 `HFGetDefaultFaceCaptureConfig` 初始化带版本的配置结构体。
 
-`HFUpdateFaceCaptureSessionWithSnapshot` 接受具有独立生命周期的检测快照。C、Objective-C 和 Swift 结果中的 token 是借用数据，在下一次抓拍更新、重置、结束或释放之前有效；需要跨越这些调用保留时应复制。先释放抓拍对象，再释放它依赖的会话。Python 封装会复制结果中的人脸 token，并为这两种资源提供上下文管理器。C++ 候选结果按值保存 `FaceTrackWrap`，Java 和 ArkTS 结果会复制 token 字节；对应的原图像素保存在上文所述的应用缓存中。
+`HFUpdateFaceCaptureSessionWithSnapshot` 接受具有独立生命周期的检测快照。C、Java JVM、Objective-C 和 Swift 结果中的 token 是借用数据，在下一次抓拍更新、重置、结束或释放之前有效；需要跨越这些调用保留时应复制。先释放抓拍对象，再释放它依赖的会话。Python 封装会复制结果中的人脸 token，并为这两种资源提供上下文管理器。C++ 候选结果按值保存 `FaceTrackWrap`，Android 的 `FaceCapture.getResults()` 和 ArkTS 结果会复制 token 字节。Android 底层 `jni.Native` 接口的结果遵循 Java JVM 的借用生命周期，不执行高层接口的这次复制。Java JVM 若需在后续抓拍操作后继续使用 token，先用 `HFCopyFaceBasicToken` 复制到应用自己分配的 direct buffer。对应的原图像素保存在上文所述的应用缓存中。

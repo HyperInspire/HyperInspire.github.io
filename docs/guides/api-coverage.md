@@ -2,37 +2,39 @@
 
 Find examples by feature and API. Start with the platform guide to install and initialize the SDK, then choose your API in each feature guide's code tabs.
 
-The examples use **InspireFace 1.2.4**, **InspireCV 1.0.2**, **Android Java SDK 1.2.0**, and **HarmonyOS ArkTS SDK 1.2.4**. Objective-C and Swift use the Apple frameworks built from the [1.2.4 source revision](../build/source.md). The table lists the operations available through each interface.
+The examples use **InspireFace 1.2.4**, **InspireCV 1.0.2**, **Android Java SDK 1.2.4.post1**, and **HarmonyOS ArkTS SDK 1.2.4**. [Python](../using-with/python.md) uses the **1.2.4.post1 PyPI package**, including the 1.2.4 native SDK. Objective-C and Swift use the Apple frameworks built from the [1.2.4 source revision](../build/source.md). [Java (JVM)](../using-with/java.md) uses the portable JNI build from the 1.2.4 source and is listed separately from Android. The table lists the operations available through each interface.
 
 ## Feature examples by API
 
-“Example” links to a guide with code for that API. “Source API” needs the newer Java source classes and a matching JNI build. A dash means that the named high-level wrapper does not expose that operation in the version above.
+“Example” links to a guide with code for that API. The Android 1.2.4.post1 AAR includes both the `InspireFace` facade and the complete `jni.Native` API. Its column covers both, with each example identifying the layer it uses. A dash means the named interface does not directly expose that operation.
 
 <div class="sdk-table api-coverage-table" role="region" aria-label="Feature examples by API" tabindex="0">
 
-| Feature | C API | C++ | Android | Python | HarmonyOS (ArkTS) | Objective-C | Swift |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Launch / Session / release | [Example](../using-with/c-cpp.md) | [Example](../using-with/cpp.md) | [Example](../using-with/android.md) | [Example](../using-with/python.md) | [Example](../using-with/harmonyos.md) | [Example](../using-with/apple.md) | [Example](../using-with/apple.md) |
-| Detection / tracking | [Example](./tracking.md) | [Example](./tracking.md) | [Example](./tracking.md) | [Example](./tracking.md) | [Example](./tracking.md) | [Example](./tracking.md) | [Example](./tracking.md) |
-| Dense landmarks | [Example](./dense-landmark.md) | [Example](./dense-landmark.md) | [Example](./dense-landmark.md) | [Example](./dense-landmark.md) | [Example](./dense-landmark.md) | [Example](./dense-landmark.md) | [Example](./dense-landmark.md) |
-| Five-point landmarks | [Example](./dense-landmark.md) | [Example](./dense-landmark.md) | — | [Example](./dense-landmark.md) | [Example](./dense-landmark.md) | [Example](./dense-landmark.md) | [Example](./dense-landmark.md) |
-| Quality / mask / attributes | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) |
-| Pose | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Quality path](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) |
-| Expression | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | — | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) |
-| RGB liveness / actions | [Example](./liveness-detection.md) | [Example](./liveness-detection.md) | [Example](./liveness-detection.md) | [Example](./liveness-detection.md) | [Example](./liveness-detection.md) | [Example](./liveness-detection.md) | [Example](./liveness-detection.md) |
-| Embedding / comparison | [Example](./recognition.md) | [Example](./recognition.md) | [Example](./recognition.md) | [Example](./recognition.md) | [Example](./recognition.md) | [Example](./recognition.md) | [Example](./recognition.md) |
-| FeatureHub | [Example](./recognition.md) | [Example](./recognition.md) | [Example](./recognition.md) | [Example](./recognition.md) | [Example](./recognition.md) | [Example](./recognition.md) | [Example](./recognition.md) |
-| Alignment crop | [Example](./api-recipes.md) | [Example](./api-recipes.md) | [Example](./api-recipes.md) | — | [Example](./api-recipes.md) | [Example](./api-recipes.md) | [Example](./api-recipes.md) |
-| Aligned-image extraction | [Example](./api-recipes.md) | [Example](./api-recipes.md) | — | — | [Example](./api-recipes.md) | [Example](./api-recipes.md) | [Example](./api-recipes.md) |
-| Similarity display conversion | [Example](./api-recipes.md) | [Example](./api-recipes.md) | [Example](./api-recipes.md) | [Example](./api-recipes.md) | [Example](./api-recipes.md) | [Example](./api-recipes.md) | [Example](./api-recipes.md) |
-| Detection snapshots | [Example](./face-capture.md) | [Value copy](./face-capture.md) | [Source API](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) |
-| Face capture | [Example](./face-capture.md) | [Example](./face-capture.md) | [Source API](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) |
+| Feature | C API | C++ | Java | Android | Python | HarmonyOS (ArkTS) | Objective-C | Swift |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Launch / Session / release | [Example](../using-with/c-cpp.md) | [Example](../using-with/cpp.md) | [Example](../using-with/java.md) | [Example](../using-with/android.md) | [Example](../using-with/python.md) | [Example](../using-with/harmonyos.md) | [Example](../using-with/apple.md) | [Example](../using-with/apple.md) |
+| Detection / tracking | [Example](./tracking.md) | [Example](./tracking.md) | [Example](./tracking.md) | [Example](./tracking.md) | [Example](./tracking.md) | [Example](./tracking.md) | [Example](./tracking.md) | [Example](./tracking.md) |
+| Dense landmarks | [Example](./dense-landmark.md) | [Example](./dense-landmark.md) | [Example](./dense-landmark.md) | [Example](./dense-landmark.md) | [Example](./dense-landmark.md) | [Example](./dense-landmark.md) | [Example](./dense-landmark.md) | [Example](./dense-landmark.md) |
+| Five-point landmarks | [Example](./dense-landmark.md) | [Example](./dense-landmark.md) | [Example](./dense-landmark.md) | [Example](./dense-landmark.md) | [Example](./dense-landmark.md) | [Example](./dense-landmark.md) | [Example](./dense-landmark.md) | [Example](./dense-landmark.md) |
+| Quality / mask / attributes | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) |
+| Pose | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) |
+| Expression | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) | [Example](./optional-analysis.md) |
+| RGB liveness / actions | [Example](./liveness-detection.md) | [Example](./liveness-detection.md) | [Example](./liveness-detection.md) | [Example](./liveness-detection.md) | [Example](./liveness-detection.md) | [Example](./liveness-detection.md) | [Example](./liveness-detection.md) | [Example](./liveness-detection.md) |
+| Embedding / comparison | [Example](./recognition.md) | [Example](./recognition.md) | [Example](./recognition.md) | [Example](./recognition.md) | [Example](./recognition.md) | [Example](./recognition.md) | [Example](./recognition.md) | [Example](./recognition.md) |
+| FeatureHub | [Example](./recognition.md) | [Example](./recognition.md) | [Example](./recognition.md) | [Example](./recognition.md) | [Example](./recognition.md) | [Example](./recognition.md) | [Example](./recognition.md) | [Example](./recognition.md) |
+| Alignment crop | [Example](./api-recipes.md) | [Example](./api-recipes.md) | [Example](./api-recipes.md) | [Example](./api-recipes.md) | — | [Example](./api-recipes.md) | [Example](./api-recipes.md) | [Example](./api-recipes.md) |
+| Aligned-image extraction | [Example](./api-recipes.md) | [Example](./api-recipes.md) | [Example](./api-recipes.md) | [Example](./api-recipes.md) | — | [Example](./api-recipes.md) | [Example](./api-recipes.md) | [Example](./api-recipes.md) |
+| Similarity display conversion | [Example](./api-recipes.md) | [Example](./api-recipes.md) | [Example](./api-recipes.md) | [Example](./api-recipes.md) | [Example](./api-recipes.md) | [Example](./api-recipes.md) | [Example](./api-recipes.md) | [Example](./api-recipes.md) |
+| Detection snapshots | [Example](./face-capture.md) | [Value copy](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) |
+| Face capture | [Example](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) | [Example](./face-capture.md) |
+
+| CPU power mode | — | [Example](../using-with/cpp.md#cpu-power-mode) | [Example](../using-with/java.md#cpu-power-mode) | [Example](../using-with/android.md#cpu-power-mode) | — | — | — | — |
 
 </div>
 
 The [Plus passive and flash demos](./liveness-detection.md#optional-plus-demos) combine mobile capture with service-side verification. Their guide covers Android capture, progress feedback and result handling.
 
-The code tabs share the same API selector, so choosing Python, Android, HarmonyOS (ArkTS), Objective-C or Swift also selects it in other groups that contain the same option. The [complete examples](./examples.md) include full programs to copy from the page; snippets in feature guides state which session, image or model setup they expect.
+The code tabs share the same API selector, so choosing Python, Java, Android, HarmonyOS (ArkTS), Objective-C or Swift also selects it in other groups that contain the same option. The [complete examples](./examples.md) include full programs to copy from the page; snippets in feature guides state which session, image or model setup they expect.
 
 ## Inputs, settings and deployment
 
@@ -44,7 +46,8 @@ The code tabs share the same API selector, so choosing Python, Android, HarmonyO
 | Session tuning | Detector level, minimum face size, confidence, preview size, intervals and smoothing | [Tracking](./tracking.md) |
 | Memory and threads | Borrowed buffers, owned results, session reuse and worker teardown | [Architecture](./arch.md) |
 | C ABI | Handles, status codes and `HFSessionConfigV2` | [C API](../using-with/c-cpp.md) |
-| Android deployment | AAR, assets, Gradle/ABI, CameraX and JNI pairing | [Android](../using-with/android.md) |
+| Java deployment | Java 8 JAR, JNI paths, process architecture, direct buffers and explicit release | [Java](../using-with/java.md), [Java packaging](../build/java.md) |
+| Android deployment | 1.2.4.post1 AAR, single native library per ABI, R8, CameraX and both Java API layers | [Android](../using-with/android.md) |
 | Apple APIs | Objective-C errors, Swift types, scoped views and complete detection examples | [Objective-C and Swift](../using-with/apple.md) |
 | iOS deployment | Device / simulator XCFrameworks, Xcode linkage, camera buffers and CoreML | [iOS](../using-with/ios.md) |
 | macOS deployment | Intel / Apple Silicon frameworks, embedding, signing and native libraries | [macOS](../using-with/macos.md) |
@@ -55,7 +58,7 @@ The code tabs share the same API selector, so choosing Python, Android, HarmonyO
 | Diagnostics | Version, error text, runtime diagnostics and resource counters | [API recipes](./api-recipes.md), [Troubleshooting](./troubleshooting.md) |
 | Performance | Warm-up, timing boundaries, median/p95 and queue delay | [Performance](./benchmark-remark(updating).md) |
 
-For parameter types, overloads and additional settings, refer to the headers and wrapper shipped with your SDK version.
+For parameter types, overloads and additional settings, refer to the headers and wrapper shipped with your SDK version. A Java installation includes `Native.java`, `NativeTypes.java` and `NativeConstants.java` under `sources/`, plus `api-manifest.json` listing generated functions. Every C API has a Java mapping; hardware-specific calls still depend on the native build options and runtime.
 
 ## Image processing with InspireCV {#inspirecv-scope}
 
@@ -65,7 +68,8 @@ For the full public interface, see [InspireFace C declarations](https://github.c
 
 ## Integration notes {#known-boundaries}
 
-- For Android capture and snapshots, update the Java classes and JNI library together to the version used in the guide.
+- Java `long` handles require explicit release. A result’s `ByteBuffer` can borrow native storage, so retaining the Java object does not keep that storage valid. See [Java lifetimes](./arch.md#java-object-lifetimes).
+- Android 1.2.4.post1 includes capture and snapshots. Facade results own copied Java arrays and tokens; `Native` buffers retain C lifetime rules. Release streams through the API layer that created them. See [Android lifetimes](./arch.md#android-object-lifetimes).
 - Copying a C++ face-result vector retains its geometry and tokens. Keep the corresponding frame pixels as well if you will extract features later.
 - In ArkTS, release tracking snapshots with `session.releaseFaceResult()` and call `close()` on streams, bitmaps, capture sessions and sessions when finished. Keep each wrapper object on the worker that created it.
 - The standard HarmonyOS HAR runs MNN on CPU and accepts raw image buffers. Use HarmonyOS APIs to decode files and display images.

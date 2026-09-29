@@ -16,7 +16,7 @@ features:
   - title: Images and video
     details: Detect faces in a photograph, track them across frames, and read landmarks, pose and quality from the same session.
   - title: Choose your API
-    details: Use C, C++, Python, Android Java, HarmonyOS ArkTS, Objective-C or Swift. Enable the extra models your application needs.
+    details: Use C, C++, Python, Java, Android, HarmonyOS ArkTS, Objective-C or Swift. Enable the extra models your application needs.
   - title: Choose your deployment
     details: Start on CPU, then select a matching SDK and model pack for Apple CoreML, Rockchip NPU or NVIDIA TensorRT.
 footerHtml: true

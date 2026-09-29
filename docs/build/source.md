@@ -99,9 +99,11 @@ The Apple builder keeps reusable dependency caches under `build/apple-cache` and
 | `ISF_ENABLE_RKNN` | `OFF` | Enable the Rockchip NPU backend. |
 | `ISF_ENABLE_RGA` | `OFF` | Enable Rockchip preprocessing with a supported RKNPU2 configuration. |
 | `ISF_ENABLE_APPLE_EXTENSION` | `OFF` | Enable Apple extensions, including CoreML support. |
+| `ISF_BUILD_JAVA` | `OFF` | Build the portable JNI library and Java 8-compatible JAR; see [Java packaging](./java.md). |
+| `ISF_BUILD_JAVA_TESTS` | `OFF` | Build and run host JVM contract tests; requires `ISF_BUILD_JAVA`. |
 | `ISF_BUILD_APPLE_FRAMEWORK` | `OFF` | Build the Objective-C framework and Swift overlay on Apple platforms. |
 | `ISF_BUILD_APPLE_TESTS` | `OFF` | Build Apple API contract tests. |
-| `ISF_ENABLE_INSPIRECV_TASK_PREPROCESS` | `OFF` | Use the Task preprocessing path. |
+| `ISF_ENABLE_INSPIRECV_TASK_PREPROCESS` | `ON` | Use the Task preprocessing path. |
 
 These are the top-level defaults. Platform scripts override them, particularly shared/static linkage, samples, tests and hardware backends. `ISF_INSPIRECV_SOURCE_DIR` can select another image-processing source checkout; rebuild the native SDK and keep its installed headers together after changing it.
 

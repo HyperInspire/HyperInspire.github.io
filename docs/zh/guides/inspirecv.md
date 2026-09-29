@@ -457,7 +457,7 @@ Device Pipeline 异步执行。为输入和输出张量分配设备内存，容�
 
 InspireFace 内部使用 InspireCV，并通过 **InspireFace** SDK 提供 `inspirecv::FrameProcess`。使用时包含 SDK 头文件，并选择 FrameProcess 自己的格式和旋转枚举。
 
-构建 InspireFace 时设置 `ISF_ENABLE_INSPIRECV_TASK_PREPROCESS=ON`，即可在 SDK 内部使用 Task 预处理路径。
+当前 InspireFace 源码默认启用 `ISF_ENABLE_INSPIRECV_TASK_PREPROCESS=ON`，在 SDK 内部使用 Task 预处理路径。
 
 下面展示 FrameProcess 的输入帧、旋正后的处理预览和仿射区域输出。
 

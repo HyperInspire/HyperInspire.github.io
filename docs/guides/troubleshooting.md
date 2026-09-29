@@ -4,7 +4,7 @@ Start from a local model file and one known image. Once that works, add optional
 
 ## Identify the loaded SDK
 
-With the current 1.2.4 Python wrapper and matching native library:
+The current PyPI package includes these diagnostics:
 
 ```python
 import inspireface as isf
@@ -17,7 +17,7 @@ print(isf.diagnostic_info())
 
 Check both the Python package version and the native SDK version. If `INSPIREFACE_LIBRARY_PATH` is set, also record that path: it selects the native library in place of the one bundled with the wheel.
 
-The diagnostic calls above use SDK 1.2.4. For an earlier SDK, record `isf.version()` and the loaded library path.
+For the **1.2.4.post1** PyPI package, the native version is **1.2.4** and C API level is **2**. Upgrade an older installation with `python -m pip install --upgrade inspireface`. If an old library is still selected through `INSPIREFACE_LIBRARY_PATH`, remove that override to use the bundled CPU library, or update the custom library as well. Restart the Python process after either change.
 
 ## Library import or loading fails
 
@@ -31,6 +31,39 @@ The diagnostic calls above use SDK 1.2.4. For an earlier SDK, record `isf.versio
 On Linux, `ldd /path/to/libInspireFace.so` shows dynamic dependencies. On macOS, use `otool -L /path/to/libInspireFace.dylib`.
 
 Set `INSPIREFACE_LIBRARY_PATH` before the first import. After changing the path, restart the process to load the selected library.
+
+## Java library or buffer errors {#java-integration-fails}
+
+| Symptom | Check |
+| --- | --- |
+| `no InspireFaceJNI in java.library.path` | Set `-Djava.library.path` to the native directory at JVM startup, or set `-Dinspireface.native.path` to the absolute JNI library file. |
+| A JNI method is missing or the ABI check fails | Use the JAR and native libraries from the same build, then restart the JVM. |
+| The library exists but cannot load | Match its architecture to the running JVM and check its core-library dependencies. An arm64 operating system can run an x86_64 JVM. |
+| `IllegalArgumentException` for a buffer | Use a writable direct `ByteBuffer`. Check `position`, `limit`, alignment and remaining bytes. `ByteBuffer.wrap(byte[])` is a heap buffer. |
+| Results change after another call | Copy the required values while the result is valid, or retain an owned snapshot plus the matching pixels. Keeping a `ByteBuffer` reference alone does not retain native storage. |
+| Native memory stays allocated after Java GC | Release sessions, streams, bitmaps, snapshots and capture handles explicitly. |
+
+`Native` methods return the C status code; `InspireFaceException.check(status)` throws on failure and keeps the numeric code in `getCode()`. Log both the code and message. JNI argument validation can also throw `IllegalArgumentException` before a native call. See [Java integration](../using-with/java.md) and [Java packaging](../build/java.md).
+
+## Android 1.2.4.post1 upgrade and packaging {#android-124-upgrade}
+
+| Symptom | Check |
+| --- | --- |
+| Gradle cannot find the release | Use `com.github.HyperInspire:inspireface-android-sdk:v1.2.4.post1`, including the `v`, and add the JitPack repository. |
+| Version query reports only `1.2.4` | This is the native version; the Android publication revision is `1.2.4.post1`. Log the dependency version, native version and C API level together. |
+| Duplicate class / duplicate `.so` | Check old AARs, local JARs, copied Java classes and `jniLibs`. The complete AAR supplies these files; keep one matching SDK library per ABI. |
+| Loading `InspireFaceJNI` fails | The current Android package loads `InspireFace`. Check for an older JAR or loader. Desktop JVMs still use a separate JNI library. |
+| Debug works but a minified release fails | Keep the AAR's consumer rules. For a manually packaged JAR, configure the R8/ProGuard rules from [Android builds](../build/android.md). |
+| Stream release leaves retained memory or a repeated release fails | Use `ImageStream.close()` / `InspireFace.ReleaseImageStream` for facade-created streams and `Native.HFReleaseImageStream` for Native-created streams. Do not mix them. |
+| Old code reading `version.information` no longer compiles | Use `InspireFace.QueryInspireFaceDiagnosticInformation()` and read only the version fields declared on the version object. |
+
+`Session`, `ImageStream`, `FaceCapture` and `FaceDetectionSnapshot` support explicit close. Stop workers, close capture and frame resources, then close the session. See [Android lifetimes](./arch.md#android-object-lifetimes) for copied facade results versus borrowed Native views.
+
+## High CPU use between frames {#cpu-usage-between-frames}
+
+First confirm that the application has stopped submitting frames and that camera workers or queues are not still looping. Current CPU inference defaults to `NORMAL`. If the app explicitly selected `HIGH`, switch to `NORMAL` before creating sessions, close old sessions and create new ones, then compare idle CPU, frame time and temperature.
+
+`CPUEngine` does not reconfigure an initialized runtime or change model thread counts and precision. See [CPU policy](../using-with/arm.md#cpu-power-mode) for the Java, Android and C++ calls.
 
 ## Apple framework or camera integration fails {#apple-integration-fails}
 

@@ -93,20 +93,49 @@ func readLandmarks(token: FaceToken) throws {
 }
 ```
 
-@tab Android
+@tab Java
 
-1.2.0 Java 包通过 `DETECT_MODE_LIGHT_TRACK` 会话提供密集关键点。处理互不相关的静态图片时，每张图片创建新的会话。五点对齐数据的读取方式见 C、C++ 或 Python 标签页。
+使用 [Java SDK](../using-with/java.md) 完成跟踪后，调用 `readLandmarks(faces.tokens[i])`。Token 引用原生内存：保持对应会话或 snapshot 有效，并在该结果被替换前完成读取。JNI 会填充 `HPoint2f[]` 中的元素；得到的坐标是 Java 数值，可以保留。密集关键点数量通过查询获取，不要写死。
 
 ```java
-// session is a LIGHT_TRACK session; stream is the current image.
+import com.insightface.sdk.inspireface.jni.NativeTypes.*;
+import static com.insightface.sdk.inspireface.jni.Native.*;
+import static com.insightface.sdk.inspireface.jni.NativeConstants.*;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+
+public final class LandmarkExample {
+    public static void readLandmarks(HFFaceBasicToken token) {
+        int[] count = new int[1];
+        check(HFGetNumOfFaceDenseLandmark(count));
+        if (count[0] <= 0) throw new IllegalStateException("No landmark model");
+        HPoint2f[] five = new HPoint2f[5];
+        HPoint2f[] dense = new HPoint2f[count[0]];
+        check(HFGetFaceFiveKeyPointsFromFaceToken(token, five, five.length));
+        check(HFGetFaceDenseLandmarkFromFaceToken(token, dense, dense.length));
+        System.out.println("five=" + five.length + " dense=" + dense.length);
+        for (HPoint2f point : dense) {
+            System.out.println(point.x + ", " + point.y);
+        }
+    }
+}
+```
+
+@tab Android
+
+Android 1.2.4.post1 同时提供五点和稠密关键点。静态图片使用 `DETECT_MODE_ALWAYS_DETECT`，视频使用 `DETECT_MODE_LIGHT_TRACK` 并复用会话。检测结果的 token 和返回的 `Point2f[]` 都使用 Java 自有存储；绘制前仍需转换到预览坐标。
+
+```java
+// Use ALWAYS_DETECT for independent photos, or LIGHT_TRACK for video.
 MultipleFaceData faces = InspireFace.ExecuteFaceTrack(session, stream);
 if (faces == null) throw new IllegalStateException("Detection failed");
 for (int i = 0; i < faces.detectedNum; i++) {
-    Point2f[] points = InspireFace.GetFaceDenseLandmarkFromFaceToken(faces.tokens[i]);
-    if (points == null || points.length == 0) {
-        throw new IllegalStateException("Dense landmarks are unavailable");
+    Point2f[] five = InspireFace.GetFaceFiveKeyPointsFromFaceToken(faces.tokens[i]);
+    Point2f[] dense = InspireFace.GetFaceDenseLandmarkFromFaceToken(faces.tokens[i]);
+    if (five == null || five.length != 5 || dense == null || dense.length == 0) {
+        throw new IllegalStateException("Landmarks are unavailable");
     }
-    for (Point2f point : points) {
+    System.out.println("five=" + five.length + " dense=" + dense.length);
+    for (Point2f point : dense) {
         System.out.println(point.x + ", " + point.y);
     }
 }
@@ -185,6 +214,10 @@ static HResult print_landmarks(HFFaceBasicToken token) {
 
 使用 `faces.tokens[i]` 调用时，应在下一次跟踪覆盖会话借用的结果之前完成。若要在处理下一帧后继续使用结果，也可以创建具有独立生命周期的检测快照。
 
+::: warning Snapshot 与延时
+Snapshot 可以在后续帧到来后继续保留检测结果，在不同处理步骤间传递更方便，但创建时会拷贝数据，增加延时。直接读取当前会话结果可以省去这次拷贝，适合单路视频连续处理；请在下一次跟踪或重置会话前用完其中的 token。
+:::
+
 原生 C++ 接口通过 `session.GetFaceDenseLandmark(face)` 和 `session.GetFaceFiveKeyPoints(face)` 读取 `FaceTrackWrap` 中的关键点。完整检测循环见 [C++ 接入](../using-with/cpp.md)。
 
 ## 选择关键点引擎 {#select-a-landmark-engine}
@@ -197,7 +230,18 @@ static HResult print_landmarks(HFFaceBasicToken token) {
 | HyperLandmarkV2 0.50 | `HF_LANDMARK_HYPLMV2_0_50` |
 | InsightFace 2D106 tracking | `HF_LANDMARK_INSIGHTFACE_2D106_TRACK` |
 
-在**创建会话前**选择引擎：C 使用 `HFSwitchLandmarkEngine`，Objective-C 使用 `[IFRuntime setLandmarkEngine:HF_LANDMARK_HYPLMV2_0_25 error:&error]`，Swift 使用 `try InspireFaceRuntime.setLandmarkEngine(.hyperLandmark025)`，HarmonyOS 使用 `InspireFace.switchLandmarkEngine`，Python 使用 `isf.switch_landmark_engine`。选择结果对新创建的会话生效，模型包需要包含对应模型。
+在**创建会话前**选择引擎：C 与 Java 使用 `HFSwitchLandmarkEngine`，Objective-C 使用 `[IFRuntime setLandmarkEngine:HF_LANDMARK_HYPLMV2_0_25 error:&error]`，Swift 使用 `try InspireFaceRuntime.setLandmarkEngine(.hyperLandmark025)`，HarmonyOS 使用 `InspireFace.switchLandmarkEngine`，Python 使用 `isf.switch_landmark_engine`。选择结果对新创建的会话生效，模型包需要包含对应模型。
+
+Android AAR 同时包含完整 JNI 接口，可以直接用 `Native.HFSwitchLandmarkEngine` 切换引擎：
+
+```java
+import com.insightface.sdk.inspireface.jni.InspireFaceException;
+import com.insightface.sdk.inspireface.jni.Native;
+import static com.insightface.sdk.inspireface.jni.NativeConstants.*;
+
+// After GlobalLaunch and before CreateSession.
+InspireFaceException.check(Native.HFSwitchLandmarkEngine(HF_LANDMARK_HYPLMV2_0_25));
+```
 
 视频接入可以先使用默认引擎，再用典型视频片段比较点位稳定性和耗时，选择合适的引擎。
 
@@ -216,7 +260,7 @@ static HResult print_landmarks(HFFaceBasicToken token) {
 
 按顺序处理视频时使用跟踪模式，通过[跟踪参数](./tracking.md#tune-one-setting-at-a-time)调整平滑比例与缓存长度。增强平滑能减少抖动，也会在快速运动时增加延迟。可以用包含静止、转头和短暂遮挡的视频片段评估设置。
 
-每路摄像头使用独立会话，分别保存各自的跟踪历史。
+每路摄像头使用独立会话，分别保存各自的跟踪历史。Android 的 `InspireFace.SetLandmarkAugmentationNum(session, num)` 可调整关键点增强次数，默认为 `1`，必须大于零。增加次数会增加计算量，应同时比较点位稳定性和单帧延时。
 
 ## 更多类型的关键点模型 {#more-landmark-model-options}
 

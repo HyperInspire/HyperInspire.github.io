@@ -47,6 +47,36 @@ Snapshots copy detection results into owned storage. Their explicit lifetime mak
 When using the C API directly, a single video stream processed in order can use the borrowed results from `HFExecuteFaceTrack` to avoid this copy. Finish reading them before the next tracking call. Later calls may overwrite these results, so do not retain them across frames or reuse them between interleaved calls.
 :::
 
+## Java object lifetimes {#java-object-lifetimes}
+
+The JVM binding uses `long` values for session, stream, bitmap, snapshot and capture handles. A Java reference or garbage collection does not release these resources; call the matching `HFRelease…` function in `finally`. A feature allocated by `HFCreateFaceFeature` supports `try`-with-resources through `HFFaceFeature.close()`.
+
+| Data | Safe handling |
+| --- | --- |
+| Java-owned direct image buffer | JNI retains it until the stream is released or its input is replaced. Finish processing before changing the bytes. |
+| Bitmap pixel view | The `ByteBuffer` borrows native pixels. Keep the bitmap alive while any stream or operation uses this view. |
+| Tracking / pipeline result | Some metadata is copied into Java fields; token bytes and numeric result buffers can still borrow session storage. Read them before the next call that replaces the data. |
+| Detection snapshot | Keeps copied detection data until `HFReleaseFaceResultSnapshot`; retain the corresponding pixels separately. |
+| Owned feature | Release only features created with `HFCreateFaceFeature`. A borrowed extraction or FeatureHub feature must not be released as an owned feature. |
+
+Use one session per serial worker and coordinate runtime and FeatureHub changes across workers. If another thread needs a result, copy the values it needs before submitting the next frame. See [Java integration](../using-with/java.md) for buffer rules and cleanup examples.
+
+## Android object lifetimes {#android-object-lifetimes}
+
+Android 1.2.4.post1 provides two calling styles. The `InspireFace` facade returns Java-owned face arrays, tokens and feature copies. `com.insightface.sdk.inspireface.jni.Native` preserves C handles and borrowed-buffer lifetimes. Identify which layer produced a result before retaining it across frames.
+
+| Object / view | What stays valid |
+| --- | --- |
+| `Session` / `ImageStream` | Implement `AutoCloseable`; use try-with-resources or call `close()` when the worker finishes. |
+| `InspireFace.ExecuteFaceTrack` result | Arrays, pose and tokens are copied Java values that survive later tracking. Keep the corresponding pixels for later feature extraction. |
+| `FaceDetectionSnapshot.getFaces()` | Returns a Java-owned copy that can be read after snapshot close; still close the snapshot itself. |
+| `FaceCapture.getResults()` | Tokens and metadata are copied; cache selected images separately by frame ID. |
+| `Native.HFExecuteFaceTrack` result | `ByteBuffer` fields can borrow session storage. Consume them before replacement/release, or create an owned snapshot. |
+
+Release streams created by `InspireFace.CreateImageStreamFromBitmap` / `CreateImageStreamFromByteBuffer` with `ImageStream.close()` or `InspireFace.ReleaseImageStream`. Release streams created by `Native.HFCreateImageStream` with `Native.HFReleaseImageStream`. The layers retain input buffers differently; do not cross their release paths.
+
+Stop input and finish workers, then close capture objects, snapshots and streams before closing sessions and terminating the runtime. Serialize calls on each session and coordinate FeatureHub and global model state. See [Android integration](../using-with/android.md) for complete examples.
+
 ## Apple object lifetimes {#apple-object-lifetimes}
 
 Objective-C `IFSession` and Swift `FaceSession` own native session handles. ARC releases them when the wrapper is deallocated; call `close()` in Swift or `closeWithError:` in Objective-C when a camera worker or operation ends so resources are released at a known point. Closing an object invalidates its native storage even if another strong reference still points to the wrapper.
@@ -93,7 +123,7 @@ The application handles camera capture and queue scheduling. Use a bounded queue
 
 InspireCV provides image storage, geometry, drawing and preprocessing. Its `task::Pipeline` can write camera inputs into image or tensor buffers. InspireFace also has its own `FrameProcess` wrapper under the `inspirecv` namespace.
 
-To use Task preprocessing inside InspireFace, build the SDK with `ISF_ENABLE_INSPIRECV_TASK_PREPROCESS=ON`.
+Current source builds enable Task preprocessing with `ISF_ENABLE_INSPIRECV_TASK_PREPROCESS=ON` by default; set it to `OFF` to use the earlier preprocessing path.
 
 ## Backends
 

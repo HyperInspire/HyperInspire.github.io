@@ -2,7 +2,7 @@
 
 Face capture selects usable images from a video sequence. It checks face position, size and stability over time, then keeps the best candidates. Use it for enrollment, profile photos or other flows that need a small set of face images.
 
-These examples use the capture and snapshot APIs in **1.2.4**. Use wrapper classes, headers and native libraries from the same version. For Android, build the Java classes and JNI library together from 1.2.4.
+These examples use the capture and snapshot APIs in **1.2.4**. Use wrapper classes, headers and native libraries from the same version. Android **1.2.4.post1** includes the capture and snapshot classes in its [complete AAR](../using-with/android.md).
 
 ## How capture progresses
 
@@ -174,9 +174,57 @@ func makeCaptureResultBuffer() -> UnsafeMutableBufferPointer<HFFaceCaptureResult
 // After the loop: results.deallocate(); try capture.close(); try session.close()
 ```
 
+@tab Java
+
+Use the [Java JVM SDK](../using-with/java.md) imports below, and put the method in your application class. Pass a `HF_DETECT_MODE_LIGHT_TRACK` session, streams in frame order and increasing timestamps in milliseconds. The caller keeps each stream and its pixels alive. This helper releases capture on every exit; it leaves the session and streams to the caller.
+
+```java
+import com.insightface.sdk.inspireface.jni.NativeTypes.*;
+import static com.insightface.sdk.inspireface.jni.Native.*;
+import static com.insightface.sdk.inspireface.jni.NativeConstants.*;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+```
+
+<details>
+<summary>Expand the complete method</summary>
+
+```java
+static void selectFromFrames(long session, long[] streams, long[] timestampMs) {
+    if (streams.length != timestampMs.length) {
+        throw new IllegalArgumentException("Each frame needs a timestamp");
+    }
+    HFFaceCaptureConfig config = new HFFaceCaptureConfig();
+    check(HFGetDefaultFaceCaptureConfig(config));
+    long[] capture = new long[1];
+    check(HFCreateFaceCaptureSession(session, config, capture));
+    try {
+        HFFaceCaptureProgress progress = new HFFaceCaptureProgress();
+        HFFaceCaptureResult[] results = new HFFaceCaptureResult[HF_FACE_CAPTURE_MAX_RESULTS];
+        int[] count = new int[1];
+        for (int i = 0; i < streams.length; i++) {
+            check(HFUpdateFaceCaptureSession(capture[0], streams[i], i, timestampMs[i], progress));
+            System.out.println("state=" + progress.state + " reject=" + progress.rejectReasons);
+            if (progress.state == HF_CAPTURE_STATE_READY) {
+                check(HFFinishFaceCaptureSession(capture[0], progress));
+            }
+            check(HFGetFaceCaptureResults(capture[0], results, results.length, count));
+            for (int j = 0; j < count[0]; j++) {
+                System.out.println("frame=" + results[j].frameId + " score=" + results[j].score);
+                // Keep the selected frame's pixels in the application cache.
+            }
+            if (progress.state == HF_CAPTURE_STATE_FINISHED) break;
+        }
+    } finally {
+        check(HFReleaseFaceCaptureSession(capture[0]));
+    }
+}
+```
+
+</details>
+
 @tab Android
 
-Use the **1.2.4 `FaceCapture` classes and matching JNI library** with an open tracking `Session`. Import `FaceCapture` from `com.insightface.sdk.inspireface` and its result/config types from `.base`. The update helper runs once per frame; close the capture after the camera worker stops.
+Use the **Android 1.2.4.post1 AAR** with an open `LIGHT_TRACK` session and `maxDetectFaceNum` greater than one. Import `FaceCapture` from `com.insightface.sdk.inspireface` and its result/config types from `.base`. The update helper runs once per frame; close the capture after the camera worker stops.
 
 ```java
 static FaceCapture createCapture(Session session) {
@@ -266,7 +314,7 @@ The current defaults request one output, at least five tracker observations, a 3
 
 ## Keep the selected images
 
-Capture results contain a frame ID, timestamp, score, face token and metrics. **Store the selected image pixels in an application cache.** Use the same cache strategy in each language: inspect current result IDs after every update, copy the current image only if its ID is selected, and remove entries no longer selected. On Apple, copy the selected source pixels into application-owned storage before the camera buffer is reused; keeping a face token does not keep the image. In C++, use `Image::Clone()`; in Android, copy the bitmap or camera bytes before the input buffer is reused. In ArkTS, copy selected camera bytes with `new Uint8Array(bytes)` and keep them by `frameId`. Here is the Python version:
+Capture results contain a frame ID, timestamp, score, face token and metrics. **Store the selected image pixels in an application cache.** Use the same cache strategy in each language: inspect current result IDs after every update, copy the current image only if its ID is selected, and remove entries no longer selected. On Apple, copy the selected source pixels into application-owned storage before the camera buffer is reused; keeping a face token does not keep the image. In C++, use `Image::Clone()`; in Android, copy the bitmap or camera bytes before the input buffer is reused. In Java JVM, copy selected pixels into an application-owned `byte[]` or direct buffer; `ByteBuffer.duplicate()` only creates another view and does not copy pixels. In ArkTS, copy selected camera bytes with `new Uint8Array(bytes)` and keep them by `frameId`. Here is the Python version:
 
 <figure>
 <a href="/images/capture-candidate-cache.svg" target="_blank" rel="noopener"><img class="doc-diagram" src="/images/capture-candidate-cache.svg" alt="An output_count of one keeps image pixels for the selected frame ID rather than the newest frame" loading="lazy" /></a>
@@ -461,9 +509,26 @@ func createFilteredCapture(session: FaceSession) throws -> FaceCaptureSession {
 }
 ```
 
+@tab Java
+
+Create the parent session with `HF_ENABLE_QUALITY | HF_ENABLE_FACE_POSE`. Pass the returned configuration to `HFCreateFaceCaptureSession`. Read the SDK defaults first so the other filters and timing settings remain initialized.
+
+```java
+static HFFaceCaptureConfig filteredCaptureConfig() {
+    HFFaceCaptureConfig config = new HFFaceCaptureConfig();
+    check(HFGetDefaultFaceCaptureConfig(config));
+    config.filterMask |= HF_CAPTURE_FILTER_QUALITY | HF_CAPTURE_FILTER_POSE;
+    config.minQualityScore = 0.60f;
+    config.maxAbsYaw = 25.0f;
+    config.maxAbsPitch = 25.0f;
+    config.maxAbsRoll = 20.0f;
+    return config;
+}
+```
+
 @tab Android
 
-Use the 1.2.4 Java classes and matching JNI library. Enable quality and pose on the parent session first, then configure the capture filters:
+Enable `enableFaceQuality(true)` and `enableFacePose(true)` in the parent session’s `CustomParameter`, then configure the capture filters:
 
 ```java
 FaceCaptureConfig config = FaceCapture.defaultConfig();
@@ -520,7 +585,7 @@ Use `progress.reject_reasons` to choose a concrete prompt such as “move closer
 ## Reuse a detection snapshot
 
 ::: warning Snapshot lifetime and copy cost
-A snapshot copies detection results, making them easier to retain and manage for later processing. That copy adds overhead and latency. For a single video stream processed in order, the C, Objective-C and Swift borrowed-result paths can avoid this extra copy: read them completely before the next detection call. Later calls can overwrite borrowed data, so do not retain it across frames or interleave its use with other processing on the same session. Keep the matching image separately; a detection snapshot does not copy its pixels.
+A snapshot copies detection results, making them easier to retain and manage for later processing. That copy adds overhead and latency. For a single video stream processed in order, the C, portable Java/JNI, Objective-C and Swift borrowed-result paths can avoid this extra copy: read them completely before the next detection call. Later calls can overwrite borrowed data, so do not retain it across frames or interleave its use with other processing on the same session. Keep the matching image separately; a detection snapshot does not copy its pixels.
 :::
 
 If your frame loop already needs detection results for an overlay, avoid running tracking twice:
@@ -621,12 +686,44 @@ func captureWithSnapshot(session: FaceSession, capture: FaceCaptureSession,
 }
 ```
 
+@tab Java
+
+Use the same session that owns `capture`, and pass the original stream for this frame. The snapshot carries detection results; it does not retain the frame pixels. The capture call is synchronous, so this helper releases the snapshot after updating capture. The caller releases capture before its parent session.
+
+```java
+static HFFaceCaptureProgress updateFromSnapshot(long session, long capture,
+                                                long stream, long frameId,
+                                                long timestampMs) {
+    long[] snapshot = new long[1];
+    check(HFExecuteFaceTrackSnapshot(session, stream, snapshot));
+    try {
+        HFMultipleFaceData faces = new HFMultipleFaceData();
+        check(HFGetFaceResultSnapshotData(snapshot[0], faces));
+        for (HFaceRect rect : faces.rects) {
+            System.out.printf("overlay: x=%d y=%d width=%d height=%d%n",
+                    rect.x, rect.y, rect.width, rect.height);
+        }
+        HFFaceCaptureProgress progress = new HFFaceCaptureProgress();
+        check(HFUpdateFaceCaptureSessionWithSnapshot(
+                capture, stream, snapshot[0], frameId, timestampMs, progress));
+        return progress;
+    } finally {
+        check(HFReleaseFaceResultSnapshot(snapshot[0]));
+    }
+}
+```
+
 @tab Android
 
-Pass `FaceDetectionSnapshot` to the capture update, then close the snapshot after that update completes.
+Read the overlay from `snapshot.getFaces()` and pass the same snapshot to capture. `getFaces()` copies boxes, tokens and track counts into Java-owned arrays; those copies remain valid after the snapshot closes. The capture update must run before closing the snapshot, with its original image stream. Serialize these calls with other work on the parent session.
 
 ```java
 try (FaceDetectionSnapshot snapshot = FaceDetectionSnapshot.create(session, stream)) {
+    MultipleFaceData faces = snapshot.getFaces();
+    for (int i = 0; i < faces.detectedNum; i++) {
+        System.out.println("track=" + faces.trackIds[i]
+                + " count=" + faces.trackCounts[i] + " x=" + faces.rects[i].x);
+    }
     FaceCaptureProgress progress = capture.update(
             stream, snapshot, frameId, timestampMs);
     System.out.println(progress.state + " " + progress.rejectReasons);
@@ -675,4 +772,4 @@ Create a new snapshot from the same session for each frame. It preserves that fr
 
 The C entry points are `HFCreateFaceCaptureSession`, `HFUpdateFaceCaptureSession`, `HFGetFaceCaptureResults`, `HFFinishFaceCaptureSession`, `HFResetFaceCaptureSession` and `HFReleaseFaceCaptureSession`. Use `HFGetDefaultFaceCaptureConfig` to initialize the versioned configuration structure.
 
-`HFUpdateFaceCaptureSessionWithSnapshot` accepts an owned detection snapshot. C, Objective-C and Swift result tokens are borrowed until the next capture update, reset, finish or release; copy what must outlive those calls. Release the capture object before releasing its parent session. The Python wrapper copies result face tokens and supports context managers for both resources. C++ capture candidates contain value copies of `FaceTrackWrap`; Java and ArkTS capture results copy their token bytes. Keep the corresponding image pixels in the application cache described above.
+`HFUpdateFaceCaptureSessionWithSnapshot` accepts an owned detection snapshot. C, Java JVM, Objective-C and Swift result tokens are borrowed until the next capture update, reset, finish or release; copy what must outlive those calls. Release the capture object before releasing its parent session. The Python wrapper copies result face tokens and supports context managers for both resources. C++ capture candidates contain value copies of `FaceTrackWrap`; the Android `FaceCapture.getResults()` and ArkTS capture results copy their token bytes. Android’s low-level `jni.Native` API follows the borrowed-result lifetime of Java JVM; it does not perform the high-level copy. In Java JVM, use `HFCopyFaceBasicToken` with an application-owned direct buffer when a result token must outlive the next capture operation. Keep the corresponding image pixels in the application cache described above.

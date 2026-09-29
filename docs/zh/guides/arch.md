@@ -47,6 +47,36 @@ C API 的原始缓冲区图像流借用应用持有的内存。所有消费者�
 直接使用 C API 时，单路视频按顺序跟踪可以读取 `HFExecuteFaceTrack` 返回的借用结果，省去这次复制。需在下一次跟踪前读完；后续调用可能覆盖这些结果，不适合跨帧保留或交叉复用。
 :::
 
+## Java 对象的生命周期 {#java-object-lifetimes}
+
+JVM 接口使用 `long` 表示 Session、图像流、位图、快照和抓拍句柄。Java 引用或垃圾回收不会释放这些资源，应在 `finally` 中调用对应的 `HFRelease…` 函数。用 `HFCreateFaceFeature` 分配的特征支持通过 `HFFaceFeature.close()` 配合 try-with-resources 释放。
+
+| Data | 生命周期与使用方式 |
+| --- | --- |
+| Java-owned direct image buffer | JNI 保留缓冲区引用，直到图像流释放或替换输入；处理完成前不要改写其中的字节。 |
+| Bitmap pixel view | `ByteBuffer` 借用原生像素；图像流或其他操作仍使用该视图时，不能释放位图。 |
+| Tracking / pipeline result | 部分元数据会复制到 Java 字段，token 字节和数值结果缓冲区仍可能借用 Session 内存；在后续调用覆盖前读完。 |
+| Detection snapshot | 检测数据保留到 `HFReleaseFaceResultSnapshot`；对应帧的像素另行保存。 |
+| Owned feature | 仅释放 `HFCreateFaceFeature` 创建的特征；不能把借用的提取结果或 FeatureHub 特征当成独立特征释放。 |
+
+每个串行工作线程使用独立的 Session，运行时与 FeatureHub 的全局修改统一调度。其他线程需要使用结果时，在提交下一帧之前复制所需的数据。[Java 接入](../using-with/java.md)中有缓冲区规则与资源释放示例。
+
+## Android 对象的生命周期 {#android-object-lifetimes}
+
+Android 1.2.4.post1 提供两种调用方式。`InspireFace` 高层接口返回 Java 自有的人脸数组、token 与特征副本；`com.insightface.sdk.inspireface.jni.Native` 则保留 C API 的句柄与借用缓冲区规则。跨帧保留结果时，先确认使用的是哪一层。
+
+| Object / view | 有效范围 |
+| --- | --- |
+| `Session` / `ImageStream` | 实现 `AutoCloseable`，可以用 try-with-resources，或在工作线程结束时调用 `close()`。 |
+| `InspireFace.ExecuteFaceTrack` result | 数组、姿态与 token 已复制；后续跟踪不会覆盖这些 Java 值。提取特征仍需保留对应帧的像素。 |
+| `FaceDetectionSnapshot.getFaces()` | 返回 Java 自有副本，可在 snapshot 关闭后读取；snapshot 自身仍需关闭。 |
+| `FaceCapture.getResults()` | token 和元数据是副本，图像由应用按 frame ID 单独缓存。 |
+| `Native.HFExecuteFaceTrack` result | `ByteBuffer` 可能借用 Session 存储；在覆盖或释放前使用，或者创建独立 snapshot。 |
+
+用 `InspireFace.CreateImageStreamFromBitmap` / `CreateImageStreamFromByteBuffer` 创建的流，通过 `ImageStream.close()` 或 `InspireFace.ReleaseImageStream` 释放；用 `Native.HFCreateImageStream` 创建的流，通过 `Native.HFReleaseImageStream` 释放。两层对输入缓冲区的持有方式不同，不能交叉使用释放函数。
+
+先停止输入并结束工作线程，再关闭抓拍、快照和输入流，最后关闭 Session 并终止运行时。同一 Session 的调用按顺序处理，FeatureHub 与全局模型状态也统一调度。完整写法见 [Android 接入](../using-with/android.md)。
+
 ## Apple 对象的生命周期 {#apple-object-lifetimes}
 
 Objective-C 的 `IFSession` 和 Swift 的 `FaceSession` 持有原生 Session 句柄。封装对象销毁时，ARC 会触发资源释放；相机工作线程或单次任务结束后，也可以用 Swift 的 `close()` 或 Objective-C 的 `closeWithError:` 在确定的时机释放资源。对象关闭后，即使仍有其他强引用，原生数据也已失效。
@@ -93,7 +123,7 @@ application shutdown
 
 InspireCV 提供图像存储、几何计算、绘制和预处理。它的 `task::Pipeline` 可以将相机输入写入图像或张量缓冲区。InspireFace 还在 `inspirecv` 命名空间下提供自己的 `FrameProcess` 封装。
 
-在 InspireFace 内部使用 Task 预处理时，构建 SDK 时设置 `ISF_ENABLE_INSPIRECV_TASK_PREPROCESS=ON`。
+当前源码构建默认启用 `ISF_ENABLE_INSPIRECV_TASK_PREPROCESS=ON`，使用 Task 预处理；设为 `OFF` 可使用旧预处理路径。
 
 ## 计算后端 {#backends}
 

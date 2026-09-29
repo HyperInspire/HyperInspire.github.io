@@ -18,14 +18,14 @@ development source covered by the documentation, and `N` counts documentation
 releases for that SDK version. Increment `N` for each published documentation
 update. Start at `d1` when moving to a new SDK version.
 
-`package.json` is the version source. npm requires a hyphen (`1.2.4-d3`);
-the site displays a dot (`1.2.4.d3`). The navbar, Introduction and HTML metadata
+`package.json` is the version source. npm requires a hyphen (`1.2.4-d6`);
+the site displays a dot (`1.2.4.d6`). The navbar, Introduction and HTML metadata
 all use this value.
 
 For the next documentation release on the same SDK:
 
 ```sh
-npm version 1.2.4-d4 --no-git-tag-version
+npm version 1.2.4-d7 --no-git-tag-version
 npm run docs:check
 ```
 

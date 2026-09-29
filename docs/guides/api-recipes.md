@@ -1,6 +1,6 @@
 # API recipes
 
-These examples cover aligned face images, similarity display, runtime diagnostics and resource cleanup. Initialize a session and prepare an input image using the [language guides](../using-with/c-cpp.md) first. Native, [Objective-C / Swift](../using-with/apple.md), Python and [HarmonyOS](../using-with/harmonyos.md) examples use 1.2.4; Android examples use Java SDK 1.2.0.
+These examples cover aligned face images, similarity display, runtime diagnostics and resource cleanup. Initialize a session and prepare an input image using the [language guides](../using-with/c-cpp.md) first. Native, [Java JVM](../using-with/java.md), [Objective-C / Swift](../using-with/apple.md), Python and [HarmonyOS](../using-with/harmonyos.md) examples use 1.2.4; Android examples use the Android SDK 1.2.4.post1.
 
 ## Get an aligned face image
 
@@ -99,6 +99,32 @@ func extractAligned(session: FaceSession, source: ImageStream,
 }
 ```
 
+@tab Java
+
+Use the [Java JVM SDK](../using-with/java.md) imports below and place the method in your application class. Enable recognition on `session`, and allocate `output` with `HFCreateFaceFeature`. The token must belong to the source image. The helper releases its temporary crop and stream; the caller releases `output` after use. To save only the crop, call `HFImageBitmapWriteToFile(crop[0], path)` before release.
+
+```java
+import com.insightface.sdk.inspireface.jni.NativeTypes.*;
+import static com.insightface.sdk.inspireface.jni.Native.*;
+import static com.insightface.sdk.inspireface.jni.NativeConstants.*;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+```
+
+```java
+static void extractAligned(long session, long source, HFFaceBasicToken token,
+                           HFFaceFeature output) {
+    long[] crop = new long[1], aligned = new long[1];
+    check(HFFaceGetFaceAlignmentImage(session, source, token, crop));
+    try {
+        check(HFCreateImageStreamFromImageBitmap(crop[0], HF_CAMERA_ROTATION_0, aligned));
+        check(HFFaceFeatureExtractWithAlignmentImage(session, aligned[0], output));
+    } finally {
+        if (aligned[0] != 0) HFReleaseImageStream(aligned[0]);
+        HFReleaseImageBitmap(crop[0]);
+    }
+}
+```
+
 @tab Android
 
 ```java
@@ -118,6 +144,44 @@ static android.graphics.Bitmap alignedFace(
 ```
 
 Import `com.insightface.sdk.inspireface.InspireFace`. Display or save the returned bitmap, and release the original `ImageStream` after processing. For recognition, call `ExtractFaceFeature(session, stream, token)`, which handles alignment and extraction together.
+
+To extract from that SDK-generated crop, use the AAR’s `jni.Native` entry point below. Enable recognition on the session and keep the crop’s size and pixels unchanged. The helper returns a copied `FaceFeature`, closes its temporary stream and feature storage, and leaves the input bitmap to the caller.
+
+<details>
+<summary>Extract a feature from the aligned bitmap — complete method</summary>
+
+```java
+import com.insightface.sdk.inspireface.base.FaceFeature;
+import com.insightface.sdk.inspireface.base.ImageStream;
+import com.insightface.sdk.inspireface.base.Session;
+import com.insightface.sdk.inspireface.jni.Native;
+import com.insightface.sdk.inspireface.jni.NativeTypes.HFFaceFeature;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+```
+
+```java
+static FaceFeature extractAligned(Session session, android.graphics.Bitmap crop) {
+    try (ImageStream aligned = InspireFace.CreateImageStreamFromBitmap(
+            crop, InspireFace.CAMERA_ROTATION_0)) {
+        if (aligned == null) throw new IllegalStateException("Cannot open crop");
+        HFFaceFeature output = new HFFaceFeature();
+        check(Native.HFCreateFaceFeature(output));
+        try {
+            check(Native.HFFaceFeatureExtractWithAlignmentImage(
+                    session.handle, aligned.handle, output));
+            FaceFeature result = new FaceFeature();
+            result.data = new float[output.size];
+            output.data.order(java.nio.ByteOrder.nativeOrder())
+                    .asFloatBuffer().get(result.data);
+            return result;
+        } finally {
+            output.close();
+        }
+    }
+}
+```
+
+</details>
 
 @tab HarmonyOS
 
@@ -146,7 +210,7 @@ Use `crop.getData()` before closing the bitmap to read its pixels, dimensions an
 
 @tab Python
 
-Use `session.face_feature_extract(image, face)` for recognition; it handles alignment and extraction together. For a diagnostic overlay, obtain five-point landmarks with `get_face_five_key_points`. To save the aligned image itself, use the C, C++, Objective-C, Swift or Android examples above.
+Use `session.face_feature_extract(image, face)` for recognition; it handles alignment and extraction together. For a diagnostic overlay, obtain five-point landmarks with `get_face_five_key_points`. To save the aligned image itself, use the C, C++, Java, Objective-C, Swift or Android examples above.
 
 :::
 
@@ -226,6 +290,21 @@ func printDisplayScore(cosine: Float) throws {
     try FaceFeatureBuffer.getSimilarityConverter(&config)
     try FaceFeatureBuffer.convert(similarity: cosine, percentage: &display)
     print("cosine=\(cosine) display=\(display) range=[\(config.outputMin), \(config.outputMax)]")
+}
+```
+
+@tab Java
+
+Pass the raw cosine score. Configure the shared curve with `HFUpdateCosineSimilarityConverter` during initialization, before worker threads start.
+
+```java
+static void printDisplayScore(float cosine) {
+    HFSimilarityConverterConfig config = new HFSimilarityConverterConfig();
+    check(HFGetCosineSimilarityConverter(config));
+    float[] display = new float[1];
+    check(HFCosineSimilarityConvertToPercentage(cosine, display));
+    System.out.printf("cosine=%.4f display=%.4f range=[%.2f, %.2f]%n",
+            cosine, display[0], config.outputMin, config.outputMax);
 }
 ```
 
@@ -388,6 +467,28 @@ func logSDKError(_ error: Error) {
 // do { try printDiagnostics() } catch { logSDKError(error) }
 ```
 
+@tab Java
+
+Query the required byte count first, then allocate a writable direct buffer. Diagnostic text is UTF-8 and includes a trailing NUL. `check(status)` throws `InspireFaceException` with the SDK error message; use `getCode()` to log the original status code.
+
+```java
+static void printRuntime() {
+    HFInspireFaceVersion version = new HFInspireFaceVersion();
+    check(HFQueryInspireFaceVersion(version));
+    int[] apiLevel = new int[1];
+    check(HFQueryCAPILevel(apiLevel));
+    System.out.printf("SDK %d.%d.%d, C API level %d%n",
+            version.major, version.minor, version.patch, apiLevel[0]);
+    int[] required = new int[1];
+    check(HFQueryInspireFaceDiagnosticInformation(null, 0, required));
+    java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocateDirect(required[0]);
+    check(HFQueryInspireFaceDiagnosticInformation(buffer, buffer.capacity(), required));
+    byte[] text = new byte[required[0] - 1]; // Exclude the trailing NUL.
+    buffer.get(text);
+    System.out.println(new String(text, java.nio.charset.StandardCharsets.UTF_8));
+}
+```
+
 @tab Android
 
 ```java
@@ -395,13 +496,15 @@ static void printDiagnostics() {
     com.insightface.sdk.inspireface.base.InspireFaceVersion version =
             InspireFace.QueryInspireFaceVersion();
     if (version == null) throw new IllegalStateException("Version query failed");
-    android.util.Log.i("FaceSDK", version.major + "." + version.minor + "."
-            + version.patch + " " + version.information);
+    android.util.Log.i("FaceSDK", "native=" + version.major + "." + version.minor
+            + "." + version.patch + " C API level=" + InspireFace.QueryCAPILevel());
+    android.util.Log.i("FaceSDK", InspireFace.QueryInspireFaceDiagnosticInformation());
+    android.util.Log.i("FaceSDK", InspireFace.QueryInspireFaceComponentVersions());
     InspireFace.SetLogLevel(InspireFace.LOG_INFO);
 }
 ```
 
-Java SDK 1.2.0 provides version information and log settings. Check `null` and boolean results at each call site, and include the operation and input format in the application's log.
+Android 1.2.4.post1 provides full diagnostic and component text through these convenience methods, even before model launch. The loaded native version is `1.2.4`; `post1` identifies the Android package revision, so record the dependency version separately in the application’s build information. The newer diagnostic methods throw `jni.InspireFaceException` on native failure; the compatibility methods still use their documented `null` or boolean results.
 
 @tab HarmonyOS
 
@@ -515,9 +618,51 @@ func printOpenHandles() throws {
 }
 ```
 
+@tab Java
+
+Run while other threads are not creating or releasing resources, so the count and list queries see the same state. These counters cover sessions and streams. Capture, snapshots, bitmaps and allocated features still need their matching release calls; Java garbage collection does not release these native resources.
+
+```java
+static void printLiveResources() {
+    int[] count = new int[1];
+    check(HFDeBugGetUnreleasedSessionsCount(count));
+    long[] sessions = new long[count[0]];
+    if (sessions.length > 0) check(HFDeBugGetUnreleasedSessions(sessions, sessions.length));
+    check(HFDeBugGetUnreleasedStreamsCount(count));
+    long[] streams = new long[count[0]];
+    if (streams.length > 0) check(HFDeBugGetUnreleasedStreams(streams, streams.length));
+    System.out.println("sessions=" + sessions.length + " streams=" + streams.length);
+}
+```
+
 @tab Android
 
-Pair every `CreateSession` with `ReleaseSession` and every stream creation with `ReleaseImageStream`, usually in `finally`. The newer `FaceCapture` and `FaceDetectionSnapshot` classes support try-with-resources when used with their matching JNI library.
+Android 1.2.4.post1 supports try-with-resources for `Session`, `ImageStream`, `FaceCapture` and `FaceDetectionSnapshot`. Close capture before its parent session. Streams created with the Android bitmap/byte-array helpers must be closed with `ImageStream.close()` or `InspireFace.ReleaseImageStream()` so their pixel buffers are released too.
+
+The complete AAR also includes the portable resource queries. Run this before and after a workload, while other threads are not creating or releasing resources. These counters cover native sessions and streams; snapshots, capture objects, bitmaps and allocated features still need their own close/release calls.
+
+```java
+import com.insightface.sdk.inspireface.jni.Native;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+```
+
+```java
+static void printResources() {
+    int[] count = new int[1];
+    check(Native.HFDeBugGetUnreleasedSessionsCount(count));
+    long[] sessions = new long[count[0]];
+    if (sessions.length > 0) {
+        check(Native.HFDeBugGetUnreleasedSessions(sessions, sessions.length));
+    }
+    check(Native.HFDeBugGetUnreleasedStreamsCount(count));
+    long[] streams = new long[count[0]];
+    if (streams.length > 0) {
+        check(Native.HFDeBugGetUnreleasedStreams(streams, streams.length));
+    }
+    android.util.Log.i("FaceSDK", "sessions=" + java.util.Arrays.toString(sessions)
+            + " streams=" + java.util.Arrays.toString(streams));
+}
+```
 
 @tab HarmonyOS
 

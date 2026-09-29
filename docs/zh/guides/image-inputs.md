@@ -117,6 +117,46 @@ func countPackedFaces(session: FaceSession, bgra: inout [UInt8],
 
 离开这些作用域前，完成检测、分析与特征提取。不要从 `withUnsafeMutableBytes` 回调中返回图像流或借用的人脸指针。文件输入则可以使用 Objective-C 的 `IFImageBitmap` 或 Swift 的 `ImageBitmap`，由位图持有解码后的像素；`snapshotStream` 会复制像素，生成独立的图像流。文件加载与错误处理见 [Apple 示例](../using-with/apple.md)。
 
+## Java 图像缓冲区 {#java-image-buffers}
+
+JVM 接口使用可写的 direct `ByteBuffer` 传递原始像素。BGR 输入需要紧密排列的 `width * height * 3` 个字节；带行填充的图像先逐行整理。`ByteBuffer.allocateDirect(size)` 可分配直接缓冲区，`ByteBuffer.wrap(byte[])` 不适用。
+
+下面的辅助类读取一帧 BGR 图像。调用前已加载模型并创建 Session，`pixels.position()` 指向图像起点，`remaining()` 至少覆盖整帧；如果刚用 `put()` 写入缓冲区，先调用 `flip()`。
+
+```java
+import java.nio.ByteBuffer;
+import com.insightface.sdk.inspireface.jni.NativeTypes.*;
+import static com.insightface.sdk.inspireface.jni.Native.*;
+import static com.insightface.sdk.inspireface.jni.NativeConstants.*;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+
+public final class PackedBgr {
+    // SDK and session are initialized. pixels starts at the first BGR byte.
+    public static int countFaces(long session, ByteBuffer pixels,
+                                 int width, int height) {
+        HFImageData input = new HFImageData();
+        input.data = pixels;
+        input.width = width;
+        input.height = height;
+        input.format = HF_STREAM_BGR;
+        input.rotation = HF_CAMERA_ROTATION_0;
+        long[] stream = new long[1];
+        try {
+            check(HFCreateImageStream(input, stream));
+            HFMultipleFaceData faces = new HFMultipleFaceData();
+            check(HFExecuteFaceTrack(session, stream[0], faces));
+            return faces.detectedNum;
+        } finally {
+            if (stream[0] != 0) HFReleaseImageStream(stream[0]);
+        }
+    }
+}
+```
+
+JNI 会保留 Java 输入缓冲区的引用，直到图像流释放或替换输入。处理结束前不要改写像素，也不要将它归还给缓冲池。如果 `pixels` 来自 `HFImageBitmapGetData`，它借用位图的原生内存，仍需保留位图句柄；Java 引用本身无法阻止 `HFReleaseImageBitmap` 释放像素。
+
+文件输入的完整程序见 [Java 接入](../using-with/java.md)。读取 token、特征或分析结果中的 `ByteBuffer` 时，还要遵守[结果生命周期](./arch.md#java-object-lifetimes)。
+
 ## NumPy 输入 {#numpy-input}
 
 BGR 输入使用形状为 `(height, width, 3)` 的 `uint8` 数组。当前 Python 封装也接受 `(height, width)` 的灰度数组和 `(height, width, 4)` 的 BGRA 数组。用下面的代码保证数组内存连续：

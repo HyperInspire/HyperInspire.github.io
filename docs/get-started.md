@@ -8,6 +8,8 @@ Install the SDK with one command, then use the Python example below to detect fa
 python -m pip install inspireface opencv-python
 ```
 
+The current PyPI package is **1.2.4.post1** and includes the **1.2.4 CPU SDK**. For an existing installation, use `python -m pip install --upgrade inspireface`. Platform packages and requirements are listed in the [Python guide](./using-with/python.md#install).
+
 ## Detect faces in an image
 
 Save this as `first_face.py` and place a face image named `face.jpg` beside it:
@@ -139,6 +141,7 @@ Keep the session alive across frames in a real application. Creating a new sessi
 ## Continue from here
 
 - [Python](./using-with/python.md): run optional analysis, handle raw image streams and manage resources.
+- [Java](./using-with/java.md): load the SDK on a regular JVM and run a complete image-detection program.
 - [C API](./using-with/c-cpp.md): compile a complete native example without OpenCV.
 - [Objective-C and Swift](./using-with/apple.md): build an Apple app with the iOS or macOS frameworks.
 - [Tracking](./guides/tracking.md): use a video sequence and tune detection work.

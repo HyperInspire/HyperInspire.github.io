@@ -244,7 +244,7 @@ The pipeline request must be a subset of the session's enabled options. Result i
 | Attributes | `HFGetFaceAttributeResult` |
 | Expression | `HFGetFaceEmotionResult` |
 
-Full examples for quality, mask, pose, attributes and expression are in [Optional analysis](../guides/optional-analysis.md), with C, C++, Python and Android tabs.
+Full examples for quality, mask, pose, attributes and expression are in [Optional analysis](../guides/optional-analysis.md), with C, C++, Java, Python and Android tabs, among others.
 
 ## Extract an owned embedding
 

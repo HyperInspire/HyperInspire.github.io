@@ -159,6 +159,26 @@ if (status == 0 && !faces.empty()) {
 
 各项分析的配置与结果读取方式见[可选分析](../guides/optional-analysis.md)，其中提供不同 API 的对照示例。
 
+## CPU 运行策略 {#cpu-power-mode}
+
+在创建 Session 前，通过 `Launch` 设置 CPU 推理策略。默认是 `CPU_ENGINE_POWER_NORMAL`，也可选择 `CPU_ENGINE_POWER_HIGH` 或 `CPU_ENGINE_POWER_LOW`：
+
+```cpp
+#include <inspireface/launch.h>
+#include <stdexcept>
+
+void configureCpuEngine() {
+    auto runtime = inspire::Launch::GetInstance();
+    int status = runtime->SetGlobalCPUEnginePowerMode(
+        inspire::Launch::CPU_ENGINE_POWER_NORMAL);
+    if (status != 0) throw std::runtime_error("Cannot set CPU policy");
+    auto selected = runtime->GetGlobalCPUEnginePowerMode();
+    (void)selected;
+}
+```
+
+配置只影响随后初始化的 CPU 运行时，已有运行时、线程数与数值精度保持不变。`Load`、`Reload` 和 `Unload` 不重置该设置；不要与会话或模型初始化并发修改。该接口需要包含最新 CPU 配置方法的头文件与原生库。如何对比不同模式见 [CPU 运行策略](./arm.md#cpu-power-mode)。
+
 ## 提取特征与关键点 {#extract-features-and-landmarks}
 
 ```cpp

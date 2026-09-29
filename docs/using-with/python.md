@@ -8,6 +8,10 @@ Use NumPy images with the Python API to detect faces, extract features and run o
 python -m pip install inspireface opencv-python
 ```
 
+The current [PyPI release](https://pypi.org/project/inspireface/1.2.4.post1/) is **1.2.4.post1**, with the **1.2.4** CPU runtime included. It provides detection, recognition, analysis, snapshots, capture and diagnostics without a separate SDK build. If InspireFace is already installed, upgrade with `python -m pip install --upgrade inspireface`.
+
+Wheels are available for Linux x86_64 / ARM64 and macOS Intel / Apple Silicon. The current macOS native libraries require **macOS 14+ on arm64** and **15+ on Intel**; see [package downloads](../build/README.md#python-and-android-packages) for the platform files and wheel-tag details. Models are downloaded on first use or loaded from a local resource pack.
+
 ## Initialize once and reuse the session
 
 ```python
@@ -138,7 +142,7 @@ Landmarks are arrays of point coordinates. Embeddings are copied NumPy arrays; s
 
 ## Raw buffers and ImageStream
 
-The scoped streams and snapshot examples below use the 1.2.4 wrapper and matching native library. If your installed package predates these APIs, use the [local build setup](#use-a-local-native-build).
+The PyPI package supports scoped streams: leaving a `with` block releases the stream, including when processing raises an exception.
 
 Passing a three-channel `uint8` array directly uses BGR, as returned by `cv2.imread`. Four-channel arrays use BGRA. Specify the format when creating a stream from other pixel layouts:
 
@@ -192,7 +196,7 @@ Handle an empty face list as a normal detection result and report processing exc
 
 ## Use a local native build
 
-For native library replacement and wheel creation, see [Python packaging](../build/python.md). Keep the source wrapper and native library from the same build when using snapshots, capture or other development APIs.
+For TensorRT, CoreML, Rockchip or a custom CPU build, see [Python packaging](../build/python.md). Keep the wrapper and native library from the same SDK revision. The PyPI CPU package already includes the library needed for the examples above.
 
 A wheel includes its native library. To use a local build with the 1.2.4 wrapper, set `INSPIREFACE_LIBRARY_PATH` **before importing** `inspireface`:
 

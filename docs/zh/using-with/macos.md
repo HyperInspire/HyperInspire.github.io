@@ -2,6 +2,8 @@
 
 AppKit / SwiftUI 应用可以使用 Objective-C 或 Swift，已有原生程序也可以继续使用 C/C++。Apple SDK 与 iOS 共用一套包装接口，macOS Framework 可以同时包含 Apple Silicon 和 Intel 架构。
 
+JVM 应用使用 JAR 与配套的 `.dylib`，按 [Java 接入](./java.md)操作。
+
 架构选择、CPU / CoreML 构建及命令行检查见 [macOS 构建](../build/macos.md)。[Objective-C 与 Swift 接入](./apple.md)提供完整的文件检测代码和资源管理说明。
 
 ## 选择 SDK 包 {#select-the-package}

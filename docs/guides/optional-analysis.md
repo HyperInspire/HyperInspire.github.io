@@ -27,7 +27,7 @@ First enable quality alone and inspect a few clear and blurred inputs. Add the o
 
 ## Read analysis results
 
-Select an API below. These helpers process **one still image** using a newly created session, so they can be called from the platform's basic detection example. Launch the SDK and prepare the input first; [C](../using-with/c-cpp.md), [C++](../using-with/cpp.md), [Apple](../using-with/apple.md), [Android](../using-with/android.md), [HarmonyOS](../using-with/harmonyos.md) and [Python](../using-with/python.md) cover that setup. In a video application, move session creation outside the frame loop.
+Select an API below. These helpers process **one still image** using a newly created session, so they can be called from the platform's basic detection example. Launch the SDK and prepare the input first; [C](../using-with/c-cpp.md), [C++](../using-with/cpp.md), [Apple](../using-with/apple.md), [Java](../using-with/java.md), [Android](../using-with/android.md), [HarmonyOS](../using-with/harmonyos.md) and [Python](../using-with/python.md) cover that setup. In a video application, move session creation outside the frame loop.
 
 ::: tabs #api-language
 
@@ -225,9 +225,69 @@ func analyzeFrame(stream: ImageStream) throws {
 
 </details>
 
+@tab Java
+
+Launch the [Java SDK](../using-with/java.md) and pass an open stream handle. This helper owns its temporary session; the caller retains the stream and its pixels. Scores, labels and pose are borrowed `ByteBuffer` views in native byte order. Read them before the session is released, using `getFloat` for scores and `getInt` for category indices, both with byte offsets.
+
+<details>
+<summary>Java — Complete analysis example</summary>
+
+```java
+import com.insightface.sdk.inspireface.jni.NativeTypes.*;
+import static com.insightface.sdk.inspireface.jni.Native.*;
+import static com.insightface.sdk.inspireface.jni.NativeConstants.*;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+
+public final class JavaAnalysisExample {
+    public static void analyze(long stream) {
+        int pipeline = HF_ENABLE_QUALITY | HF_ENABLE_MASK_DETECT
+                | HF_ENABLE_FACE_ATTRIBUTE | HF_ENABLE_FACE_EMOTION;
+        long[] session = new long[1];
+        check(HFCreateInspireFaceSessionOptional(
+                pipeline | HF_ENABLE_FACE_POSE, HF_DETECT_MODE_ALWAYS_DETECT,
+                10, 320, -1, session));
+        try {
+            HFMultipleFaceData faces = new HFMultipleFaceData();
+            check(HFExecuteFaceTrack(session[0], stream, faces));
+            if (faces.detectedNum == 0) return;
+            check(HFMultipleFacePipelineProcessOptional(session[0], stream, faces, pipeline));
+            HFFaceQualityConfidence quality = new HFFaceQualityConfidence();
+            HFFaceMaskConfidence masks = new HFFaceMaskConfidence();
+            HFFaceAttributeResult attributes = new HFFaceAttributeResult();
+            HFFaceEmotionResult expressions = new HFFaceEmotionResult();
+            check(HFGetFaceQualityConfidence(session[0], quality));
+            check(HFGetFaceMaskConfidence(session[0], masks));
+            check(HFGetFaceAttributeResult(session[0], attributes));
+            check(HFGetFaceEmotionResult(session[0], expressions));
+            if (quality.num != faces.detectedNum || masks.num != faces.detectedNum
+                    || attributes.num != faces.detectedNum || expressions.num != faces.detectedNum) {
+                throw new IllegalStateException("Incomplete pipeline result");
+            }
+            for (int i = 0; i < faces.detectedNum; i++) {
+                int f = i * Float.BYTES;
+                int n = i * Integer.BYTES;
+                System.out.println("quality=" + quality.confidence.getFloat(f)
+                        + " mask=" + masks.confidence.getFloat(f)
+                        + " age=" + attributes.ageBracket.getInt(n)
+                        + " gender=" + attributes.gender.getInt(n)
+                        + " race=" + attributes.race.getInt(n)
+                        + " emotion=" + expressions.emotion.getInt(n));
+                System.out.println("roll=" + faces.angles.roll.getFloat(f)
+                        + " yaw=" + faces.angles.yaw.getFloat(f)
+                        + " pitch=" + faces.angles.pitch.getFloat(f));
+            }
+        } finally {
+            check(HFReleaseInspireFaceSession(session[0]));
+        }
+    }
+}
+```
+
+</details>
+
 @tab Android
 
-This example uses the **1.2.0 Java package** for quality, mask and attributes. With that package and its matching native library, enabling quality also loads the pose model. Read pose from `faces.angles[0]`: this version provides a usable pose result for the first face only. Use the same Java/native pair when following this example.
+This example uses **Android 1.2.4.post1** for quality, mask, attributes and expression. Enable `.enableFacePose(true)` when creating the session, then read pose from `faces.angles[i]` for every face. Detection and pipeline results are copied into Java arrays. Keep the detection, pipeline and result-reading sequence on one worker.
 
 <details>
 <summary>Android — Complete analysis example</summary>
@@ -242,7 +302,9 @@ public final class AnalysisExample {
         CustomParameter options = InspireFace.CreateCustomParameter()
                 .enableFaceQuality(true)
                 .enableMaskDetect(true)
-                .enableFaceAttribute(true);
+                .enableFaceAttribute(true)
+                .enableFaceEmotion(true)
+                .enableFacePose(true);
         Session session = InspireFace.CreateSession(
                 options, InspireFace.DETECT_MODE_ALWAYS_DETECT, 10, 320, -1);
         if (session == null || session.handle == 0L)
@@ -256,22 +318,21 @@ public final class AnalysisExample {
             FaceQualityConfidence quality = InspireFace.GetFaceQualityConfidence(session);
             FaceMaskConfidence masks = InspireFace.GetFaceMaskConfidence(session);
             FaceAttributeResult attributes = InspireFace.GetFaceAttributeResult(session);
-            if (quality == null || masks == null || attributes == null ||
+            FaceEmotionResult expressions = InspireFace.GetFaceEmotionResult(session);
+            if (quality == null || masks == null || attributes == null || expressions == null ||
                     quality.num != faces.detectedNum || masks.num != faces.detectedNum ||
-                    attributes.num != faces.detectedNum)
+                    attributes.num != faces.detectedNum || expressions.num != faces.detectedNum)
                 throw new IllegalStateException("Incomplete pipeline result");
             for (int i = 0; i < faces.detectedNum; ++i) {
                 System.out.println("quality=" + quality.confidence[i]
                         + " mask=" + masks.confidence[i]
                         + " age=" + attributes.ageBracket[i]
                         + " gender=" + attributes.gender[i]
-                        + " race=" + attributes.race[i]);
-                // The 1.2.0 JNI has a multi-face pose-copy bug; only read face 0.
-                if (i == 0 && faces.angles != null && faces.angles.length > 0 && faces.angles[0] != null) {
-                    FaceEulerAngle pose = faces.angles[i];
-                    System.out.println("roll=" + pose.roll + " yaw=" + pose.yaw
-                            + " pitch=" + pose.pitch);
-                }
+                        + " race=" + attributes.race[i]
+                        + " emotion=" + expressions.emotion[i]);
+                FaceEulerAngle pose = faces.angles[i];
+                System.out.println("roll=" + pose.roll + " yaw=" + pose.yaw
+                        + " pitch=" + pose.pitch);
             }
         } finally {
             InspireFace.ReleaseSession(session);
@@ -327,7 +388,7 @@ function analyzeFrame(stream: ImageStream): void {
 
 @tab Python
 
-Use the **1.2.4 source wrapper with its matching native library** for the context manager and `auto_launch=False`. Supply a BGR `uint8` array. Native failures raise an exception; an image with no faces returns an empty list.
+The **1.2.4.post1 PyPI package** supports the context manager and `auto_launch=False` used below. Supply a BGR `uint8` array. Native failures raise an exception; an image with no faces returns an empty list.
 
 <details>
 <summary>Python — Complete analysis example</summary>
@@ -372,9 +433,9 @@ def analyze_frame(image):
 | Mask | A score for mask presence. Compare the score with a threshold evaluated on your intended cameras. |
 | Attributes | Integer category indices. Check the index range, then map each index to its label. |
 | Expression | Index order: `Neutral`, `Happy`, `Sad`, `Surprise`, `Fear`, `Disgust`, `Anger`. |
-| Pose | Roll, yaw and pitch angles. In C/C++/Python, enable `HF_ENABLE_FACE_POSE` or its C++ option before reading these angles. Objective-C also uses `HF_ENABLE_FACE_POSE`; Swift uses `.pose` in `FaceFeatures`. HarmonyOS uses `Feature.FACE_POSE`. |
+| Pose | Roll, yaw and pitch angles. In C/C++/Python, enable `HF_ENABLE_FACE_POSE` or its C++ option before reading these angles. Objective-C also uses `HF_ENABLE_FACE_POSE`; Swift uses `.pose` in `FaceFeatures`. HarmonyOS uses `Feature.FACE_POSE`; Android uses `.enableFacePose(true)`. |
 
-The complete attribute label arrays are shown in the [Python analysis reference](../using-with/python.md#optional-analysis). Keep the input pixels unchanged until the pipeline finishes, then draw or reuse the buffer. C, Objective-C and Swift getter arrays are borrowed from the session; copy values you need after the next pipeline call or after closing the session. C++ vectors and Python results have their own storage.
+The complete attribute label arrays are shown in the [Python analysis reference](../using-with/python.md#optional-analysis). Keep the input pixels unchanged until the pipeline finishes, then draw or reuse the buffer. C, Objective-C and Swift getter arrays are borrowed from the session; copy values you need after the next pipeline call or after closing the session. C++ vectors, Android convenience-API arrays and Python results have their own storage.
 
 When upgrading Android, update the Java package and its matching JNI/native library together. The [API index](./api-coverage.md) lists the analysis outputs available in each interface.
 

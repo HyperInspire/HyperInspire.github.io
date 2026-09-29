@@ -2,7 +2,7 @@
 
 The Python API uses `ctypes` to call the native SDK. To switch from CPU to TensorRT, CoreML or Rockchip NPU, build the matching shared library first, then select it from Python or include it in a wheel. The wrapper and native library should come from the same SDK revision.
 
-This page describes the **1.2.4 source wrapper**. Published packages and their download sources are listed in the [SDK overview](./README.md).
+For CPU use, install the published **1.2.4.post1** package with `python -m pip install inspireface opencv-python`. It includes the **1.2.4** native library. This chapter covers replacing that library and building your own wheel; available packages are listed in the [SDK overview](./README.md#python-and-android-packages).
 
 | What you need | Approach |
 | --- | --- |
@@ -115,7 +115,7 @@ python -m build --wheel --outdir "$PWD/python/dist" "$ISF_WHEEL_STAGE"
 
 For Linux aarch64, use `arm64` and `linux_aarch64`. For macOS, follow the [complete packaging example](#package-the-current-macos-sdk) below, including its explicit deployment tag.
 
-The wheel version comes from `python/version.txt` plus the suffix in `python/post`. For example, `1.2.4` and an empty suffix produce `inspireface-1.2.4-py3-none-linux_x86_64.whl`.
+The wheel version comes from `python/version.txt` plus the suffix in `python/post`. The current source uses `1.2.4` and `.post1`, producing `inspireface-1.2.4.post1-py3-none-linux_x86_64.whl`. The native SDK version remains `1.2.4`.
 
 ### Choose the directory and wheel tag {#choose-the-directory-and-wheel-tag}
 
@@ -167,7 +167,7 @@ python -m build --wheel --outdir "$PWD/python/dist" "$ISF_WHEEL_STAGE"
 
 </details>
 
-With an empty `python/post`, the result is `inspireface-1.2.4-py3-none-macosx_14_0_arm64.whl`. For Intel, use `build_macos_x86.sh`, its `inspireface-macos-intel-x86-64-1.2.4` output directory, `x64` for the package directory / target architecture variable, and a matching `macosx_<major>_<minor>_x86_64` tag. Set the deployment target for that build explicitly too.
+With the current `.post1` suffix, the result is `inspireface-1.2.4.post1-py3-none-macosx_14_0_arm64.whl`. For Intel, use `build_macos_x86.sh`, its `inspireface-macos-intel-x86-64-1.2.4` output directory, `x64` for the package directory / target architecture variable, and a matching `macosx_<major>_<minor>_x86_64` tag. Set the deployment target for that build explicitly too.
 
 When packaging an existing Apple XCFramework bundle, take the raw dylib from `SDKs/macosx-arm64/InspireFace/lib/` or `SDKs/macosx-x86_64/InspireFace/lib/`, with the `version.txt` from the same slice. Package each architecture separately; including an XCFramework does not make a Python wheel universal.
 
@@ -182,7 +182,7 @@ To package CoreML on arm64, first use the [CoreML shared CMake build](./macos.md
 Replace the filename below with the wheel you just built. Check that it contains the expected native library and platform tag:
 
 ```bash
-python -m zipfile -l python/dist/inspireface-1.2.4-py3-none-linux_x86_64.whl
+python -m zipfile -l python/dist/inspireface-1.2.4.post1-py3-none-linux_x86_64.whl
 ```
 
 Find the entry ending in `inspireface/modules/core/libs/linux/x64/libInspireFace.so`; the archive may place it under a `.data/purelib/` prefix. Model packs are separate from the wheel; deploy the matching pack alongside your application.
@@ -194,7 +194,7 @@ Test in a new environment so the editable wrapper does not mask the installed pa
 ```bash
 python3 -m venv .venv-wheel-check
 source .venv-wheel-check/bin/activate
-python -m pip install python/dist/inspireface-1.2.4-py3-none-linux_x86_64.whl
+python -m pip install python/dist/inspireface-1.2.4.post1-py3-none-linux_x86_64.whl
 unset INSPIREFACE_LIBRARY_PATH
 unset PYTHONPATH
 ```

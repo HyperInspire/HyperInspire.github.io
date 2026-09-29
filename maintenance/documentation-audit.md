@@ -6,8 +6,9 @@ Audit the public APIs, build scripts, examples and tests in the local source
 checkouts, then update the English and Chinese developer documentation. Source repositories
 are read-only inputs to this task.
 
-- InspireFace: `8b37a2eb1e2fe61608195a979dda6cadb84f5106` (2026-09-29), CMake version 1.2.4.
-- Current documentation revision: 1.2.4.d3. Earlier dated sections retain their audit baselines.
+- InspireFace: `1a6c87b1013ded1aeb930d3a0e023ed6dd0f54b2` (2026-09-29), CMake version 1.2.4.
+- Android SDK: `7675e3eb339bfb93d07586a6bfbff24a94cd85fa`, tag `v1.2.4.post1`.
+- Current documentation revision: 1.2.4.d6. Earlier dated sections retain their audit baselines.
 - InspireCV: `361574e` (2026-09-28), README version 1.0.2.
 - Preserve existing document URLs, the default light theme, Android demo QR code
   and the recently selected cloud illustrations.
@@ -667,3 +668,177 @@ Additional Apple checks:
 - Final site check: 85 HTML pages, 13,989 local references, 92 Python fences,
   42 bilingual pairs, 330 matching code fences and 40 complete inline examples.
   The local preview remains available at 127.0.0.1:8080 at the user's request.
+
+
+## Portable Java documentation (2026-09-29, 1.2.4.d4)
+
+Audited InspireFace `3089aec173920c7afcd6f70c391cf3c6cc6f8a4b`:
+`command/build_java.sh`, portable JNI generation, stream/feature ownership,
+loader and exception facade, CMake packaging, contract tests and the installed
+Java package. This revision was one commit ahead of origin/development during
+review. No new source links were pinned to an unpublished commit.
+
+Changes:
+
+- Added bilingual Java integration and packaging chapters. Java/JVM and Android
+  have separate navigation and API entries. Kept the short sidebar label Java.
+- Added Java tabs to tracking/settings, analysis, landmarks, RGB liveness,
+  actions, recognition, FeatureHub maintenance, face capture, snapshots,
+  alignment, score formatting and runtime/resource diagnostics.
+- Updated Introduction, feature and API indexes, build downloads overview,
+  common CMake options, Linux/macOS entry points, model loading, raw image
+  input, lifecycle guidance and troubleshooting.
+- Embedded the complete Java detection program in both integration and example
+  pages; long examples use collapsed panels. Existing images remain in place.
+- Documented direct buffers, byte offsets, explicit native release and snapshot
+  tradeoffs. Portable JNI copies some metadata but retains borrowed buffers for
+  pixels, tokens and numeric results; Android wrapper behavior is separate.
+- Kept Java source builds distinct from published binary downloads. The JAR
+  targets Java 8; native binaries must match the running JVM architecture.
+  Hardware APIs still depend on the native build and runtime.
+
+Validation:
+
+- Portable API verification matched 125/125 C declarations, Java methods,
+  exported JNI functions and contract call sites. The real SDK contract test
+  passed 312 assertions on macOS arm64 / JDK 17 with `-Xcheck:jni`.
+- Six feature examples and ten recipe groups were extracted from their final
+  Markdown and compiled for Java 8. All ran against the existing macOS arm64
+  JNI library with Pikachu and a local face fixture. Checks included tracking,
+  five/dense landmarks, analysis, liveness outputs, comparison, FeatureHub CRUD,
+  alignment, capture READY, quality/pose options, snapshots and diagnostics.
+- Two additional model/input helpers passed Java 8 target compilation and JDK
+  17 JNI checks: pack validation/launch, positioned direct BGR input, no-face
+  input, and rejection of heap/read-only/undersized buffers. Resource counters
+  returned to zero after cleanup.
+- Java 8 also compiled and ran the detection program and recipe checks. This
+  local JDK 8 reports startup warnings under `-Xcheck:jni`; a plain Java hello
+  program reproduced part of the warning output without the SDK. JDK 17 JNI
+  checks were clean. No unsupported attribution to the SDK was made.
+- Execution used an existing macOS CPU build. Linux/Windows runtime deployment,
+  a new full native rebuild, camera accuracy and hardware acceleration were not
+  executed as part of this documentation update.
+
+Runtime evidence:
+`/private/tmp/inspireface-java-feature-docs/`,
+`/private/tmp/inspireface-java-recipe-check/`,
+`/private/tmp/inspireface-java-docs-core/` and
+`/private/tmp/inspireface-java-docs-platform-218l2Y/`.
+
+Final site review:
+
+- VuePress and `maintenance/check_site.py` passed: 89 HTML pages, 15,295 local
+  references, 92 Python fences, 44 bilingual page pairs, 375 matching code
+  fences and 44 complete inline examples; version metadata is 1.2.4.d4.
+- Browser review checked both new Java chapters in both languages at 390px:
+  no page overflow and long examples closed by default. The API matrix fits
+  desktop content and scrolls within its container on mobile. Selecting Java
+  in the tracking guide selected both Java tab groups and displayed their code.
+- The temporary mobile viewport was reset. The local preview is running at
+  http://127.0.0.1:8080/ for review.
+
+## Android 1.2.4.post1 and CPU policy (2026-09-29, 1.2.4.d5)
+
+Audited InspireFace `1a6c87b1013ded1aeb930d3a0e023ed6dd0f54b2` and Android
+SDK `7675e3eb339bfb93d07586a6bfbff24a94cd85fa` (`v1.2.4.post1`). The final
+InspireFace commit arrived during review; its additional changes affect the
+Python package suffix and wheel publishing workflow, not native or Java APIs.
+The source checkouts remained unchanged by this task.
+
+Changes:
+
+- Updated both languages throughout Android integration, native builds, API
+  coverage, tracking, landmarks, analysis, liveness, recognition, capture,
+  diagnostics, model loading and lifecycle guidance.
+- Use the published JitPack coordinate
+  `com.github.HyperInspire:inspireface-android-sdk:v1.2.4.post1`, including its
+  `v` prefix. Distinguish Android package 1.2.4.post1, native SDK 1.2.4 and
+  C API level 2. Document API 24, all three supported ABIs, bundled model
+  assets and consumer rules.
+- Document the single Android `libInspireFace.so` per ABI, containing both JNI
+  interfaces. Desktop JVM packaging still uses a separate JNI library.
+  Explain same-layer stream release, copied high-level results and borrowed
+  portable JNI buffers. Remove obsolete 1.2.0 restrictions and extra-bridge
+  requirements; retain existing illustrations and anchors.
+- Add NORMAL/HIGH/LOW CPU policy examples for C++, Java and Android. Explain
+  the NORMAL default, process-wide scope, effect on subsequently initialized
+  runtimes and persistence across launch/reload/termination. Update ARM,
+  benchmark setup and troubleshooting without adding performance claims.
+- Correct the Task preprocessing default to ON and repair a malformed macOS
+  Python row in the downloads overview. Update Python packaging filenames to
+  1.2.4.post1 while keeping the basic pip installation command unpinned.
+  PyPI still reported 1.2.3.post5 during this review, so documentation does
+  not claim the new Python wheel is already published.
+
+Validation:
+
+- Checked the published JitPack POM and the downloaded v1.2.4.post1 AAR.
+  AAR SHA-256:
+  `93c6c2634eb9775c688d10ec67f0148ad8d1e061d96fdab7b8597957999cd25f`.
+- Android integration, feature, recipe and model-loading examples compiled
+  for Java 8 against the released AAR and Android API 35 stubs. Native build
+  shell snippets passed syntax checks. Bilingual code fences remain identical.
+- Ran the C++ and Java CPU examples against an existing matching macOS arm64
+  build. All three policies passed set/get and lifecycle-persistence checks;
+  fresh sessions before and after reload each detected one face, for 12
+  detection calls across the two languages. These checks do not measure
+  latency, idle CPU usage or power consumption.
+- No Android device run or new full SDK build was performed. Java's two
+  Android loader tests simulate runtime identifiers on a host JVM; the
+  packaging chapter explicitly distinguishes them from ART/device testing.
+- VuePress and `maintenance/check_site.py` passed: 89 HTML pages, 15,359 local
+  references, 92 Python fences, 44 bilingual pairs, 388 shared code fences
+  and 44 complete inline examples. Version metadata is 1.2.4.d5.
+- Browser review covered Android integration and build pages in both
+  languages, the API matrix and the CPU policy tabs. At 390px the page does
+  not overflow, wide tables/code scroll within their containers, and long
+  examples start collapsed. The Android CPU tab displayed its matching code.
+  The viewport was reset and the 127.0.0.1:8080 preview remains available.
+
+Validation evidence is under `/private/tmp/inspireface-docs-post1/`,
+`/private/tmp/inspireface-android-docs-post1-48s9msv5/`,
+`/private/tmp/inspireface-android124-features-1o2vhu0e/` and
+`/private/tmp/inspireface-android-post1-recipes-1q4wbrck/`.
+
+## Published Python 1.2.4.post1 (2026-09-29, 1.2.4.d6)
+
+PyPI now reports 1.2.4.post1 as the current release. Verified the live JSON
+metadata at https://pypi.org/pypi/inspireface/json; the browser search cache
+still returned the earlier release. This update supersedes the unpublished
+Python-package status recorded during the d5 review above.
+
+- Updated Python integration and packaging, quick start, Introduction,
+  downloads, API coverage, model validation, optional analysis, examples and
+  troubleshooting in both languages. Retained the one-line installation and
+  added a separate inline upgrade command for existing environments.
+- Removed requirements to build the SDK just to use Python snapshots,
+  capture, scoped streams or diagnostics. Custom backend builds still require
+  a matching wrapper and native library. Corrected Rockchip's version check
+  to distinguish the post1 package from the 1.2.4 native runtime.
+- Listed all four published py3-none wheels: manylinux2014 x86_64/aarch64,
+  macosx_11_0_arm64 and macosx_12_0_x86_64. Verified both macOS wheel hashes.
+  Inspection of the bundled dylibs found minimum macOS versions 14.0 for
+  arm64 and 15.0 for x86_64, higher than their filename tags. The downloads
+  page records this in a warning; no claim of macOS 11/12 support is made.
+- Installed the official arm64 wheel in an isolated environment with Python
+  3.14.6 on macOS 15.6.1. Cleared PYTHONPATH and INSPIREFACE_LIBRARY_PATH and
+  confirmed the imported package and dylib both came from the installation.
+  Package 1.2.4.post1, native SDK 1.2.4 and C API level 2 were reported;
+  dependency validation with pip check passed.
+- Ran maintenance/validate_runtime.py against this published package. Passed
+  analysis fields, five/dense landmarks, copied features, snapshot lifetime,
+  RGB and empty input, FeatureHub operations, and all four complete Python
+  examples (detection, comparison, capture and benchmark). Capture reached
+  READY and wrote an image. The timing output is smoke-test evidence, not a
+  new benchmark. Linux and Intel runtime execution were not tested.
+- Site checks passed: 89 HTML pages, 15,367 local references, 92 Python fences,
+  44 bilingual pairs, 388 matching code fences and 44 complete inline
+  examples. Version badges and manifests agree on 1.2.4.d6.
+- Reviewed the Python installation page at desktop width and the package
+  table/macOS warning at 390px. Page width remains contained, the table and
+  code scroll locally, and the warning is readable. Reset the viewport and
+  left the local Python preview open at 127.0.0.1:8080.
+
+Evidence: /private/tmp/inspireface-docs-pypi124/ contains the PyPI JSON,
+verified wheels, dylib metadata, environment details, runtime output and
+site-check log. No SDK source files were changed or remote deployment run.

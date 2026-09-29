@@ -15,7 +15,7 @@ Capture a clear, upright face that is large enough and fully inside the frame. O
 
 ## RGB anti-spoofing
 
-Enable liveness when creating the session, then request it in the pipeline. Results follow the order of the input faces. Use matching native headers and libraries; the Android snippets use Java 1.2.0.
+Enable liveness when creating the session, then request it in the pipeline. Results follow the order of the input faces. Use matching native headers and libraries; the Android snippets use the 1.2.4.post1 AAR.
 
 ::: tabs #api-language
 
@@ -104,6 +104,43 @@ func readRGBLiveness(session: FaceSession, stream: ImageStream) throws {
 }
 ```
 
+@tab Java
+
+After [Java setup](../using-with/java.md), create a session and call `readScores` with the input stream handle. Detection and analysis use that same stream. The helper reads the borrowed score buffer immediately; copy individual scores before scheduling later UI work. The caller releases each stream after use and the session when processing ends.
+
+```java
+import com.insightface.sdk.inspireface.jni.NativeTypes.*;
+import static com.insightface.sdk.inspireface.jni.Native.*;
+import static com.insightface.sdk.inspireface.jni.NativeConstants.*;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+
+public final class RgbLivenessExample {
+    public static long createSession() {
+        long[] session = new long[1];
+        check(HFCreateInspireFaceSessionOptional(
+                HF_ENABLE_LIVENESS, HF_DETECT_MODE_ALWAYS_DETECT, 5, 320, -1, session));
+        return session[0];
+    }
+
+    public static void readScores(long session, long stream) {
+        HFMultipleFaceData faces = new HFMultipleFaceData();
+        check(HFExecuteFaceTrack(session, stream, faces));
+        if (faces.detectedNum == 0) return;
+        check(HFMultipleFacePipelineProcessOptional(session, stream, faces, HF_ENABLE_LIVENESS));
+        HFRGBLivenessConfidence scores = new HFRGBLivenessConfidence();
+        check(HFGetRGBLivenessConfidence(session, scores));
+        if (scores.num != faces.detectedNum) {
+            throw new IllegalStateException("Incomplete liveness result");
+        }
+        for (int i = 0; i < scores.num; i++) {
+            System.out.println("face=" + i + " liveness="
+                    + scores.confidence.getFloat(i * Float.BYTES));
+        }
+    }
+    // After all frames: check(HFReleaseInspireFaceSession(session));
+}
+```
+
 @tab Android
 
 Create the session with `InspireFace.CreateCustomParameter().enableLiveness(true)`. This block receives an open `ImageStream`; release it after reading the results.
@@ -117,8 +154,9 @@ if (faces.detectedNum > 0) {
         throw new IllegalStateException("Liveness analysis failed");
     }
     RGBLivenessConfidence scores = InspireFace.GetRGBLivenessConfidence(session);
-    if (scores == null) throw new IllegalStateException("No liveness results");
-    for (int i = 0; i < faces.detectedNum && i < scores.num; i++) {
+    if (scores == null || scores.num != faces.detectedNum)
+        throw new IllegalStateException("Incomplete liveness results");
+    for (int i = 0; i < faces.detectedNum; i++) {
         System.out.println(i + " " + scores.confidence[i]);
     }
 }
@@ -277,9 +315,59 @@ func readActions(session: FaceSession, stream: ImageStream) throws {
 }
 ```
 
+@tab Java
+
+Create one tracker after SDK launch and keep it across consecutive frames. Pose enables the head-movement signals. Pass each open frame stream to `readActions`; release the stream afterward and the session at the end. Eye scores and action flags borrow session memory, so update or copy the application's challenge state before the next pipeline call.
+
+<details>
+<summary>Java — Complete action example</summary>
+
+```java
+import com.insightface.sdk.inspireface.jni.NativeTypes.*;
+import static com.insightface.sdk.inspireface.jni.Native.*;
+import static com.insightface.sdk.inspireface.jni.NativeConstants.*;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+
+public final class ActionExample {
+    public static long createTracker() {
+        long[] session = new long[1];
+        check(HFCreateInspireFaceSessionOptional(
+                HF_ENABLE_INTERACTION | HF_ENABLE_FACE_POSE,
+                HF_DETECT_MODE_LIGHT_TRACK, 5, 320, -1, session));
+        return session[0];
+    }
+
+    public static void readActions(long session, long stream) {
+        HFMultipleFaceData faces = new HFMultipleFaceData();
+        check(HFExecuteFaceTrack(session, stream, faces));
+        if (faces.detectedNum == 0) return;
+        check(HFMultipleFacePipelineProcessOptional(session, stream, faces, HF_ENABLE_INTERACTION));
+        HFFaceInteractionState eyes = new HFFaceInteractionState();
+        HFFaceInteractionsActions actions = new HFFaceInteractionsActions();
+        check(HFGetFaceInteractionStateResult(session, eyes));
+        check(HFGetFaceInteractionActionsResult(session, actions));
+        if (eyes.num != faces.detectedNum || actions.num != faces.detectedNum) {
+            throw new IllegalStateException("Incomplete action result");
+        }
+        for (int i = 0; i < faces.detectedNum; i++) {
+            int f = i * Float.BYTES;
+            int n = i * Integer.BYTES;
+            System.out.println("track=" + faces.trackIds.getInt(n)
+                    + " left=" + eyes.leftEyeStatusConfidence.getFloat(f)
+                    + " right=" + eyes.rightEyeStatusConfidence.getFloat(f)
+                    + " blink=" + actions.blink.getInt(n)
+                    + " shake=" + actions.shake.getInt(n));
+        }
+    }
+    // After the sequence: check(HFReleaseInspireFaceSession(session));
+}
+```
+
+</details>
+
 @tab Android
 
-For the Java 1.2.0 package, create a `DETECT_MODE_LIGHT_TRACK` session with `.enableInteractionLiveness(true).enableFaceQuality(true)`. In that package, quality also loads the pose model used by head-shake and head-raise analysis. Keep the session for the whole camera sequence.
+Create a `DETECT_MODE_LIGHT_TRACK` session with `.enableInteractionLiveness(true).enableFacePose(true)` to load the pose model used by head-movement actions. Keep the session for the whole camera sequence. Read eye status, blink, shake, head-raise and jaw-open results each frame, then update the application challenge state.
 
 ```java
 MultipleFaceData faces = InspireFace.ExecuteFaceTrack(session, stream);
@@ -292,11 +380,14 @@ if (faces.detectedNum > 0) {
     }
     FaceInteractionState eyes = InspireFace.GetFaceInteractionStateResult(session);
     FaceInteractionsActions actions = InspireFace.GetFaceInteractionActionsResult(session);
-    if (eyes == null || actions == null) throw new IllegalStateException("No action results");
-    for (int i = 0; i < faces.detectedNum && i < actions.num && i < eyes.num; i++) {
+    if (eyes == null || actions == null || eyes.num != faces.detectedNum
+            || actions.num != faces.detectedNum)
+        throw new IllegalStateException("Incomplete action results");
+    for (int i = 0; i < faces.detectedNum; i++) {
         System.out.println(faces.trackIds[i] + " " + eyes.leftEyeStatusConfidence[i]
                 + " " + eyes.rightEyeStatusConfidence[i]
-                + " " + actions.blink[i] + " " + actions.shake[i]);
+                + " " + actions.blink[i] + " " + actions.shake[i]
+                + " " + actions.headRaise[i] + " " + actions.jawOpen[i]);
     }
 }
 ```

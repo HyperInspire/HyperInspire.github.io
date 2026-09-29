@@ -117,6 +117,46 @@ func countPackedFaces(session: FaceSession, bgra: inout [UInt8],
 
 Finish detection, analysis and feature extraction before leaving these scopes. Do not return the stream or its borrowed face pointers from a `withUnsafeMutableBytes` callback. For a file image, Objective-C `IFImageBitmap` and Swift `ImageBitmap` own decoded storage; `snapshotStream` copies pixels into an independent stream. See the [Apple examples](../using-with/apple.md) for file loading and error handling.
 
+## Java image buffers {#java-image-buffers}
+
+The JVM binding accepts raw pixels in a writable direct `ByteBuffer`. BGR needs `width * height * 3` tightly packed bytes; copy padded image rows into packed storage first. Allocate with `ByteBuffer.allocateDirect(size)`, rather than `ByteBuffer.wrap(byte[])`.
+
+This helper reads one BGR frame. Load the model and create a session first. Set `pixels.position()` to the first pixel and ensure `remaining()` covers the whole image. If you just filled the buffer using `put()`, call `flip()` before passing it to the SDK.
+
+```java
+import java.nio.ByteBuffer;
+import com.insightface.sdk.inspireface.jni.NativeTypes.*;
+import static com.insightface.sdk.inspireface.jni.Native.*;
+import static com.insightface.sdk.inspireface.jni.NativeConstants.*;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+
+public final class PackedBgr {
+    // SDK and session are initialized. pixels starts at the first BGR byte.
+    public static int countFaces(long session, ByteBuffer pixels,
+                                 int width, int height) {
+        HFImageData input = new HFImageData();
+        input.data = pixels;
+        input.width = width;
+        input.height = height;
+        input.format = HF_STREAM_BGR;
+        input.rotation = HF_CAMERA_ROTATION_0;
+        long[] stream = new long[1];
+        try {
+            check(HFCreateImageStream(input, stream));
+            HFMultipleFaceData faces = new HFMultipleFaceData();
+            check(HFExecuteFaceTrack(session, stream[0], faces));
+            return faces.detectedNum;
+        } finally {
+            if (stream[0] != 0) HFReleaseImageStream(stream[0]);
+        }
+    }
+}
+```
+
+JNI retains a reference to a Java input buffer until the stream is released or its input is replaced. Do not change the pixels or return them to a pool while processing is in progress. If `pixels` came from `HFImageBitmapGetData`, it borrows native bitmap storage: keep the bitmap handle alive too. The Java reference does not prevent `HFReleaseImageBitmap` from freeing those pixels.
+
+For a complete file-input program, see [Java integration](../using-with/java.md). Token, feature and analysis `ByteBuffer` views also follow the [result lifetime rules](./arch.md#java-object-lifetimes).
+
 ## NumPy input
 
 Use `uint8` arrays with shape `(height, width, 3)` for BGR. Current Python also accepts `(height, width)` gray and `(height, width, 4)` BGRA arrays. To make storage explicit:

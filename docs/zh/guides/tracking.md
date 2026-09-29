@@ -33,7 +33,7 @@ track ID 用于连接同一段序列中的观测结果，不代表识别出的�
 
 ## 视频处理循环 {#a-video-loop}
 
-下面按接入语言切换示例，每种写法都在连续帧间复用会话。原生、Objective-C、Swift、HarmonyOS 和 Python 示例使用 1.2.4 接口，Android 使用 Java 1.2.0 包。Objective-C 与 Swift 示例需搭配包含这两种接口的 Apple framework。
+下面按接入语言切换示例，每种写法都在连续帧间复用会话。示例对应原生 SDK 1.2.4；Android 使用 [1.2.4.post1 AAR](../using-with/android.md)。Objective-C 与 Swift 示例需搭配包含这两种接口的 Apple framework。
 
 ::: tabs #api-language
 
@@ -126,9 +126,40 @@ func trackFrame(session: FaceSession, stream: ImageStream) throws {
 // After the camera worker stops: try session.close()
 ```
 
+@tab Java
+
+按 [Java 接入说明](../using-with/java.md)初始化后，调用一次 `createTracker()`，再将每帧的图像流句柄传给 `trackFrame`。在同一工作线程上按顺序处理；每帧完成后释放图像流，整段序列结束后释放会话。`trackIds` 和 `trackCounts` 是使用本机字节序的借用 `ByteBuffer`，`getInt` 的参数是**字节偏移**。下一次跟踪、重置或释放会话前读完这些值。
+
+```java
+import com.insightface.sdk.inspireface.jni.NativeTypes.*;
+import static com.insightface.sdk.inspireface.jni.Native.*;
+import static com.insightface.sdk.inspireface.jni.NativeConstants.*;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+
+public final class TrackingExample {
+    public static long createTracker() {
+        long[] session = new long[1];
+        check(HFCreateInspireFaceSessionOptional(
+                HF_ENABLE_NONE, HF_DETECT_MODE_LIGHT_TRACK, 5, 320, -1, session));
+        return session[0];
+    }
+
+    public static void trackFrame(long session, long stream) {
+        HFMultipleFaceData faces = new HFMultipleFaceData();
+        check(HFExecuteFaceTrack(session, stream, faces));
+        for (int i = 0; i < faces.detectedNum; i++) {
+            int offset = i * Integer.BYTES;
+            System.out.println("track=" + faces.trackIds.getInt(offset)
+                    + " observations=" + faces.trackCounts.getInt(offset));
+        }
+    }
+    // After the camera worker stops: check(HFReleaseInspireFaceSession(session));
+}
+```
+
 @tab Android
 
-`GlobalLaunch` 成功后创建一次会话，随后每帧调用 `trackFrame`。图像流由当前摄像头帧创建，格式转换和释放方式见 [Android 摄像头接入](../using-with/android.md#process-camera-frames)。以下数据类型位于 `com.insightface.sdk.inspireface.base`。
+`GlobalLaunch` 成功后创建一次会话，随后每帧调用 `trackFrame`。图像流由当前摄像头帧创建，格式转换和释放方式见 [Android 摄像头接入](../using-with/android.md#process-camera-frames)。以下数据类型位于 `com.insightface.sdk.inspireface.base`。`trackIds` 用于关联连续帧中的人脸，`trackCounts` 表示同一跟踪目标的累计观测次数。返回的数组与 token 已复制到 Java 内存；同一会话的调用仍需按帧串行执行。
 
 ```java
 static Session createTracker() {
@@ -145,7 +176,8 @@ static void trackFrame(Session session, ImageStream stream) {
     MultipleFaceData faces = InspireFace.ExecuteFaceTrack(session, stream);
     if (faces == null) throw new IllegalStateException("Tracking failed");
     for (int i = 0; i < faces.detectedNum; i++) {
-        System.out.println("track=" + faces.trackIds[i]);
+        System.out.println("track=" + faces.trackIds[i]
+                + " observations=" + faces.trackCounts[i]);
     }
 }
 // After the camera worker stops: InspireFace.ReleaseSession(session);
@@ -227,7 +259,7 @@ finally:
 | Detector interval | 控制跟踪期间运行检测的频率。 | 间隔越短，通常越容易及时发现新出现的人脸，但检测开销也更高。 |
 | Landmark smoothing | 平滑连续帧中的关键点位置。 | 增强平滑可以减少抖动，也可能增加响应延迟。 |
 
-支持的检测输入档位由模型包决定。C 使用 `HFQuerySupportedPixelLevelsForFaceDetection`，Objective-C 使用 `IFRuntime.getSupportedDetectionPixelLevels:error:`，Swift 使用 `InspireFaceRuntime.getSupportedDetectionPixelLevels(_:)` 查询可用档位，再从中选择会话使用的值。
+支持的检测输入档位由模型包决定。C 使用 `HFQuerySupportedPixelLevelsForFaceDetection`，Android 使用 `InspireFace.QuerySupportedPixelLevelsForFaceDetection()`，Objective-C 使用 `IFRuntime.getSupportedDetectionPixelLevels:error:`，Swift 使用 `InspireFaceRuntime.getSupportedDetectionPixelLevels(_:)` 查询可用档位，再从中选择会话使用的值。
 
 各接口对应的设置方法如下：
 
@@ -300,17 +332,44 @@ func tuneTracking(session: FaceSession) throws {
 }
 ```
 
-@tab Android
+@tab Java
 
-Java 1.2.0 封装提供以下方法，返回类型均为 `void`。
+传入帧循环使用的 `long` 会话句柄。每次调用返回状态码，失败时 `check` 抛出异常。在启动循环前，或前一帧处理完成后调整参数。
 
 ```java
+import com.insightface.sdk.inspireface.jni.NativeTypes.*;
+import static com.insightface.sdk.inspireface.jni.Native.*;
+import static com.insightface.sdk.inspireface.jni.NativeConstants.*;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+
+public final class TrackingSettings {
+    public static void tune(long session) {
+        check(HFSessionSetFaceDetectThreshold(session, 0.5f));
+        check(HFSessionSetFilterMinimumFacePixelSize(session, 32));
+        check(HFSessionSetTrackPreviewSize(session, 320));
+        check(HFSessionSetTrackModeDetectInterval(session, 20));
+        check(HFSessionSetTrackModeSmoothRatio(session, 0.05f));
+        check(HFSessionSetTrackModeNumSmoothCacheFrame(session, 5));
+    }
+}
+```
+
+@tab Android
+
+对已有的 `Session` 设置参数。`QuerySupportedPixelLevelsForFaceDetection()` 查询当前模型包支持的检测尺寸，`GetTrackPreviewSize()` 读取实际预览尺寸。下方同时展示丢失后重新检测与跟踪置信度的设置；使用目标摄像头的视频评估阈值。启用丢失恢复后，如果当前帧未执行检测且所有跟踪目标都丢失，会在这一帧补做一次检测，因此该帧耗时可能增加。
+
+```java
+System.out.println(java.util.Arrays.toString(
+        InspireFace.QuerySupportedPixelLevelsForFaceDetection()));
 InspireFace.SetFaceDetectThreshold(session, 0.5f);
 InspireFace.SetFilterMinimumFacePixelSize(session, 32);
 InspireFace.SetTrackPreviewSize(session, 320);
 InspireFace.SetTrackModeDetectInterval(session, 20);
 InspireFace.SetTrackModeSmoothRatio(session, 0.05f);
 InspireFace.SetTrackModeNumSmoothCacheFrame(session, 5);
+InspireFace.SetTrackLostRecoveryMode(session, true);
+InspireFace.SetLightTrackConfidenceThreshold(session, 0.6f);
+System.out.println("preview=" + InspireFace.GetTrackPreviewSize(session));
 ```
 
 @tab HarmonyOS
@@ -350,6 +409,6 @@ session.set_track_mode_num_smooth_cache_frame(5)
 
 ## 重置跟踪序列 {#resetting-a-sequence}
 
-切换摄像头、跳转视频位置或改变输入方向后，应重置跟踪历史。C 提供 `HFSessionClearTrackingFace`，C++ 提供 `Session::ClearTrackingFace`，Objective-C 使用 `[session clearTrackingWithError:&error]`，Swift 使用 `try session.clearTracking()`，HarmonyOS 使用 `session.clearTracking()`。使用 Python 高层接口或 Java 1.2.0 包时，重新创建会话开始新序列。
+切换摄像头、跳转视频位置或改变输入方向后，应重置跟踪历史。C 与 Java 提供 `HFSessionClearTrackingFace`，C++ 提供 `Session::ClearTrackingFace`，Objective-C 使用 `[session clearTrackingWithError:&error]`，Swift 使用 `try session.clearTracking()`，HarmonyOS 使用 `session.clearTracking()`，Android 使用 `InspireFace.ClearTrackingFace(session)`。清空前先处理完上一帧，清空后继续复用该会话。使用 Python 高层接口时，重新创建会话开始新序列。
 
 按应用需要的输出启用姿态、质量、识别和其他分析模型。优化整个循环之前，先[分别测量检测、跟踪和分析的耗时](./benchmark-remark(updating).md)。

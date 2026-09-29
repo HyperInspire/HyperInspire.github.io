@@ -166,6 +166,47 @@ func compareImages(session: FaceSession, first: ImageStream,
 
 </details>
 
+@tab Java
+
+使用 [Java JVM SDK](../using-with/java.md)。添加下面的 import，并将这些方法放入应用类中。创建 `session` 时启用 `HF_ENABLE_FACE_RECOGNITION`，两份输入 stream 由调用方持有。两份特征各自分配原生内存，提取失败时 `try`-with-resources 也会释放它们。
+
+```java
+import com.insightface.sdk.inspireface.jni.NativeTypes.*;
+import static com.insightface.sdk.inspireface.jni.Native.*;
+import static com.insightface.sdk.inspireface.jni.NativeConstants.*;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+```
+
+```java
+static HFFaceFeature allocateFeature() {
+    HFFaceFeature feature = new HFFaceFeature();
+    check(HFCreateFaceFeature(feature));
+    return feature;
+}
+
+static void extractOne(long session, long stream, HFFaceFeature output) {
+    HFMultipleFaceData faces = new HFMultipleFaceData();
+    check(HFExecuteFaceTrack(session, stream, faces));
+    if (faces.detectedNum != 1) {
+        throw new IllegalArgumentException("Expected exactly one face");
+    }
+    check(HFFaceFeatureExtractTo(session, stream, faces.tokens[0], output));
+}
+
+static float compareImages(long session, long first, long second) {
+    try (HFFaceFeature enrolled = allocateFeature();
+         HFFaceFeature query = allocateFeature()) {
+        extractOne(session, first, enrolled);
+        extractOne(session, second, query);
+        float[] score = new float[1], threshold = new float[1];
+        check(HFFaceComparison(enrolled, query, score));
+        check(HFGetRecommendedCosineThreshold(threshold));
+        System.out.println("score=" + score[0] + " match=" + (score[0] >= threshold[0]));
+        return score[0];
+    }
+}
+```
+
 @tab Android
 
 创建会话时传入 `InspireFace.CreateCustomParameter().enableRecognition(true)`。辅助方法接收有效的图像流，返回 Java 持有的特征。先完成提取，再释放图像流；全部使用结束后释放会话。
@@ -332,7 +373,7 @@ python compare.py enrollment.jpg query.jpg --model /path/to/Pikachu
 
 FeatureHub 用整数 ID 关联特征向量。姓名、账户等应用信息放在自己的数据库中，通过该 ID 关联。
 
-下面假设 SDK 已启动，`enrolled` 和 `query` 是用对应接口提取的特征。C、C++、Objective-C、Swift、Python 和 HarmonyOS 使用 1.2.4 接口，Android 使用 Java 1.2.0 包。
+下面假设 SDK 已启动，`enrolled` 和 `query` 是用对应接口提取的特征。C、C++、Objective-C、Swift、Python 和 HarmonyOS 使用 1.2.4 接口，Android 使用 1.2.4.post1 AAR。
 
 ::: tabs #api-language
 
@@ -459,9 +500,43 @@ func searchGallery(enrolled: FaceFeatureBuffer, query: FaceFeatureBuffer) throws
 }
 ```
 
+@tab Java
+
+传入上一节分配的两份特征。此方法启用内存图库，插入 ID 1001 后进行检索。应用中应统一管理进程共享的 FeatureHub，初始化一次，待所有使用方结束后再关闭。通过 `found` 判断是否匹配，不能用 ID 是否为零判断。
+
+```java
+static void searchGallery(HFFaceFeature enrolled, HFFaceFeature query) {
+    float[] threshold = new float[1];
+    check(HFGetRecommendedCosineThreshold(threshold));
+    HFFeatureHubConfiguration config = new HFFeatureHubConfiguration();
+    config.primaryKeyMode = HF_PK_MANUAL_INPUT;
+    config.enablePersistence = 0;
+    config.persistenceDbPath = "";
+    config.searchThreshold = threshold[0];
+    config.searchMode = HF_SEARCH_MODE_EXHAUSTIVE;
+    check(HFFeatureHubDataEnable(config));
+    try {
+        HFFaceFeatureIdentity identity = new HFFaceFeatureIdentity();
+        identity.id = 1001L;
+        identity.feature = enrolled;
+        long[] insertedId = new long[1];
+        check(HFFeatureHubInsertFeature(identity, insertedId));
+        HFFeatureHubSearchResultV2 result = new HFFeatureHubSearchResultV2();
+        check(HFFeatureHubFaceSearchV2(query, result));
+        if (result.found != 0) {
+            System.out.println("id=" + result.id + " score=" + result.confidence);
+        } else {
+            System.out.println("No match above threshold");
+        }
+    } finally {
+        check(HFFeatureHubDataDisable());
+    }
+}
+```
+
 @tab Android
 
-`enrolled` 和 `query` 是 Java `FaceFeature`。Java 1.2.0 返回 ID 和分数。先检查结果非 null，再通过 `id != -1` 判断匹配成功。返回 null 表示调用失败。
+`enrolled` 和 `query` 是 Java `FaceFeature`。Android 1.2.4.post1 内部使用 V2 搜索，返回 ID 和分数。先检查结果非 null，再通过 `id != -1` 判断匹配成功。查询成功但没有匹配时，返回 `id == -1`、`searchConfidence == -1`、`feature == null`；结果对象本身为 null 才表示调用失败。
 
 ```java
 FeatureHubConfiguration config = InspireFace.CreateFeatureHubConfiguration()
@@ -559,7 +634,7 @@ finally:
 
 :::
 
-空库和没有符合条件的记录都是正常结果。使用结果前先检查匹配标志：C/C++、Objective-C、Swift 和 ArkTS 的 `found`、Python 的 `matched`；Java 1.2.0 则检查结果非 null 且 `id != -1`。Top-k 搜索同样应用配置的阈值，因此返回数量可能少于 `k`。
+空库和没有符合条件的记录都是正常结果。使用结果前先检查匹配标志：C/C++、Java JVM、Objective-C、Swift 和 ArkTS 的 `found`、Python 的 `matched`；Android 1.2.4.post1 则检查结果非 null 且 `id != -1`。Top-k 搜索同样应用配置的阈值，因此返回数量可能少于 `k`。
 
 | Option | 行为说明 |
 | --- | --- |
@@ -674,9 +749,43 @@ func maintainGallery(replacement: FaceFeatureBuffer, query: FaceFeatureBuffer) t
 }
 ```
 
+@tab Java
+
+调用前应已启用 FeatureHub，且 ID 1001 存在。Top-k 分数和 ID 是借用原生内存的 `ByteBuffer`，应在下一次 top-k 检索前读取或复制。字节偏移分别为 `i * Float.BYTES` 和 `i * Long.BYTES`；ID 列表也要在修改图库前读完。
+
+```java
+static void maintainGallery(HFFaceFeature replacement, HFFaceFeature query) {
+    HFFaceFeatureIdentity stored = new HFFaceFeatureIdentity();
+    check(HFFeatureHubGetFaceIdentity(1001L, stored));
+    float[] copied = new float[stored.feature.size];
+    stored.feature.data.asFloatBuffer().get(copied);
+    System.out.println("copied feature length=" + copied.length);
+    HFFaceFeatureIdentity identity = new HFFaceFeatureIdentity();
+    identity.id = 1001L;
+    identity.feature = replacement;
+    check(HFFeatureHubFaceUpdate(identity));
+    HFSearchTopKResults top = new HFSearchTopKResults();
+    check(HFFeatureHubFaceSearchTopK(query, 5, top));
+    for (int i = 0; i < top.size; i++) {
+        long id = top.ids.getLong(i * Long.BYTES);
+        float score = top.confidence.getFloat(i * Float.BYTES);
+        System.out.println("id=" + id + " score=" + score);
+    }
+    int[] count = new int[1];
+    check(HFFeatureHubGetFaceCount(count));
+    System.out.println("entries=" + count[0]);
+    HFFeatureHubExistingIds ids = new HFFeatureHubExistingIds();
+    check(HFFeatureHubGetExistingIds(ids));
+    for (int i = 0; i < ids.size; i++) {
+        System.out.println("stored=" + ids.ids.getLong(i * Long.BYTES));
+    }
+    check(HFFeatureHubFaceRemove(1001L));
+}
+```
+
 @tab Android
 
-Java 1.2.0 返回 `SearchTopKResults`；`num` 为 0 是正常结果，返回 null 表示调用失败。
+Android 1.2.4.post1 返回 `SearchTopKResults`；`num` 为 0 是正常结果，返回 null 表示调用失败。`FeatureHubGetExistingIds()` 和 `FeatureHubGetFaceIdentity()` 返回独立的 Java 副本，ID 始终使用 `long`。包括启用、关闭在内的所有人脸库操作，应放到同一个工作线程，或使用同一把应用锁。
 
 ```java
 if (!InspireFace.FeatureHubFaceUpdate(FaceFeatureIdentity.create(1001L, replacement))) {
@@ -690,6 +799,15 @@ for (int i = 0; i < top.num; i++) {
 int count = InspireFace.FeatureHubGetFaceCount();
 if (count < 0) throw new IllegalStateException("Count failed");
 System.out.println("entries=" + count);
+long[] ids = InspireFace.FeatureHubGetExistingIds();
+if (ids == null) throw new IllegalStateException("Cannot list IDs");
+for (long id : ids) {
+    FaceFeatureIdentity stored = InspireFace.FeatureHubGetFaceIdentity(id);
+    if (stored == null || stored.feature == null) {
+        throw new IllegalStateException("Cannot read feature " + id);
+    }
+    System.out.println("stored=" + id + " dimensions=" + stored.feature.data.length);
+}
 if (!InspireFace.FeatureHubFaceRemove(1001L)) {
     throw new IllegalStateException("Cannot remove feature");
 }
@@ -740,6 +858,8 @@ ArkTS 使用 `enablePersistence: true`，并将 `persistenceDbPath` 设为应用
 
 Apple 接入时，在启用前设置 `HFFeatureHubConfiguration.enablePersistence` 和 `persistenceDbPath`，数据库文件放在应用可写的 Application Support 目录中。Swift 使用 `withCString` 保持路径的 C 字符串有效，直到 `FeatureHub.enable(configuration:)` 返回；启用调用会同步读取路径。
 
+Java JVM 在启用 FeatureHub 前设置 `enablePersistence = 1`，并将 `persistenceDbPath` 设为可写的数据库文件路径。路径使用 Java `String`，JNI 调用会同步读取它。
+
 同一进程中的会话共享 FeatureHub。初始化一次后，在连续帧处理中复用；使用它的工作线程结束后再关闭。
 
 在录入元数据中保存识别模型标识和 SDK 版本，录入向量与查询向量使用同一模型。更换模型时，重新提取录入图像并评估阈值。
@@ -751,5 +871,7 @@ Apple 接入时，在启用前设置 `HFFeatureHubConfiguration.enablePersistenc
 `HFFeatureHubFaceSearchV2` 通过 `found` 明确报告是否找到匹配。它返回的特征数据是借用的缓存，在同一线程的下一次单人脸搜索前有效；需要长期保留时应复制。当前 Python 封装会将原生特征数组复制到由 Python 持有的内存中。
 
 Apple 的 `IFFeatureBuffer` / `FaceFeatureBuffer` 拥有独立的特征内存，但 `borrowedFeature` 只返回视图，使用期间应保持缓冲区打开。`IFSession` 的特征 getter 和 Swift 的 `withUnsafeFeature(in:token:)` 借用会话提取缓存；录入与查询向量需要同时保留时，使用两份独立的特征缓冲区。ARC 会释放封装对象，但不会让借用指针在下一次提取或显式 `close()` 后继续有效。
+
+Java JVM 绑定沿用这些原生内存的生命周期。`HFFaceFeature.data` 是 direct `ByteBuffer` 视图，不是 Java 自有副本。只有通过 `HFCreateFaceFeature` 初始化的特征可以 `close()` 或释放，而且必须使用分配时的同一个描述对象。`HFFaceFeatureExtract`、图库查询和检索返回的特征都是借用数据；需要跨后续调用保留时，先复制到 Java `float[]` 或应用自己分配的 direct buffer。仅保留 `ByteBuffer` 引用不会延长原生资源的生命。
 
 组合特征提取、检索与异步处理前，可先查看 [C 接口的内存归属表](../using-with/c-cpp.md#image-buffers-and-ownership)。

@@ -4,7 +4,7 @@
 
 ## 确认实际加载的 SDK {#identify-the-loaded-sdk}
 
-当前 1.2.4 Python 封装与匹配的原生库可以这样检查：
+当前 PyPI 包已包含以下诊断接口：
 
 ```python
 import inspireface as isf
@@ -17,7 +17,7 @@ print(isf.diagnostic_info())
 
 同时检查 Python 包版本和原生 SDK 版本。如果设置了 `INSPIREFACE_LIBRARY_PATH`，也记录这个路径：程序会加载它指定的原生库，替代 wheel 自带的库。
 
-上面的诊断调用使用 SDK 1.2.4。较早的 SDK 可以记录 `isf.version()` 和加载的库路径。
+**1.2.4.post1** PyPI 包的原生版本为 **1.2.4**，C API level 为 **2**。旧环境使用 `python -m pip install --upgrade inspireface` 升级。如果 `INSPIREFACE_LIBRARY_PATH` 仍指向旧库，清除该设置以使用包内 CPU 库，或同时更新自定义库。更新后重新启动 Python 进程。
 
 ## 导入或加载库失败 {#library-import-or-loading-fails}
 
@@ -31,6 +31,39 @@ print(isf.diagnostic_info())
 Linux 使用 `ldd /path/to/libInspireFace.so` 查看动态依赖；macOS 使用 `otool -L /path/to/libInspireFace.dylib`。
 
 在首次导入前设置 `INSPIREFACE_LIBRARY_PATH`。修改路径后，重新启动进程以加载指定的库。
+
+## Java 原生库与缓冲区错误 {#java-integration-fails}
+
+| Symptom | 检查方法 |
+| --- | --- |
+| `no InspireFaceJNI in java.library.path` | 启动 JVM 时用 `-Djava.library.path` 指定原生库目录，或用 `-Dinspireface.native.path` 指定 JNI 库文件的绝对路径。 |
+| JNI 方法缺失或 ABI 校验失败 | 使用同一次构建的 JAR 和原生库，替换后重新启动 JVM。 |
+| 库文件存在但加载失败 | 检查库与运行中 JVM 的架构是否一致，以及核心库依赖是否完整；arm64 系统也可能运行 x86_64 JVM。 |
+| 缓冲区触发 `IllegalArgumentException` | 使用可写的 direct `ByteBuffer`，检查 `position`、`limit`、对齐与剩余字节数。`ByteBuffer.wrap(byte[])` 创建的是堆缓冲区。 |
+| 其他调用后结果发生变化 | 在有效期内复制所需值，或保留独立快照与对应像素；只保留 `ByteBuffer` 引用不会保留原生内存。 |
+| Java GC 后原生内存仍未释放 | 显式释放 Session、图像流、位图、快照和抓拍句柄。 |
+
+`Native` 方法返回 C 状态码；`InspireFaceException.check(status)` 会在失败时抛出异常，`getCode()` 保留错误码。记录错误码和消息，方便定位问题。JNI 参数校验也可能在原生调用前抛出 `IllegalArgumentException`。接入和构建步骤见 [Java 接入](../using-with/java.md)与 [Java 打包](../build/java.md)。
+
+## Android 1.2.4.post1 升级与打包 {#android-124-upgrade}
+
+| Symptom | 检查方法 |
+| --- | --- |
+| Gradle 找不到发布版本 | 依赖使用 `com.github.HyperInspire:inspireface-android-sdk:v1.2.4.post1`，保留 `v` 前缀，并配置 JitPack 仓库。 |
+| 查询版本只显示 `1.2.4` | 这是原生版本，Android 发布修订为 `1.2.4.post1`。日志中同时记录依赖版本、原生版本与 C API level。 |
+| Duplicate class / duplicate `.so` | 检查旧 AAR、本地 JAR、复制的 Java 类和 `jniLibs`；完整 AAR 已提供这些内容，每个 ABI 只保留配套的一份 SDK 库。 |
+| 加载 `InspireFaceJNI` 失败 | Android 新包加载的是 `InspireFace`；检查是否混入旧 JAR 或 loader。桌面 JVM 仍使用单独的 JNI 库。 |
+| Debug 正常，混淆后的 Release 失败 | 保留完整 AAR 的 consumer rules；自行打包 JAR 时按 [Android 构建](../build/android.md)配置 R8/ProGuard 规则。 |
+| 图像流释放后仍占用内存或再次释放出错 | 高层创建的流用 `ImageStream.close()` / `InspireFace.ReleaseImageStream`；`Native` 创建的流用 `Native.HFReleaseImageStream`，不能混用。 |
+| 旧代码读取 `version.information` 无法编译 | 改用 `InspireFace.QueryInspireFaceDiagnosticInformation()`；版本对象只读取实际声明的版本字段。 |
+
+`Session`、`ImageStream`、`FaceCapture` 和 `FaceDetectionSnapshot` 都支持显式关闭。先停止工作线程，关闭抓拍与帧资源，再关闭 Session。高层复制结果与底层借用视图的区别见 [Android 生命周期](./arch.md#android-object-lifetimes)。
+
+## 不送帧时 CPU 仍有较高占用 {#cpu-usage-between-frames}
+
+先确认应用已经停止提交帧，并检查相机线程或队列是否仍在循环。当前 SDK 的 CPU 推理默认使用 `NORMAL`；如果应用显式设置过 `HIGH`，在创建会话前切回 `NORMAL`，关闭旧会话后重新创建，再比较空闲占用、帧耗时与温度。
+
+`CPUEngine` 的设置不会重新配置已初始化的运行时，也不改变模型线程数或数值精度。Java、Android 和 C++ 的调用方式见 [CPU 运行策略](../using-with/arm.md#cpu-power-mode)。
 
 ## Apple Framework 或相机接入失败 {#apple-integration-fails}
 

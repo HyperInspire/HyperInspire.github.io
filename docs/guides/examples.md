@@ -2,7 +2,68 @@
 
 Copy the code below into files with the names shown, then run the matching command. Each program reads local images or video. The full source is in a collapsed panel so you can open and copy the file you need.
 
-For individual features, the [API index](./api-coverage.md) links to tabbed C API, C++, Android, Python, HarmonyOS, Objective-C and Swift examples for tracking, analysis, landmarks, recognition, liveness and capture. [Additional recipes](./api-recipes.md) cover alignment, score formatting and diagnostics.
+For individual features, the [API index](./api-coverage.md) links to tabbed C API, C++, Java, Android, Python, HarmonyOS, Objective-C and Swift examples for tracking, analysis, landmarks, recognition, liveness and capture. [Additional recipes](./api-recipes.md) cover alignment, score formatting and diagnostics.
+
+## Java {#java}
+
+Use `inspireface.jar` and its matching JNI libraries on a regular JVM; see [Java packaging](../build/java.md) for the build. Save the program below as `examples/DetectFaces.java` inside the installed `Java/` directory. It loads an image through the SDK, detects faces and prints their rectangles, without Android or OpenCV.
+
+<details>
+<summary>java/DetectFaces.java — Expand complete code</summary>
+
+```java
+import com.insightface.sdk.inspireface.jni.NativeTypes.*;
+import static com.insightface.sdk.inspireface.jni.Native.*;
+import static com.insightface.sdk.inspireface.jni.NativeConstants.*;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+
+/**
+ * Non-Android JVM example. Run from the installed Java SDK directory:
+ * javac -cp inspireface.jar examples/DetectFaces.java
+ * java -Djava.library.path=native/macos-arm64 -cp inspireface.jar:examples DetectFaces /path/Pikachu /path/face.jpg
+ * Select the native directory matching the JVM OS/architecture; Windows uses ; in the classpath.
+ */
+public final class DetectFaces {
+    public static void main(String[] args) {
+        if (args.length != 2) throw new IllegalArgumentException("Usage: DetectFaces MODEL_FILE IMAGE_FILE");
+        check(HFLaunchInspireFace(args[0]));
+        long[] session = new long[1], bitmap = new long[1], stream = new long[1];
+        try {
+            check(HFCreateInspireFaceSessionOptional(HF_ENABLE_NONE, HF_DETECT_MODE_ALWAYS_DETECT, 10, -1, -1, session));
+            check(HFCreateImageBitmapFromFilePath(args[1], 3, bitmap));
+            HFImageBitmapData pixels = new HFImageBitmapData();
+            check(HFImageBitmapGetData(bitmap[0], pixels));
+            HFImageData input = new HFImageData();
+            input.data = pixels.data; input.width = pixels.width; input.height = pixels.height;
+            input.format = HF_STREAM_BGR; input.rotation = HF_CAMERA_ROTATION_0;
+            check(HFCreateImageStream(input, stream)); // Borrows pixels; keep bitmap alive.
+            HFMultipleFaceData faces = new HFMultipleFaceData();
+            check(HFExecuteFaceTrack(session[0], stream[0], faces));
+            System.out.println("Detected " + faces.detectedNum + " face(s)");
+            for (HFaceRect rect : faces.rects) {
+                System.out.printf("x=%d y=%d width=%d height=%d%n", rect.x, rect.y, rect.width, rect.height);
+            }
+        } finally {
+            if (stream[0] != 0) HFReleaseImageStream(stream[0]);
+            if (bitmap[0] != 0) HFReleaseImageBitmap(bitmap[0]);
+            if (session[0] != 0) HFReleaseInspireFaceSession(session[0]);
+            HFTerminateInspireFace();
+        }
+    }
+}
+```
+
+</details>
+
+Run from the `Java/` directory (this command selects macOS arm64 libraries):
+
+```bash
+javac -cp inspireface.jar examples/DetectFaces.java
+java -Djava.library.path=native/macos-arm64 -cp inspireface.jar:examples \
+  DetectFaces /absolute/path/to/Pikachu /absolute/path/to/face.jpg
+```
+
+On Linux, select the matching `native/linux-*` directory; on Windows, use `;` as the classpath separator. Choose native libraries for the **running JVM's** architecture. See [Java integration](../using-with/java.md) for the full setup and memory rules.
 
 ## Python {#python}
 
@@ -17,7 +78,7 @@ python -m pip install inspireface opencv-python
 | [capture.py](#python-capture) | Save a selected full frame after capture is ready. |
 | [benchmark.py](#python-benchmark) | Report warmed still-image detection latency. |
 
-Capture and benchmark examples use the 1.2.4 wrapper with a matching native library; see [custom library setup](../using-with/python.md#use-a-local-native-build).
+All Python examples below, including capture and benchmarks, work with the **1.2.4.post1 PyPI package**, which includes the 1.2.4 native SDK. See [custom library setup](../using-with/python.md#use-a-local-native-build) when using another inference backend or your own native build.
 
 Detection can download the default `Pikachu` pack if `--model` is omitted. The other commands below use an explicit resource path. A missing image is an error; a readable image with no detected faces is a normal detection result.
 

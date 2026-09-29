@@ -30,6 +30,7 @@ const sidebar = [
       { text: 'C API', link: '/using-with/c-cpp' },
       { text: 'C++', link: '/using-with/cpp' },
       { text: 'Python', link: '/using-with/python' },
+      { text: 'Java', link: '/using-with/java' },
       { text: 'Android', link: '/using-with/android' },
       { text: 'Apple', link: '/using-with/apple' },
       { text: 'iOS', link: '/using-with/ios' },
@@ -50,6 +51,7 @@ const sidebar = [
       { text: 'NVIDIA TensorRT', link: '/build/nvidia' },
       { text: 'Rockchip NPU', link: '/build/rockchip' },
       { text: 'Python packaging', link: '/build/python' },
+      { text: 'Java packaging', link: '/build/java' },
     ],
   },
   {
@@ -87,6 +89,7 @@ const chineseLabels = {
   'Image processing benchmarks': '图像处理性能',
   'Get and build the SDK': '获取和编译', 'Overview and downloads': '概述与下载',
   'Source and common options': '源码准备与通用选项', 'Python packaging': 'Python 打包',
+  'Java packaging': 'Java 打包',
 }
 
 function localizeSidebar(items) {

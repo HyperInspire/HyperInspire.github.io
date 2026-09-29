@@ -2,7 +2,7 @@
 
 InspireFace 是一个用于处理图片和视频中人脸的 C/C++ SDK。它可以检测人脸、跨帧跟踪、提取关键点和特征向量，也可以按需进行姿态、质量和 RGB 活体分析。你负责提供图像并使用结果；相机和应用界面由应用自身管理。
 
-C、C++、Python、Android Java、HarmonyOS ArkTS、Objective-C 和 Swift 都采用相同的处理流程。Apple 接口覆盖 iOS 与 macOS，支持图像输入、跟踪、分析、识别和抓拍。
+C、C++、Python、Java、Android、HarmonyOS ArkTS、Objective-C 和 Swift 都采用相同的处理流程。Apple 接口覆盖 iOS 与 macOS，支持图像输入、跟踪、分析、识别和抓拍。
 
 <figure>
 <img class="doc-banner" src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/inspireface-doc-images-web/banner.webp" alt="InspireFace 的检测、关键点、识别、活体与多平台部署示意" width="2048" height="683" />
@@ -81,6 +81,7 @@ Plus 新增被动活体与炫光活体，通过移动端实时采集、服务端
 | [C API](./using-with/c-cpp.md) | 原生应用、FFI 封装，以及需要明确管理资源所有权的集成。也可在 C++ 中使用。 |
 | [Python](./using-with/python.md) | 原型、脚本和服务，可直接传入 NumPy 数组。 |
 | [C++](./using-with/cpp.md) | 希望使用 `Session`、`Image` 和 `FrameProcess` 对象的应用。头文件和库需要来自同一版本。 |
+| [Java](./using-with/java.md) | 普通 JVM 上的桌面应用与服务，使用 JAR 和配套的原生库。 |
 | [Android](./using-with/android.md) | 通过 JNI 封装接入的 Java 或 Kotlin 应用。 |
 | [Objective-C / Swift](./using-with/apple.md) | Apple 原生接口，使用 NSError / throws 处理错误，并显式管理缓冲区和资源。 |
 | [iOS](./using-with/ios.md) | Xcode 接入、真机与模拟器构建、相机像素缓冲区。 |
@@ -99,7 +100,7 @@ InspireCV 负责图像操作和预处理。即使应用不需要人脸识别，�
 
 ## 示例对应的版本 {#about-these-examples}
 
-Native 和 Python 示例使用 InspireFace **1.2.4**，图像处理示例使用 InspireCV **1.0.2**，Android 示例会注明所需的 Java SDK 版本。添加快照、抓拍或诊断等调用时，也要保持语言封装、头文件和原生库配套。
+Native 和 Java 示例使用 InspireFace **1.2.4**，图像处理示例使用 InspireCV **1.0.2**。Python 示例使用 PyPI 的 **1.2.4.post1 包**，其中已包含 1.2.4 原生 SDK，支持快照、抓拍和诊断接口。Android 示例使用 **1.2.4.post1**，包内包含抓拍、快照与完整 Java API。使用自行编译的原生库时，保持语言封装、头文件和库配套。
 
 在 [SDK Releases](https://github.com/HyperInspire/InspireFace/releases) 和 [Python 包文件列表](https://pypi.org/project/inspireface/#files)中选择适合平台的版本。[常见问题](./guides/troubleshooting.md#identify-the-loaded-sdk)说明了如何查看应用实际加载的版本。
 

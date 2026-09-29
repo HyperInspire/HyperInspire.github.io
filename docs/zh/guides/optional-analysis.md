@@ -27,7 +27,7 @@ Quality、Mask、Attributes 和 Expression 都是可选模型。按需启用后�
 
 ## 读取分析结果 {#read-analysis-results}
 
-在下方选择 API。这些辅助函数创建会话并处理**一张静态图片**，可以接在平台基础检测示例之后使用。先启动 SDK 并准备输入，具体步骤见 [C](../using-with/c-cpp.md)、[C++](../using-with/cpp.md)、[Apple](../using-with/apple.md)、[Android](../using-with/android.md)、[HarmonyOS](../using-with/harmonyos.md) 和 [Python](../using-with/python.md)。接入视频时，把会话创建移到帧循环之外。
+在下方选择 API。这些辅助函数创建会话并处理**一张静态图片**，可以接在平台基础检测示例之后使用。先启动 SDK 并准备输入，具体步骤见 [C](../using-with/c-cpp.md)、[C++](../using-with/cpp.md)、[Apple](../using-with/apple.md)、[Java](../using-with/java.md)、[Android](../using-with/android.md)、[HarmonyOS](../using-with/harmonyos.md) 和 [Python](../using-with/python.md)。接入视频时，把会话创建移到帧循环之外。
 
 ::: tabs #api-language
 
@@ -225,9 +225,69 @@ func analyzeFrame(stream: ImageStream) throws {
 
 </details>
 
+@tab Java
+
+启动 [Java SDK](../using-with/java.md) 后传入有效的图像流句柄。函数创建并释放自己的会话，调用方保持图像流与像素有效。分数、类别和姿态通过本机字节序的借用 `ByteBuffer` 返回，需要在会话释放前读完。分数使用 `getFloat`，类别索引使用 `getInt`，两者都按字节偏移读取。
+
+<details>
+<summary>Java — 展开完整分析示例</summary>
+
+```java
+import com.insightface.sdk.inspireface.jni.NativeTypes.*;
+import static com.insightface.sdk.inspireface.jni.Native.*;
+import static com.insightface.sdk.inspireface.jni.NativeConstants.*;
+import static com.insightface.sdk.inspireface.jni.InspireFaceException.check;
+
+public final class JavaAnalysisExample {
+    public static void analyze(long stream) {
+        int pipeline = HF_ENABLE_QUALITY | HF_ENABLE_MASK_DETECT
+                | HF_ENABLE_FACE_ATTRIBUTE | HF_ENABLE_FACE_EMOTION;
+        long[] session = new long[1];
+        check(HFCreateInspireFaceSessionOptional(
+                pipeline | HF_ENABLE_FACE_POSE, HF_DETECT_MODE_ALWAYS_DETECT,
+                10, 320, -1, session));
+        try {
+            HFMultipleFaceData faces = new HFMultipleFaceData();
+            check(HFExecuteFaceTrack(session[0], stream, faces));
+            if (faces.detectedNum == 0) return;
+            check(HFMultipleFacePipelineProcessOptional(session[0], stream, faces, pipeline));
+            HFFaceQualityConfidence quality = new HFFaceQualityConfidence();
+            HFFaceMaskConfidence masks = new HFFaceMaskConfidence();
+            HFFaceAttributeResult attributes = new HFFaceAttributeResult();
+            HFFaceEmotionResult expressions = new HFFaceEmotionResult();
+            check(HFGetFaceQualityConfidence(session[0], quality));
+            check(HFGetFaceMaskConfidence(session[0], masks));
+            check(HFGetFaceAttributeResult(session[0], attributes));
+            check(HFGetFaceEmotionResult(session[0], expressions));
+            if (quality.num != faces.detectedNum || masks.num != faces.detectedNum
+                    || attributes.num != faces.detectedNum || expressions.num != faces.detectedNum) {
+                throw new IllegalStateException("Incomplete pipeline result");
+            }
+            for (int i = 0; i < faces.detectedNum; i++) {
+                int f = i * Float.BYTES;
+                int n = i * Integer.BYTES;
+                System.out.println("quality=" + quality.confidence.getFloat(f)
+                        + " mask=" + masks.confidence.getFloat(f)
+                        + " age=" + attributes.ageBracket.getInt(n)
+                        + " gender=" + attributes.gender.getInt(n)
+                        + " race=" + attributes.race.getInt(n)
+                        + " emotion=" + expressions.emotion.getInt(n));
+                System.out.println("roll=" + faces.angles.roll.getFloat(f)
+                        + " yaw=" + faces.angles.yaw.getFloat(f)
+                        + " pitch=" + faces.angles.pitch.getFloat(f));
+            }
+        } finally {
+            check(HFReleaseInspireFaceSession(session[0]));
+        }
+    }
+}
+```
+
+</details>
+
 @tab Android
 
-此示例使用 **1.2.0 Java 包**读取 Quality、Mask 和 Attributes。搭配该包对应的原生库时，启用 Quality 也会加载姿态模型。姿态从 `faces.angles[0]` 读取，这个版本提供第一张脸的有效姿态结果。使用示例时，保持 Java 包与原生库配套。
+此示例使用 **Android 1.2.4.post1** 读取 Quality、Mask、Attributes 和 Expression。创建会话时显式启用 `.enableFacePose(true)`，再从每张脸的 `faces.angles[i]` 读取姿态。检测和分析结果都复制为 Java 数组；整个检测、Pipeline 和结果读取过程应在同一工作线程上完成。
 
 <details>
 <summary>Android — 完整分析示例</summary>
@@ -242,7 +302,9 @@ public final class AnalysisExample {
         CustomParameter options = InspireFace.CreateCustomParameter()
                 .enableFaceQuality(true)
                 .enableMaskDetect(true)
-                .enableFaceAttribute(true);
+                .enableFaceAttribute(true)
+                .enableFaceEmotion(true)
+                .enableFacePose(true);
         Session session = InspireFace.CreateSession(
                 options, InspireFace.DETECT_MODE_ALWAYS_DETECT, 10, 320, -1);
         if (session == null || session.handle == 0L)
@@ -256,22 +318,21 @@ public final class AnalysisExample {
             FaceQualityConfidence quality = InspireFace.GetFaceQualityConfidence(session);
             FaceMaskConfidence masks = InspireFace.GetFaceMaskConfidence(session);
             FaceAttributeResult attributes = InspireFace.GetFaceAttributeResult(session);
-            if (quality == null || masks == null || attributes == null ||
+            FaceEmotionResult expressions = InspireFace.GetFaceEmotionResult(session);
+            if (quality == null || masks == null || attributes == null || expressions == null ||
                     quality.num != faces.detectedNum || masks.num != faces.detectedNum ||
-                    attributes.num != faces.detectedNum)
+                    attributes.num != faces.detectedNum || expressions.num != faces.detectedNum)
                 throw new IllegalStateException("Incomplete pipeline result");
             for (int i = 0; i < faces.detectedNum; ++i) {
                 System.out.println("quality=" + quality.confidence[i]
                         + " mask=" + masks.confidence[i]
                         + " age=" + attributes.ageBracket[i]
                         + " gender=" + attributes.gender[i]
-                        + " race=" + attributes.race[i]);
-                // The 1.2.0 JNI has a multi-face pose-copy bug; only read face 0.
-                if (i == 0 && faces.angles != null && faces.angles.length > 0 && faces.angles[0] != null) {
-                    FaceEulerAngle pose = faces.angles[i];
-                    System.out.println("roll=" + pose.roll + " yaw=" + pose.yaw
-                            + " pitch=" + pose.pitch);
-                }
+                        + " race=" + attributes.race[i]
+                        + " emotion=" + expressions.emotion[i]);
+                FaceEulerAngle pose = faces.angles[i];
+                System.out.println("roll=" + pose.roll + " yaw=" + pose.yaw
+                        + " pitch=" + pose.pitch);
             }
         } finally {
             InspireFace.ReleaseSession(session);
@@ -327,7 +388,7 @@ function analyzeFrame(stream: ImageStream): void {
 
 @tab Python
 
-上下文管理器和 `auto_launch=False` 需要 **1.2.4 源码封装及匹配的原生库**。传入 BGR `uint8` 数组。原生调用失败时抛出异常，正常处理但无人脸时返回空列表。
+PyPI 的 **1.2.4.post1 包**已支持下面使用的上下文管理器和 `auto_launch=False`。传入 BGR `uint8` 数组。原生调用失败时抛出异常，正常处理但无人脸时返回空列表。
 
 <details>
 <summary>Python — 完整分析示例</summary>
@@ -372,9 +433,9 @@ def analyze_frame(image):
 | Mask | 表示佩戴口罩的置信度。根据目标摄像头评估阈值，再将分数与阈值比较。 |
 | Attributes | 返回整数类别索引。先检查索引范围，再映射为标签。 |
 | Expression | 索引顺序为 `Neutral`、`Happy`、`Sad`、`Surprise`、`Fear`、`Disgust`、`Anger`。 |
-| Pose | 返回 roll、yaw 和 pitch 角度。C/C++/Python 需要先启用 `HF_ENABLE_FACE_POSE` 或对应的 C++ 选项，再读取角度。Objective-C 同样使用 `HF_ENABLE_FACE_POSE`；Swift 使用 `FaceFeatures` 的 `.pose`；HarmonyOS 使用 `Feature.FACE_POSE`。 |
+| Pose | 返回 roll、yaw 和 pitch 角度。C/C++/Python 需要先启用 `HF_ENABLE_FACE_POSE` 或对应的 C++ 选项，再读取角度。Objective-C 同样使用 `HF_ENABLE_FACE_POSE`；Swift 使用 `FaceFeatures` 的 `.pose`；HarmonyOS 使用 `Feature.FACE_POSE`；Android 使用 `.enableFacePose(true)`。 |
 
-完整的属性标签数组见 [Python 分析说明](../using-with/python.md#optional-analysis)。Pipeline 完成前保持输入像素不变，完成后再绘制或复用缓冲区。C、Objective-C 和 Swift getter 返回会话内部数组，下一次分析调用或会话关闭后仍要使用的值，应提前复制；C++ 向量和 Python 结果使用独立存储。
+完整的属性标签数组见 [Python 分析说明](../using-with/python.md#optional-analysis)。Pipeline 完成前保持输入像素不变，完成后再绘制或复用缓冲区。C、Objective-C 和 Swift getter 返回会话内部数组，下一次分析调用或会话关闭后仍要使用的值，应提前复制；C++ 向量、Android 便利接口的数组和 Python 结果使用独立存储。
 
 升级 Android 时，一起更新 Java 包及其配套的 JNI/原生库。各接口支持的分析输出见 [API 功能索引](./api-coverage.md)。
 

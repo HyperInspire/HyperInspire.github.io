@@ -99,9 +99,11 @@ Apple 构建脚本将可复用的依赖缓存放在 `build/apple-cache`，SDK �
 | `ISF_ENABLE_RKNN` | `OFF` | 启用 Rockchip NPU 后端。 |
 | `ISF_ENABLE_RGA` | `OFF` | 在支持的 RKNPU2 配置下启用 Rockchip 预处理。 |
 | `ISF_ENABLE_APPLE_EXTENSION` | `OFF` | 启用 Apple 扩展，包括 CoreML 支持。 |
+| `ISF_BUILD_JAVA` | `OFF` | 构建 portable JNI 库和兼容 Java 8 的 JAR，见 [Java 打包](./java.md)。 |
+| `ISF_BUILD_JAVA_TESTS` | `OFF` | 构建并运行本机 JVM 接口测试；需要同时启用 `ISF_BUILD_JAVA`。 |
 | `ISF_BUILD_APPLE_FRAMEWORK` | `OFF` | 在 Apple 平台构建 Objective-C Framework 和 Swift 封装。 |
 | `ISF_BUILD_APPLE_TESTS` | `OFF` | 构建 Apple API 合约测试。 |
-| `ISF_ENABLE_INSPIRECV_TASK_PREPROCESS` | `OFF` | 使用 Task 预处理路径。 |
+| `ISF_ENABLE_INSPIRECV_TASK_PREPROCESS` | `ON` | 使用 Task 预处理路径。 |
 
 表中列的是顶层默认值。平台脚本会覆盖其中部分选项，尤其是动态 / 静态链接、示例、测试和硬件后端。`ISF_INSPIRECV_SOURCE_DIR` 可以指定其他图像处理源码目录；更换后重新编译 SDK，并使用本次构建安装的配套头文件。
 
