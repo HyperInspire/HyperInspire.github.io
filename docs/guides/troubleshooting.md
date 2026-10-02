@@ -17,7 +17,7 @@ print(isf.diagnostic_info())
 
 Check both the Python package version and the native SDK version. If `INSPIREFACE_LIBRARY_PATH` is set, also record that path: it selects the native library in place of the one bundled with the wheel.
 
-For the **1.2.4.post1** PyPI package, the native version is **1.2.4** and C API level is **2**. Upgrade an older installation with `python -m pip install --upgrade inspireface`. If an old library is still selected through `INSPIREFACE_LIBRARY_PATH`, remove that override to use the bundled CPU library, or update the custom library as well. Restart the Python process after either change.
+For the **1.2.4.post3** PyPI package, the native version is **1.2.4** and C API level is **2**. Upgrade an older installation with `python -m pip install --upgrade inspireface`. If an old library is still selected through `INSPIREFACE_LIBRARY_PATH`, remove that override to use the bundled CPU library, or update the custom library as well. Restart the Python process after either change.
 
 ## Library import or loading fails
 
@@ -31,6 +31,31 @@ For the **1.2.4.post1** PyPI package, the native version is **1.2.4** and C API 
 On Linux, `ldd /path/to/libInspireFace.so` shows dynamic dependencies. On macOS, use `otool -L /path/to/libInspireFace.dylib`.
 
 Set `INSPIREFACE_LIBRARY_PATH` before the first import. After changing the path, restart the process to load the selected library.
+
+## Windows Python loading errors {#windows-python-loading}
+
+The PyPI CPU package includes a Windows x64 DLL from **1.2.4.post2** onward. Install with `python -m pip install inspireface opencv-python`; no SDK compilation or GPU runtime is needed for the published CPU wheel.
+
+| Symptom | Check |
+| --- | --- |
+| `No matching distribution found` | Use x64 Python 3.7 or newer and a package index carrying the Windows wheel. There is no Windows x86 or native ARM64 wheel. |
+| `WinError 193` / `not a valid Win32 application` | Use x64 Python with the x64 DLL. A 64-bit Windows installation can still run 32-bit Python. |
+| `WinError 126`, a missing module, or `VCRUNTIME140_1.dll` / `MSVCP140.dll` is missing | Install or repair the [Microsoft Visual C++ v14 x64 runtime](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist). A DLL can exist while one of its dependencies is missing. |
+| A native function cannot be found after upgrading | Check for a custom DLL selected by `INSPIREFACE_LIBRARY_PATH`; update it together with the wrapper or remove the override. |
+| `RuntimeError: InspireFace native library not found` | Check that the override points to a complete `.dll` filename, or reinstall the matching Windows wheel. |
+
+To inspect the interpreter and return to the bundled CPU library, run in PowerShell:
+
+```powershell
+python -c "import platform, struct, sys; print(sys.executable); print(platform.machine()); print(8 * struct.calcsize('P'))"
+python -m pip show inspireface
+Remove-Item Env:INSPIREFACE_LIBRARY_PATH -ErrorAction SilentlyContinue
+python -c "import inspireface as isf; print(isf.__version__); print(isf.version()); print(isf.c_api_level())"
+```
+
+The architecture should be `AMD64` or `x86_64`, with `64` pointer bits. Start a new Python process or restart the notebook kernel after changing libraries. For a local build, [Python packaging](../build/python.md#select-or-replace-a-shared-library) shows how to select the DLL and inspect its dependencies.
+
+Python accepts a Windows model path such as `C:/models/Pikachu` or `r"C:\models\Pikachu"`. Pass the resource-pack file to `launch`, not its parent folder.
 
 ## Java library or buffer errors {#java-integration-fails}
 

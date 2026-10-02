@@ -135,6 +135,7 @@ The deployment target applies to the native SDK. Keep the installed core and JNI
 | Target | Build approach |
 | --- | --- |
 | Linux / macOS CPU | Native host build above. |
+| Windows x64 CPU | Native SDK and Python packaging are available; the Java JNI adapter requires a separate build and validation (see below). |
 | Linux ARM CPU | Build on the board, or use the matching cross toolchain and target JNI headers. |
 | TensorRT / Rockchip / macOS CoreML | Combine `ISF_BUILD_JAVA=ON` with the native backend's build options and dependencies. |
 | Android | Follow the [Android build](./android.md); portable JNI and the Android API share one `libInspireFace.so`. |
@@ -144,7 +145,7 @@ Java does not select or install an inference backend on its own. Follow [NVIDIA]
 
 For cross-compilation, keep Java runtime tests disabled and run them on the target afterward. Cross-building the native SDK also requires the target's JNI headers and system dependencies; do not link host libraries into the target package. Build each macOS architecture separately so the native directory corresponds to one JVM architecture.
 
-The loader and install rules include Windows naming, but the repository does not provide a dedicated Windows Java build script. A Windows package requires a compatible core SDK build, JNI toolchain and symbol-check tooling; the Linux/macOS shell commands above are not a Windows build recipe.
+The [Windows build entry point](./windows.md) builds the C/C++ CPU SDK. It does not enable `ISF_BUILD_JAVA` or produce `InspireFaceJNI.dll`, and the Windows PyPI wheel does not include JNI. The portable Java loader and install rules recognize Windows paths, but a Windows JNI build still needs a matching x64 JDK and a compatible native export check. The current check invokes `nm -g`; MSVC `dumpbin` is not a drop-in replacement. Windows Java packaging is not covered by the SDK's Windows build workflow, so validate loading and the contract tests on Windows before shipping a custom adapter.
 
 ## Run the contract tests {#run-the-contract-tests}
 
@@ -203,7 +204,7 @@ otool -L native/macos-arm64/libInspireFaceJNI.dylib
 otool -L native/macos-arm64/libInspireFace.dylib
 ```
 
-The installed JNI adapter uses `$ORIGIN` on Linux and `@loader_path` on macOS to find its colocated core library. Backend dependencies may need additional runtime setup. On Windows, make the directory containing the dependent DLLs available through `PATH`.
+The installed JNI adapter uses `$ORIGIN` on Linux and `@loader_path` on macOS to find its colocated core library. Backend dependencies may need additional runtime setup. For a custom Windows JNI build, put `InspireFaceJNI.dll` and its matching `libInspireFace.dll` together and add that directory to `PATH`. Deploy the Microsoft Visual C++ x64 runtime required by the build; see [Windows](../using-with/windows.md).
 
 To update the SDK, replace the JAR and native directory together, then restart the JVM. Replacing only `libInspireFace` may leave missing functions or mismatched layouts. A detection run checks more than successful library loading: it also verifies that the selected model can execute with that native backend.
 

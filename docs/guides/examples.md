@@ -63,7 +63,7 @@ java -Djava.library.path=native/macos-arm64 -cp inspireface.jar:examples \
   DetectFaces /absolute/path/to/Pikachu /absolute/path/to/face.jpg
 ```
 
-On Linux, select the matching `native/linux-*` directory; on Windows, use `;` as the classpath separator. Choose native libraries for the **running JVM's** architecture. See [Java integration](../using-with/java.md) for the full setup and memory rules.
+On Linux, select the matching `native/linux-*` directory. Choose native libraries for the **running JVM's** architecture. The Windows CPU SDK and PyPI wheel do not include JNI; a Windows Java application needs a separately built adapter. See [Java integration](../using-with/java.md) for loading, classpath syntax and memory rules.
 
 ## Python {#python}
 
@@ -78,9 +78,15 @@ python -m pip install inspireface opencv-python
 | [capture.py](#python-capture) | Save a selected full frame after capture is ready. |
 | [benchmark.py](#python-benchmark) | Report warmed still-image detection latency. |
 
-All Python examples below, including capture and benchmarks, work with the **1.2.4.post1 PyPI package**, which includes the 1.2.4 native SDK. See [custom library setup](../using-with/python.md#use-a-local-native-build) when using another inference backend or your own native build.
+All Python examples below, including capture and benchmarks, work with the **1.2.4.post3 PyPI package**, which includes the 1.2.4 native SDK. See [custom library setup](../using-with/python.md#use-a-local-native-build) when using another inference backend or your own native build.
 
 Detection can download the default `Pikachu` pack if `--model` is omitted. The other commands below use an explicit resource path. A missing image is an error; a readable image with no detected faces is a normal detection result.
+
+Windows x64 uses the same Python files. After [installing the Windows package](../using-with/windows.md), run them from PowerShell with local paths, for example:
+
+```powershell
+python detect.py C:\images\face.jpg --model C:\models\Pikachu --output detected.jpg
+```
 
 ### Detect faces in an image {#python-detection}
 
@@ -367,6 +373,18 @@ cmake --build build --parallel 4
 ./build/detect_cpp /path/to/Pikachu face.jpg
 ```
 
+On Windows, use PowerShell from the Visual Studio 2022 x64 Native Tools environment with a Release x64 SDK:
+
+```powershell
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release `
+  "-DINSPIREFACE_ROOT=C:/SDKs/InspireFace" -DBUILD_CPP_EXAMPLE=ON
+cmake --build build --parallel 4
+.\build\detect_c.exe C:\models\Pikachu C:\images\face.jpg
+.\build\detect_cpp.exe C:\models\Pikachu C:\images\face.jpg
+```
+
+The Windows build uses the installed `InspireFace::InspireFace` target and copies a shared SDK's DLL beside both executables. See [Windows](../using-with/windows.md) for SDK layout and runtime requirements. For paths with Chinese or other non-ASCII characters, the [complete Windows example](../using-with/windows.md#a-complete-detection-program) shows how to convert UTF-16 command-line arguments to UTF-8 before calling the SDK.
+
 The C example prints bounding boxes. The C++ example also writes `detected-cpp.jpg` in the working directory. If your SDK contains only C headers, leave `BUILD_CPP_EXAMPLE` off. A custom static SDK may require additional transitive libraries; these instructions use a shared SDK.
 
 The [C](../using-with/c-cpp.md) and [C++](../using-with/cpp.md) pages explain the code and resource lifetime. Compile and run with headers and libraries from the same SDK build.
@@ -501,15 +519,22 @@ cmake_minimum_required(VERSION 3.20)
 project(inspireface_examples LANGUAGES C CXX)
 
 set(INSPIREFACE_ROOT "" CACHE PATH "SDK directory containing include/ and lib/")
-find_path(ISF_INCLUDE_DIR inspireface.h PATHS "${INSPIREFACE_ROOT}/include" NO_DEFAULT_PATH REQUIRED)
-find_library(ISF_LIBRARY NAMES InspireFace PATHS "${INSPIREFACE_ROOT}/lib" NO_DEFAULT_PATH REQUIRED)
-add_library(InspireFaceSDK UNKNOWN IMPORTED)
-set_target_properties(InspireFaceSDK PROPERTIES
-    IMPORTED_LOCATION "${ISF_LIBRARY}"
-    INTERFACE_INCLUDE_DIRECTORIES "${ISF_INCLUDE_DIR}")
+if(WIN32)
+    find_package(InspireFace CONFIG REQUIRED
+        PATHS "${INSPIREFACE_ROOT}/lib/cmake/InspireFace" NO_DEFAULT_PATH)
+    add_library(InspireFaceSDK ALIAS InspireFace::InspireFace)
+else()
+    find_path(ISF_INCLUDE_DIR inspireface.h PATHS "${INSPIREFACE_ROOT}/include" NO_DEFAULT_PATH REQUIRED)
+    find_library(ISF_LIBRARY NAMES InspireFace PATHS "${INSPIREFACE_ROOT}/lib" NO_DEFAULT_PATH REQUIRED)
+    add_library(InspireFaceSDK UNKNOWN IMPORTED)
+    set_target_properties(InspireFaceSDK PROPERTIES
+        IMPORTED_LOCATION "${ISF_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${ISF_INCLUDE_DIR}")
+endif()
 
 add_executable(detect_c detect.c)
 target_compile_features(detect_c PRIVATE c_std_99)
+set_target_properties(detect_c PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(detect_c PRIVATE InspireFaceSDK)
 
 option(BUILD_CPP_EXAMPLE "Build the C++ wrapper example (requires its headers)" OFF)
@@ -517,6 +542,20 @@ if(BUILD_CPP_EXAMPLE)
     add_executable(detect_cpp detect.cpp)
     target_compile_features(detect_cpp PRIVATE cxx_std_14)
     target_link_libraries(detect_cpp PRIVATE InspireFaceSDK)
+endif()
+
+if(WIN32)
+    get_target_property(ISF_LIBRARY_TYPE InspireFaceSDK TYPE)
+    if(ISF_LIBRARY_TYPE STREQUAL "SHARED_LIBRARY")
+        foreach(example IN ITEMS detect_c detect_cpp)
+            if(TARGET ${example})
+                add_custom_command(TARGET ${example} POST_BUILD
+                    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+                        "$<TARGET_FILE:InspireFaceSDK>" "$<TARGET_FILE_DIR:${example}>"
+                    VERBATIM)
+            endif()
+        endforeach()
+    endif()
 endif()
 ```
 

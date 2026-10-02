@@ -2,7 +2,7 @@
 
 Find examples by feature and API. Start with the platform guide to install and initialize the SDK, then choose your API in each feature guide's code tabs.
 
-The examples use **InspireFace 1.2.4**, **InspireCV 1.0.2**, **Android Java SDK 1.2.4.post1**, and **HarmonyOS ArkTS SDK 1.2.4**. [Python](../using-with/python.md) uses the **1.2.4.post1 PyPI package**, including the 1.2.4 native SDK. Objective-C and Swift use the [1.2.4 Apple package](../build/README.md#apple-sdk-packaging); the HarmonyOS release includes its native SDK and HAR project. [Java (JVM)](../using-with/java.md) uses the portable JNI build from the 1.2.4 source and is listed separately from Android. The table lists the operations available through each interface.
+The examples use **InspireFace 1.2.4**, **InspireCV 1.0.2**, **Android Java SDK 1.2.4.post1**, and **HarmonyOS ArkTS SDK 1.2.4**. [Python](../using-with/python.md) uses the **1.2.4.post3 PyPI package**, including the 1.2.4 native SDK. Objective-C and Swift use the [1.2.4 Apple package](../build/README.md#apple-sdk-packaging); the HarmonyOS release includes its native SDK and HAR project. [Java (JVM)](../using-with/java.md) uses the portable JNI build from the 1.2.4 source and is listed separately from Android. Windows x64 uses the C, C++ and Python columns below; it has no separate API layer. The table lists the operations available through each interface.
 
 ## Feature examples by API
 
@@ -47,6 +47,7 @@ The code tabs share the same API selector, so choosing Python, Java, Android, Ha
 | C ABI | Handles, status codes and `HFSessionConfigV2` | [C API](../using-with/c-cpp.md) |
 | Java deployment | Java 8 JAR, JNI paths, process architecture, direct buffers and explicit release | [Java](../using-with/java.md), [Java packaging](../build/java.md) |
 | Android deployment | 1.2.4.post1 AAR, single native library per ABI, R8, CameraX and both Java API layers | [Android](../using-with/android.md) |
+| Windows deployment | x64 CPU, C/C++ CMake integration, Python wheels and DLL runtime setup | [Windows](../using-with/windows.md), [Windows builds](../build/windows.md) |
 | Apple APIs | Objective-C errors, Swift types, scoped views and complete detection examples | [Objective-C and Swift](../using-with/apple.md) |
 | iOS deployment | Device / simulator XCFrameworks, Xcode linkage, camera buffers and CoreML | [iOS](../using-with/ios.md) |
 | macOS deployment | Intel / Apple Silicon frameworks, embedding, signing and native libraries | [macOS](../using-with/macos.md) |

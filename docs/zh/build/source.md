@@ -26,7 +26,7 @@ cd InspireFace
 git clone --recurse-submodules https://github.com/tunmx/inspireface-3rdparty.git 3rdparty
 ```
 
-获取源码后，按目标平台的构建指南继续。
+获取源码后，按目标平台的构建指南继续。Windows 的构建入口目前位于 `feature/win` 分支，获取源码时请使用 [Windows 构建](./windows.md#get-the-source)中的命令。
 
 ## 准备构建工具 {#prepare-the-build-tools}
 
@@ -35,8 +35,8 @@ git clone --recurse-submodules https://github.com/tunmx/inspireface-3rdparty.git
 | Git | 获取 SDK 和第三方依赖子模块。 |
 | CMake | 3.20 或更新版本。 |
 | C++ compiler | 支持 C++14，使用目标平台的编译器或交叉工具链。 |
-| Build tool | 直接使用 CMake 时可选 Make 或 Ninja；多数 `command/` 脚本调用 Make。 |
-| Platform SDK | 按平台准备 Android NDK、Xcode、OpenHarmony Native SDK 或板端工具链。 |
+| Build tool | 直接使用 CMake 时可选 Make 或 Ninja；Windows PowerShell 脚本使用 Ninja。 |
+| Platform SDK | 按平台准备 MSVC v143 与 Windows SDK、Android NDK、Xcode、OpenHarmony Native SDK 或板端工具链。 |
 
 部分依赖使用较早的 CMake policy 设置。本文直接调用 CMake 的命令通过 `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` 兼容 CMake 4。统一的 Apple 构建脚本也带有此项。`v1.2.4` tag 中的 HarmonyOS HAR 脚本没有传入该设置，构建该版本时请使用 CMake 3.20–3.x。
 
@@ -58,7 +58,7 @@ cmake --install build/local-cpu
 
 这条命令生成原生 C/C++ 库。需要 Objective-C 与 Swift Framework 时，使用 [iOS](./ios.md) 或 [macOS](./macos.md) 章节中的统一 Apple 构建脚本。
 
-不同架构和后端使用独立构建目录。[Linux](./linux.md) 和 [macOS](./macos.md) 章节提供平台设置与库文件检查命令。
+不同架构和后端使用独立构建目录。[Linux](./linux.md) 和 [macOS](./macos.md) 章节提供平台设置与库文件检查命令。Windows 请在 x64 Visual Studio Native Tools 环境中使用 [PowerShell 构建入口](./windows.md#build-a-shared-sdk)。
 
 ## 了解产物目录 {#understand-the-output-layout}
 
@@ -83,7 +83,7 @@ build/local-cpu/install/
 ::: warning 发布脚本会整理构建目录
 `command/` 下的许多脚本会将安装产物移到自身构建目录顶层，并删除编译中间文件，因此最终路径与直接使用 CMake 不同。应用文件放在这些目录之外，取用产物时以对应平台章节给出的路径为准。
 
-Apple 构建脚本将可复用的依赖缓存放在 `build/apple-cache`，SDK 产物单独整理；具体路径见 [macOS](./macos.md) 和 [iOS](./ios.md) 章节。
+Apple 构建脚本将可复用的依赖缓存放在 `build/apple-cache`，SDK 产物单独整理；具体路径见 [macOS](./macos.md) 和 [iOS](./ios.md) 章节。Windows 脚本保留构建目录，默认安装到 `build/windows-x64-Release-shared/install/`。
 :::
 
 ## 常用 CMake 选项 {#common-cmake-options}

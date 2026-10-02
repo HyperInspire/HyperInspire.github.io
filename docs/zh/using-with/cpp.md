@@ -2,7 +2,7 @@
 
 C++ 应用可以使用 [C API](./c-cpp.md) 或 `inspire::Session` 接口。需要明确的 ABI 边界时可使用 C API；C++ 接口直接使用 InspireCV 的图像和几何类型，需要保证头文件、编译器 ABI 和原生库配套。
 
-先在 [SDK 下载](../build/README.md#prebuilt-sdks)中选择匹配的 **1.2.4** 包。需要自定义构建时，从[源码准备与通用选项](../build/source.md)开始，再选择 [Linux](../build/linux.md) 或 [macOS](../build/macos.md)。本页介绍应用链接和 C++ API 用法。
+先在 [SDK 下载](../build/README.md#prebuilt-sdks)中选择匹配的 **1.2.4** 包。需要自定义构建时，从[源码准备与通用选项](../build/source.md)开始，再选择 [Windows](../build/windows.md)、[Linux](../build/linux.md) 或 [macOS](../build/macos.md)。本页介绍应用链接和 C++ API 用法。
 
 使用 Objective-C 或 Swift 开发 iOS、macOS 应用时，可以从 [Apple API 指南](./apple.md)开始。下面的 C/C++ 接入方式仍可使用，头文件与库需来自同一构建。
 
@@ -20,16 +20,32 @@ cmake_minimum_required(VERSION 3.20)
 project(inspireface_detection LANGUAGES CXX)
 
 set(INSPIREFACE_ROOT "" CACHE PATH "SDK directory containing include/ and lib/")
-find_path(ISF_INCLUDE_DIR inspireface/inspireface.hpp PATHS "${INSPIREFACE_ROOT}/include" NO_DEFAULT_PATH REQUIRED)
-find_library(ISF_LIBRARY NAMES InspireFace PATHS "${INSPIREFACE_ROOT}/lib" NO_DEFAULT_PATH REQUIRED)
-add_library(InspireFaceSDK UNKNOWN IMPORTED)
-set_target_properties(InspireFaceSDK PROPERTIES
-    IMPORTED_LOCATION "${ISF_LIBRARY}"
-    INTERFACE_INCLUDE_DIRECTORIES "${ISF_INCLUDE_DIR}")
+if(WIN32)
+    find_package(InspireFace CONFIG REQUIRED
+        PATHS "${INSPIREFACE_ROOT}/lib/cmake/InspireFace" NO_DEFAULT_PATH)
+    add_library(InspireFaceSDK ALIAS InspireFace::InspireFace)
+else()
+    find_path(ISF_INCLUDE_DIR inspireface.h PATHS "${INSPIREFACE_ROOT}/include" NO_DEFAULT_PATH REQUIRED)
+    find_library(ISF_LIBRARY NAMES InspireFace PATHS "${INSPIREFACE_ROOT}/lib" NO_DEFAULT_PATH REQUIRED)
+    add_library(InspireFaceSDK UNKNOWN IMPORTED)
+    set_target_properties(InspireFaceSDK PROPERTIES
+        IMPORTED_LOCATION "${ISF_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${ISF_INCLUDE_DIR}")
+endif()
 
 add_executable(detect_cpp detect.cpp)
 target_compile_features(detect_cpp PRIVATE cxx_std_14)
 target_link_libraries(detect_cpp PRIVATE InspireFaceSDK)
+
+if(WIN32)
+    get_target_property(ISF_LIBRARY_TYPE InspireFaceSDK TYPE)
+    if(ISF_LIBRARY_TYPE STREQUAL "SHARED_LIBRARY")
+        add_custom_command(TARGET detect_cpp POST_BUILD
+            COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+                "$<TARGET_FILE:InspireFaceSDK>" "$<TARGET_FILE_DIR:detect_cpp>"
+            VERBATIM)
+    endif()
+endif()
 ```
 
 </details>
@@ -43,11 +59,22 @@ cmake --build build --parallel
 ./build/detect_cpp /path/to/Pikachu /path/to/face.jpg
 ```
 
+Windows 先打开 **x64 Native Tools Command Prompt for VS 2022**，再启动 PowerShell。准备 Release x64 SDK 后，同一份代码可以这样构建和运行：
+
+```powershell
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release `
+  "-DINSPIREFACE_ROOT=C:/SDKs/InspireFace"
+cmake --build build --parallel 4
+.\build\detect_cpp.exe C:\models\Pikachu C:\images\face.jpg
+```
+
+Windows 分支使用 SDK 安装的 CMake package，由 target 传递 DLL 导入定义和静态依赖；使用动态 SDK 时，会自动将 DLL 复制到可执行文件旁边。SDK 与应用保持相同的架构、构建配置和 MSVC 运行库设置，运行环境的安装见 [Windows 接入](./windows.md)。 路径中包含中文等非 ASCII 字符时，可参考 [Windows 完整示例](./windows.md#a-complete-detection-program)，先将 UTF-16 命令行参数转为 UTF-8，再传给 SDK。
+
 程序生成 `detected-cpp.jpg`。导入的 SDK target 提供头文件目录和库路径，不需要单独依赖 OpenCV。
 
 ### 构建包含 C++ 头文件的 SDK {#build-an-sdk-with-c-headers}
 
-如果下载包只有 C 头文件，可以启用 C++ 头文件安装后构建配套 SDK。[准备源码依赖](../build/source.md)后，在 InspireFace 根目录运行：
+Windows 构建默认安装 C++ 头文件，具体方法见 [Windows 构建](../build/windows.md)。其他下载包如果只有 C 头文件，可以启用 C++ 头文件安装后构建配套 SDK。[准备源码依赖](../build/source.md)后，在 InspireFace 根目录运行：
 
 ```bash
 cmake -S . -B build/cpp-sdk \

@@ -135,6 +135,7 @@ deployment target 约束原生 SDK。核心库与 JNI 库应使用相同的架�
 | Target | Build approach |
 | --- | --- |
 | Linux / macOS CPU | 使用上面的本机构建命令。 |
+| Windows x64 CPU | 已有原生 SDK 和 Python 打包入口；Java JNI 适配库仍需单独构建与验证，见下方说明。 |
 | Linux ARM CPU | 在开发板本机构建，或准备对应交叉工具链和目标 JNI 头文件。 |
 | TensorRT / Rockchip / macOS CoreML | 将 `ISF_BUILD_JAVA=ON` 与对应原生后端的选项、依赖一起配置。 |
 | Android | 按 [Android 构建](./android.md)打包；portable JNI 与 Android API 共用一个 `libInspireFace.so`。 |
@@ -144,7 +145,7 @@ Java 不会自动选择或安装推理后端。先按照 [NVIDIA](./nvidia.md)�
 
 交叉编译时关闭 Java 运行测试，构建后再到目标设备验证。除了原生 SDK 所需的系统依赖，也要配置目标的 JNI 头文件，不要将宿主机库链接到目标包。macOS 每个架构单独构建，使原生目录对应一种 JVM 架构。
 
-加载器与安装规则包含 Windows 的命名处理，但仓库没有专门的 Windows Java 构建脚本。Windows 包需要兼容的核心 SDK、JNI 工具链与符号检查工具；上面的 Linux/macOS shell 命令并不是 Windows 构建方法。
+[Windows 构建入口](./windows.md)生成 C/C++ CPU SDK，默认不启用 `ISF_BUILD_JAVA`，也不生成 `InspireFaceJNI.dll`；Windows PyPI wheel 同样不包含 JNI。portable Java 的加载器和安装规则能够处理 Windows 路径，但构建 JNI 还需匹配的 x64 JDK 和可用的原生符号检查工具。目前检查调用 `nm -g`，不能直接换成 MSVC 的 `dumpbin`。SDK 的 Windows 构建流程尚未覆盖 Java 打包，自行构建适配库后，需要在 Windows 上完成库加载与契约测试再交付。
 
 ## 运行契约测试 {#run-the-contract-tests}
 
@@ -203,7 +204,7 @@ otool -L native/macos-arm64/libInspireFaceJNI.dylib
 otool -L native/macos-arm64/libInspireFace.dylib
 ```
 
-安装后的 JNI 库在 Linux 使用 `$ORIGIN`，在 macOS 使用 `@loader_path` 查找同目录的核心库。后端依赖仍可能需要额外安装或配置运行路径。Windows 需通过 `PATH` 提供依赖 DLL 所在目录。
+安装后的 JNI 库在 Linux 使用 `$ORIGIN`，在 macOS 使用 `@loader_path` 查找同目录的核心库。后端依赖仍可能需要额外安装或配置运行路径。自行构建 Windows JNI 时，将 `InspireFaceJNI.dll` 与配套的 `libInspireFace.dll` 放在同一目录，并将该目录加入 `PATH`。目标机器还需安装构建对应的 Microsoft Visual C++ x64 运行库，见 [Windows](../using-with/windows.md)。
 
 更新 SDK 时同时替换 JAR 和原生库目录，然后重启 JVM。仅替换 `libInspireFace` 可能造成函数缺失或布局不一致。除了确认能加载动态库，还应运行一次检测，检查目标模型是否能在当前后端执行。
 

@@ -8,9 +8,11 @@ Use NumPy images with the Python API to detect faces, extract features and run o
 python -m pip install inspireface opencv-python
 ```
 
-The current [PyPI release](https://pypi.org/project/inspireface/1.2.4.post1/) is **1.2.4.post1**, with the **1.2.4** CPU runtime included. It provides detection, recognition, analysis, snapshots, capture and diagnostics without a separate SDK build. If InspireFace is already installed, upgrade with `python -m pip install --upgrade inspireface`.
+The current [PyPI release](https://pypi.org/project/inspireface/1.2.4.post3/) is **1.2.4.post3**, with the **1.2.4** CPU runtime included. It provides detection, recognition, analysis, snapshots, capture and diagnostics without a separate SDK build. If InspireFace is already installed, upgrade with `python -m pip install --upgrade inspireface`.
 
-Wheels are available for Linux x86_64 / ARM64 and macOS Intel / Apple Silicon. The current macOS native libraries require **macOS 14+ on arm64** and **15+ on Intel**; see [package downloads](../build/README.md#python-and-android-packages) for the platform files and wheel-tag details. Models are downloaded on first use or loaded from a local resource pack.
+Wheels are available for **Windows x64**, Linux x86_64 / ARM64 and macOS Intel / Apple Silicon. The current macOS native libraries require **macOS 14+ on arm64** and **15+ on Intel**; see [package downloads](../build/README.md#python-and-android-packages) for the platform files and wheel-tag details. Models are downloaded on first use or loaded from a local resource pack.
+
+Windows uses the same API and examples below. Use **x64 Python**; the published wheel runs CPU inference and includes `libInspireFace.dll`. If a DLL dependency is missing, install the [Microsoft Visual C++ v14 Redistributable for x64](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist) and retry. See [Windows loading errors](../guides/troubleshooting.md#windows-python-loading) for diagnostics.
 
 ## Initialize once and reuse the session
 
@@ -200,14 +202,27 @@ For TensorRT, CoreML, Rockchip or a custom CPU build, see [Python packaging](../
 
 A wheel includes its native library. To use a local build with the 1.2.4 wrapper, set `INSPIREFACE_LIBRARY_PATH` **before importing** `inspireface`:
 
+::: tabs #python-native-library
+
+@tab Linux
+
 ```bash
-# Run from an InspireFace checkout, inside your virtual environment.
-python -m pip install -e ./python
 export INSPIREFACE_LIBRARY_PATH=/absolute/path/to/libInspireFace.so
 python -c 'import inspireface as isf; print(isf.version())'
 ```
 
+@tab Windows (PowerShell)
+
+```powershell
+$env:INSPIREFACE_LIBRARY_PATH = 'C:\sdk\InspireFace\lib\libInspireFace.dll'
+python -c "import inspireface as isf; print(isf.version())"
+```
+
+:::
+
 On macOS, use the native `libInspireFace.dylib` from the SDK’s `InspireFace/lib/` directory, or build a shared library using the [macOS guide](../build/macos.md). The Objective-C and Swift frameworks are for Apple application targets; they are not a drop-in replacement for this Python library file. The library architecture must match the running Python process. An Intel Python running under Rosetta needs an Intel library even on an Apple Silicon machine.
+
+These commands also work with the installed PyPI wrapper; an editable install is needed only when changing the Python source. On Windows, point to the CPU SDK DLL and keep x64 Python and the x64 runtime together. To return to the bundled library in PowerShell, run `Remove-Item Env:INSPIREFACE_LIBRARY_PATH -ErrorAction SilentlyContinue`, then restart Python.
 
 Install the backend's runtime dependencies along with the native library. Target-specific setup is covered in [Rockchip Python](../guides/python-rockchip-device.md) and [TensorRT](./cuda.md).
 

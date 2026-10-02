@@ -6,11 +6,12 @@ Audit the public APIs, build scripts, examples and tests in the local source
 checkouts, then update the English and Chinese developer documentation. Source repositories
 are read-only inputs to this task.
 
-- InspireFace: `1a6c87b1013ded1aeb930d3a0e023ed6dd0f54b2` (2026-09-29), CMake version 1.2.4.
+- InspireFace: `d601574cd75ea9c416cc8f7bd509a50054c092f1` (2026-10-03 audit), CMake version 1.2.4; Windows additions are on `feature/win`.
 - Published native SDK: `v1.2.4`, tag commit `98f9e958c11ec9254ca68eaa251a6caf8842c5ba` (release assets checked 2026-09-30).
 - Android SDK: `7675e3eb339bfb93d07586a6bfbff24a94cd85fa`, tag `v1.2.4.post1`.
-- Current documentation revision: 1.2.4.d7. Earlier dated sections retain their audit baselines.
-- InspireCV: `361574e` (2026-09-28), README version 1.0.2.
+- Current documentation revision: 1.2.4.d9. Earlier dated sections retain their audit baselines.
+- Standalone InspireCV: `45d58606baf810dfd0b483ca0088a895052d347f` (2026-10-03 audit), README version 1.0.2.
+- InspireFace bundled InspireCV: `c452da47f344391b5009199077ae1d23f9bdc0d5`; newer standalone capabilities are labeled separately.
 - Preserve existing document URLs, the default light theme, Android demo QR code
   and the recently selected cloud illustrations.
 - Keep PLUS information brief and separate from the SDK learning path.
@@ -900,3 +901,157 @@ Evidence: `/private/tmp/inspireface-docs-release124/` contains the release
 and tag JSON, asset link checks, verified archives, Apple runtime check
 and site-check output. No SDK source files were changed or remote deployment
 run during this update.
+
+## Windows CPU SDK and PyPI 1.2.4.post2 (2026-10-02, 1.2.4.d8)
+
+Audited InspireFace `41cc84d56e4cb11a03088cf8f08935eab30ae336` on
+`feature/win`, including the Windows PowerShell build and wheel entry points,
+installed CMake package, DLL exports, Python loader and Windows CI consumers.
+The native SDK remains 1.2.4. Source checkouts were read-only inputs.
+
+Changes:
+
+- Added English and Chinese Windows integration and SDK build chapters,
+  with navigation in both platform and build sections. Covered MSVC x64,
+  CPU inference, shared/static SDKs, import libraries, DLL deployment,
+  Release/Debug runtime requirements, tests and model resources.
+- Included a complete Windows detection program in a collapsed code block.
+  It receives UTF-16 command-line arguments through wmain and converts paths
+  to UTF-8. Documented the Windows distinction between 32-bit C long,
+  pointer-sized handles and fixed-width 64-bit face IDs.
+- Updated the C/C++ examples and their shared CMake project to use the
+  installed Windows target, propagate import definitions and static
+  dependencies, and copy the runtime DLL beside the executable. Preserved
+  the existing Linux/macOS integration path and synchronized inline code.
+- Updated Python references to the published 1.2.4.post2 package. Retained
+  the one-line install command, added PowerShell DLL selection, Windows
+  loading diagnostics and complete Windows wheel packaging instructions.
+  Fixed an older packaging step that copied the labeled SDK version file
+  into Python's plain version file. Documented the CMake 4 policy workaround
+  through a separate native build before wheel packaging.
+- Updated the homepage, Introduction, feature/platform table, model guide,
+  API index, SDK overview, source preparation and related examples. Added
+  Windows and model-pack homepage cards as a complete two-column grid.
+  New Windows tables fill the content width and scroll on small screens.
+- Kept Android at 1.2.4.post1. The Windows CPU SDK and PyPI wheel do not
+  contain desktop Java JNI libraries; Java's Windows setup remains
+  conditional on a separately built compatible JNI package.
+
+Published package and source evidence:
+
+- The official PyPI JSON lists five 1.2.4.post2 wheels. The new Windows
+  file is `inspireface-1.2.4.post2-py3-none-win_amd64.whl`, requiring
+  Python >=3.7. SHA-256:
+  `e483f14b3d634e712c47e9e4e3c6285a14cd50a16ebef3e8f69a4ec413732ed6`.
+  The verified archive contains one AMD64 PE library at
+  `inspireface/modules/core/libs/windows/x64/libInspireFace.dll`.
+- Its imports include the MSVC/UCRT runtime and Windows system libraries,
+  with no separate inference, OpenCV or GPU DLL. The Windows CPU scope does
+  not establish Windows CUDA/TensorRT, x86 or native ARM64 support.
+- Downloaded and hash-verified the post2 macOS wheels as well. Their actual
+  minimum OS versions remain macOS 14 for arm64 and 15 for x86_64, so the
+  existing warning about lower wheel filename tags remains applicable.
+- The Windows script exists on `feature/win`; it is absent from the default
+  Develop branch and the InsightFace Release source path at this review.
+  Windows source commands therefore select the branch explicitly while
+  the common source page retains its simple default-branch clone commands.
+- Official Windows SDK CI run 36689104462 succeeded, including installed
+  C/C++ consumer checks and SDK packaging. It used -SkipTests and does not
+  establish a full native CTest pass.
+- Official Windows PyPI CI run 36913153250 succeeded at the audited source
+  commit: a clean Windows Server 2022 x64 Python 3.13 environment installed
+  from PyPI and ran detection, dense landmarks and feature extraction.
+- The previously documented GitHub v1.2.4 release returned 404 from the
+  public API during this review, and the public release list stopped at
+  v1.2.3. Asked for release-status clarification and retained the previous
+  native download links in the meantime. No unverified Windows ZIP URL was
+  added; the new Windows routes use published PyPI or source builds.
+
+Local validation:
+
+- C/C++ public examples and the two standalone guide CMake projects built
+  and ran against the previously verified v1.2.4 macOS arm64 SDK. Four
+  detection runs each found one face, and C++ wrote the annotated image.
+- The Windows example's platform-independent detection function passed a
+  C++14 syntax check against the current native headers. Reviewed the
+  Windows path-conversion and CMake logic against the source. This macOS
+  host did not run MSVC, PowerShell, Windows JNI or Windows inference.
+- Bilingual code fences and shell/Python syntax checks passed. The final
+  site check passed 93 HTML pages, 16,694 local references, 92 Python fences,
+  46 bilingual page pairs, 418 matching code fences and 44 synchronized
+  inline examples. Version metadata agrees on 1.2.4.d8.
+- Browser checks covered Windows setup and build pages on desktop and at
+  390px. Tables and expanded source code stay inside their containers; long
+  examples start collapsed and open correctly. The homepage has 12 guide
+  cards in two balanced columns. Reset the viewport and retained the local
+  preview at 127.0.0.1:8080.
+
+Evidence is under `/private/tmp/inspireface-docs-windows/` and
+`/private/tmp/inspireface-docs-windows-api-check/`. No remote documentation
+commit or deployment was made as part of this update.
+
+
+## CPU preprocessing and PyPI 1.2.4.post3 (2026-10-03, 1.2.4.d9)
+
+Reviewed InspireFace `41cc84d5..d601574c` and standalone InspireCV
+`c452da47..45d58606`. The SDK and Python public implementation directories
+have no changes in the InspireFace range. Most InspireCV changes extend
+existing CPU kernels; the public headers add buffer-contract comments rather
+than new entry points. Both source checkouts were read-only inputs.
+
+Changes:
+
+- Added a concise bilingual x86 CPU deployment page and linked it from the
+  hardware sidebar, feature table and InspireCV guide. Described platform
+  selection, accelerated image/preprocessing stages and AVX2 build settings.
+  Kept the distinction between runtime-selected isolated kernels and the
+  opt-in full-project AVX2 setting. Did not promise support for every older
+  x86 CPU or a fixed performance improvement.
+- Added an inline four-channel SwapRB example for the default OKCV backend,
+  preserving alpha. Documented the optional OpenCV backend's different
+  three-channel output. Added concise Float32 buffer and padded I420 layout
+  requirements beside the existing examples.
+- Added a collapsed standalone Image/Task benchmark build/run example, using
+  the actual CPU benchmark CMake target and CLI. Kept the OpenCV core/imgproc
+  build prerequisite visible and left full-project AVX2 off. Explained the
+  different allocation scopes and the batch-averaged P50/P95 values.
+  All historical benchmark tables and their dates remain unchanged.
+- Labeled these additions as standalone InspireCV capabilities. The local
+  InspireFace dependency still points to c452da47, so the pages do not claim
+  that the published SDK or PyPI wheel contains the new kernels.
+- Updated 11 English/Chinese page pairs from the current Python package
+  post2 to post3, including versioned PyPI links and custom wheel filenames.
+  Preserved the historical fact that Windows wheels started with post2.
+  Android remains 1.2.4.post1 and the native SDK remains 1.2.4.
+- Excluded implementation-level SIMD details, numerical fixes and CI changes
+  from the public documentation. Incremented the documentation revision to d9.
+
+Published package evidence:
+
+- Official PyPI JSON lists 1.2.4.post3 and five CPU wheels: Windows x64,
+  Linux x86_64/aarch64 and macOS x86_64/arm64. Python requires >=3.7.
+- The audit downloaded and hash-verified the macOS wheels. Native deployment
+  targets remain macOS 14.0 for arm64 and 15.0 for x86_64 despite lower wheel
+  filename tags; the existing warnings remain in the package overview.
+- New post-publication inference CI is internal maintenance. The successful
+  post3 release run predates those jobs, so no five-platform post3 inference
+  validation claim was added to the user guides.
+- Evidence is under /private/tmp/inspireface-docs-delta-post3/.
+
+Validation:
+
+- The new SwapRB snippet passed a C++14 syntax check against current headers.
+  The source implementation and regression test confirm four-channel alpha
+  preservation for OKCV; the snippet was not linked and run on all backends.
+- Checked the benchmark command options and timing scopes against source;
+  Bash syntax and bilingual code-block equality passed. No new benchmark
+  timings were measured or published.
+- Final VuePress/site checks passed: 95 HTML pages, 17,336 local references,
+  92 Python fences, 47 bilingual page pairs, 420 matching code fences and
+  44 synchronized complete inline examples. Version metadata agrees on d9.
+- Browser checks covered the new x86 page on desktop and at 390px, and
+  the collapsed/expanded benchmark example at 390px. Tables stay within
+  the content width and code scrolls inside its container. The temporary
+  viewport override was reset and the temporary preview server stopped.
+- Source working trees remained clean. No commit or remote deployment was
+  performed as part of this documentation update.

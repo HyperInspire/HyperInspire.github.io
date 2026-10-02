@@ -2,11 +2,15 @@
 
 [InspireCV](https://github.com/tunmx/InspireCV) is a C++ library for image operations and model-input preprocessing. It can be used independently of InspireFace. Its default build uses OKCV; OpenCV is optional.
 
-Use `Image` for file I/O, cropping, resizing, drawing and simple filters. Use `task::Pipeline` when you need explicit pixel formats, transforms, normalization or tensor layouts. The examples below use InspireCV 1.0.2.
+Use `Image` for file I/O, cropping, resizing, drawing and simple filters. Use `task::Pipeline` when you need explicit pixel formats, transforms, normalization or tensor layouts. The examples below use the standalone InspireCV source tree.
 
 For CPU/OpenCV comparisons, CUDA preprocessing and image chains in GPU memory, see [image processing benchmarks](./image-processing-benchmarks.md), including run commands and raw CSV reports.
 
-For NEON image operations and deployment options, see [ARM deployment](../using-with/arm.md).
+For CPU deployment and acceleration options, see [x86 CPU](../using-with/x86.md) and [ARM](../using-with/arm.md).
+
+The [Windows C/C++ SDK](../using-with/windows.md) already includes the matching image-processing headers and implementation. Link `InspireFace::InspireFace` when using these APIs inside an InspireFace application; a separate InspireCV installation is only needed for standalone use.
+
+The four-channel `SwapRB()` and expanded x86 acceleration described below are available in the latest standalone InspireCV source. InspireFace has not yet updated its bundled dependency to include them.
 
 ## Build and link
 
@@ -43,6 +47,8 @@ Configure your application with `-DCMAKE_PREFIX_PATH=/path/to/local/inspirecv`. 
 | `INSPIRECV_TASK_ENABLE_ARM_NEON` | ON | Enable supported ARM NEON preprocessing paths. |
 | `INSPIRECV_ENABLE_AVX2` | OFF | Compile all x86 C++ sources with AVX2; requires compatible target CPUs. |
 | `INSPIRECV_ENABLE_CUDA` | OFF | Build optional CUDA preprocessing; needs CMake 3.18 or newer. |
+
+On x86, `INSPIRECV_ENABLE_AVX2=OFF` still allows the library to select separately compiled AVX2 kernels when both the CPU and OS support them. Keep this default when distributing a build across different machines; `ON` compiles the whole library for compatible targets. The latest source extends these automatic paths across supported image transforms, color conversions and Task tensor output. Existing API calls stay the same.
 
 Check the [project CMake options](https://github.com/tunmx/InspireCV/blob/main/CMakeLists.txt) when changing backends. OpenCV I/O/GUI integration for the default backend is configured separately from replacing the Image backend itself.
 
@@ -181,6 +187,20 @@ Use `Clone()` for the drawing destination when the original pixels are still nee
 
 `SwapRB()` changes channel order, `Mul` and `Add` change pixel values, and `Reset` replaces the entire buffer. Intermediate 8-bit calculations can saturate; use the float image type below when fractional or out-of-range values must be retained.
 
+With the latest standalone source and the default OKCV backend, `SwapRB()` also exchanges RGBA and BGRA while keeping the alpha channel:
+
+```cpp
+#include <inspirecv/inspirecv.h>
+#include <cstdint>
+
+const std::uint8_t rgba[] = {255, 64, 32, 128};
+auto source = inspirecv::Image::Create(1, 1, 4, rgba);
+auto bgra = source.SwapRB();
+// bgra has four channels: {32, 64, 255, 128}.
+```
+
+This example uses OKCV. With the optional OpenCV backend, `SwapRB()` on a four-channel image returns three channels and drops alpha.
+
 <div class="doc-image-grid two-column">
 <figure>
 <a href="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/swapped.jpg" target="_blank" rel="noopener"><img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/swapped.jpg" alt="SwapRB(): Red and blue channels exchanged." width="325" height="325" loading="lazy" /></a>
@@ -256,6 +276,8 @@ auto status = pipeline.Run(resized, tensor);
 Float normalization applies `(value - mean[channel]) * scale[channel]` after conversion to the configured output channel order. Here the values are mapped from `[0, 255]` to `[-1, 1]`. Set mean and scale according to the model's input requirements.
 
 The caller allocates and owns the storage described by `TensorBuffer`. Size `values` for the dimensions, element type and strides. Zero strides select tightly packed defaults. Select HWC, CHW or channel-packed-four to match the model's memory layout.
+
+For Float32 output, use storage aligned for `float`, such as `std::vector<float>`, and byte strides that are multiples of `sizeof(float)`. No additional SIMD alignment is required.
 
 Save the code below as `preprocess.cpp` and `CMakeLists.txt` in the same folder, then build with your installed InspireCV package. The program also writes `resized.jpg` so you can inspect the spatial preprocessing.
 
@@ -417,6 +439,8 @@ auto status = pipeline.Run(source, width, height, &bgr);
 ```
 
 Provide a buffer large enough for the declared format and use even dimensions for NV21. Repack Android plane-based input using its actual strides. Keep the camera buffer alive through the call. For JPEG files, decode the image before creating a raw view.
+
+For I420 input, store Y, U and V consecutively. With padded rows, width, height and the Y row stride must be even; each U/V row uses half the Y stride. `RawImageView` has one stride field, so repack camera planes whose strides do not follow this layout. For tightly packed I420, leave `row_stride_bytes` at zero.
 
 | Output method | Memory behavior |
 | --- | --- |

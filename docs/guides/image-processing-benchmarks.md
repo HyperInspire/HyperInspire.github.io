@@ -49,6 +49,59 @@ python3 scripts/cpu_benchmark_opencv_summary.py \
 
 `taskset` is the Linux affinity command. On macOS, omit it; on ARM, also omit the AVX2 option. Apple's GCD scheduler manages OpenCV's thread count, so record the reported thread count alongside the requested one. The runner writes both to the CSV header. Use `--suite full` for the shorter comparison or `--suite u8c3` for the geometry and channel-swap sweep.
 
+### Measure Image and Task on your CPU
+
+The latest standalone InspireCV source includes `inspirecv_simd_coverage_benchmark`. It measures public `Image` and `Task` calls across pixel types, channel counts, image sizes and tensor layouts, including inputs with row padding. Use it to check the operations you use on your own machine. It measures InspireCV only; the CPU comparison above also measures OpenCV.
+
+This runner was added to InspireCV on **2026-10-02**. InspireFace currently references an earlier InspireCV revision, so build the standalone repository for this example. The historical measurements on this page remain dated as shown; they do not measure the new CPU kernels.
+
+<details>
+<summary>Build and run Image and Task benchmarks</summary>
+
+Install CMake, a C++14 compiler and OpenCV's `core` and `imgproc` development libraries. The CPU benchmark build option currently requires those OpenCV components, even when building only this runner. Set `OpenCV_DIR` to your installation, or omit it if CMake already finds OpenCV.
+
+```bash
+git clone --depth 1 https://github.com/tunmx/InspireCV.git
+cd InspireCV
+
+cmake -S . -B build-cpu-coverage \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DINSPIRECV_BUILD_CPU_BENCHMARKS=ON \
+  -DINSPIRECV_BACKEND_OPENCV=OFF \
+  -DINSPIRECV_ENABLE_AVX2=OFF \
+  -DOpenCV_DIR=/path/to/opencv/lib/cmake/opencv4
+cmake --build build-cpu-coverage \
+  --target inspirecv_simd_coverage_benchmark --parallel 4
+
+./build-cpu-coverage/inspirecv_simd_coverage_benchmark \
+  --suite all --samples 31 --min-ms 5 --max-width 640 \
+  --report cpu-coverage.csv
+
+./build-cpu-coverage/inspirecv_simd_coverage_benchmark \
+  --suite image --operation swap_rb \
+  --samples 31 --min-ms 5 --max-width 640 \
+  --report swap-rb.csv
+```
+
+The first run covers both suites; the second selects channel swapping. `INSPIRECV_ENABLE_AVX2=OFF` avoids compiling the whole project for AVX2. On supported x86 CPUs, isolated AVX2 kernels can still be selected at runtime.
+
+</details>
+
+| Option | Use |
+| --- | --- |
+| `--suite all`, `image` or `task` | Choose both suites or one API family. |
+| `--operation NAME` | Run one exact operation name from the CSV, such as `swap_rb`. |
+| `--max-width 640` | Include test inputs up to this width; use `1920` for the full size range. |
+| `--samples 31` / `--min-ms 5` | Collect 31 timed samples, calibrating repeated calls to target at least 5 ms per sample. |
+| `--report cpu-coverage.csv` | Write results to a CSV file. |
+
+`p50_us` is the median time per call; `p95_us` is the 95th percentile. Each sample averages repeated calls, so these describe variation between batches, rather than individual-frame tail latency. The CSV also records input/output dimensions, strides, layout and `timing_scope`:
+
+- `Image`: `public_api_allocation` includes the output allocation performed by the public API.
+- `Task`: `preallocated_end_to_end` measures `Pipeline::Run()` with a reused pipeline and output buffer.
+
+Compare matching operations, shapes and timing scopes on the same machine. These are image-processing and preprocessing timings; they do not include model inference.
+
 ## CUDA Task preprocessing
 
 The following **2026-08-16** measurements used an **RTX 3060 12 GiB** with a Ryzen 5 5600, CUDA **12.2**, NVIDIA driver **550.144.03**, Linux 6.8 and GCC 11.4 in Release mode. The saved CSV records the InspireCV build version as **1.0.0**.

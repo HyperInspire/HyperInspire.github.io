@@ -48,7 +48,7 @@ python -c 'import inspireface as isf; print("Wrapper:", isf.__version__, "Native
 
 `INSPIREFACE_LIBRARY_PATH` 选择 SDK 库，`LD_LIBRARY_PATH` 提供依赖目录。应用与部署脚本使用同一个库路径。
 
-使用当前源码时，Python 包版本为 `1.2.4.post1`，原生版本为 `1.2.4`；`.post1` 后缀来自 `python/post`。同时保留配套的源码提交和原生构建记录，相同版本号不代表来自同一次提交。需要为其他设备制作 wheel 时，参照 [Python 打包](../build/python.md#prepare-the-native-sdk-and-wrapper)。
+使用当前源码时，Python 包版本为 `1.2.4.post3`，原生版本为 `1.2.4`；`.post3` 后缀来自 `python/post`。同时保留配套的源码提交和原生构建记录，相同版本号不代表来自同一次提交。需要为其他设备制作 wheel 时，参照 [Python 打包](../build/python.md#prepare-the-native-sdk-and-wrapper)。
 
 ## 加载本地模型包 {#load-a-local-pack}
 

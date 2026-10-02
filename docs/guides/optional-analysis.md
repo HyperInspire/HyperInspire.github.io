@@ -388,7 +388,7 @@ function analyzeFrame(stream: ImageStream): void {
 
 @tab Python
 
-The **1.2.4.post1 PyPI package** supports the context manager and `auto_launch=False` used below. Supply a BGR `uint8` array. Native failures raise an exception; an image with no faces returns an empty list.
+The **1.2.4.post3 PyPI package** supports the context manager and `auto_launch=False` used below. Supply a BGR `uint8` array. Native failures raise an exception; an image with no faces returns an empty list.
 
 <details>
 <summary>Python — Complete analysis example</summary>

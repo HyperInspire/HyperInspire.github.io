@@ -18,7 +18,7 @@ features:
   - title: Choose your API
     details: Use C, C++, Python, Java, Android, HarmonyOS ArkTS, Objective-C or Swift. Enable the extra models your application needs.
   - title: Choose your deployment
-    details: Start on CPU, then select a matching SDK and model pack for Apple CoreML, Rockchip NPU or NVIDIA TensorRT.
+    details: Run on Windows, Linux or macOS with CPU inference. Choose a matching SDK and model pack for Apple CoreML, Rockchip NPU or NVIDIA TensorRT.
 footerHtml: true
 footer: |
   InspireFace · Documentation and examples
@@ -68,9 +68,19 @@ footer: |
     <span>Replace the native library and create your own wheel.</span>
     <span class="home-guide-card-arrow" aria-hidden="true">→</span>
   </a>
+  <a class="home-guide-card" href="./using-with/windows.html">
+    <strong>Windows apps</strong>
+    <span>Install the CPU Python package or integrate the C/C++ SDK.</span>
+    <span class="home-guide-card-arrow" aria-hidden="true">→</span>
+  </a>
   <a class="home-guide-card" href="./using-with/apple.html">
     <strong>Apple apps</strong>
     <span>Use Objective-C or Swift on iOS and macOS.</span>
+    <span class="home-guide-card-arrow" aria-hidden="true">→</span>
+  </a>
+  <a class="home-guide-card" href="./guides/models-and-builds.html">
+    <strong>Model packs</strong>
+    <span>Choose a model pack and load it for your SDK backend.</span>
     <span class="home-guide-card-arrow" aria-hidden="true">→</span>
   </a>
   <a class="home-guide-card" href="./guides/api-coverage.html">

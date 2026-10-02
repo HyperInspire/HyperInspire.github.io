@@ -8,7 +8,7 @@ Install the SDK with one command, then use the Python example below to detect fa
 python -m pip install inspireface opencv-python
 ```
 
-The current PyPI package is **1.2.4.post1** and includes the **1.2.4 CPU SDK**. For an existing installation, use `python -m pip install --upgrade inspireface`. Platform packages and requirements are listed in the [Python guide](./using-with/python.md#install).
+The current PyPI package is **1.2.4.post3** and includes the **1.2.4 CPU SDK** for Windows x64, Linux x86_64 / ARM64 and macOS Intel / Apple Silicon. For an existing installation, use `python -m pip install --upgrade inspireface`. Platform packages and requirements are listed in the [Python guide](./using-with/python.md#install).
 
 ## Detect faces in an image
 
@@ -60,6 +60,8 @@ For an offline application, pass the path to the downloaded resource-pack **file
 ```python
 isf.launch(resource_path="/path/to/Pikachu")
 ```
+
+On Windows, forward slashes also work, for example `isf.launch(resource_path="C:/models/Pikachu")`.
 
 Resource packs may have no file extension. If you downloaded a ZIP archive, extract it first and pass the pack file to `launch`. Deploy the resource pack and SDK as a tested pair.
 

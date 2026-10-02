@@ -18,7 +18,7 @@ features:
   - title: 按需接入
     details: 使用 C、C++、Python、Java、Android、HarmonyOS ArkTS、Objective-C 或 Swift，按应用需要启用额外模型。
   - title: 选择部署环境
-    details: 先在 CPU 上跑通，再为 Apple CoreML、Rockchip NPU 或 NVIDIA TensorRT 选择匹配的 SDK 和模型包。
+    details: 在 Windows、Linux 或 macOS 上使用 CPU 推理，也可为 Apple CoreML、Rockchip NPU 或 NVIDIA TensorRT 选择匹配的 SDK 和模型包。
 footerHtml: true
 footer: |
   InspireFace · 开发文档与示例
@@ -68,9 +68,19 @@ footer: |
     <span>替换原生库，并制作自己的 wheel 安装包。</span>
     <span class="home-guide-card-arrow" aria-hidden="true">→</span>
   </a>
+  <a class="home-guide-card" href="./using-with/windows.html">
+    <strong>Windows 应用</strong>
+    <span>安装 CPU 版 Python 包，或接入 C/C++ SDK。</span>
+    <span class="home-guide-card-arrow" aria-hidden="true">→</span>
+  </a>
   <a class="home-guide-card" href="./using-with/apple.html">
     <strong>Apple 应用</strong>
     <span>在 iOS 和 macOS 中使用 Objective-C 或 Swift。</span>
+    <span class="home-guide-card-arrow" aria-hidden="true">→</span>
+  </a>
+  <a class="home-guide-card" href="./guides/models-and-builds.html">
+    <strong>模型资源包</strong>
+    <span>选择模型包，并按 SDK 后端加载使用。</span>
     <span class="home-guide-card-arrow" aria-hidden="true">→</span>
   </a>
   <a class="home-guide-card" href="./guides/api-coverage.html">

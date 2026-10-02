@@ -8,7 +8,7 @@ SDK 版本、下载链接和各平台编译方法见[获取和编译](../build/R
 
 ## 链接 SDK {#link-the-sdk}
 
-从 [Release 1.2.4](https://github.com/HyperInspire/InspireFace/releases/tag/v1.2.4) 下载匹配的 SDK，或[自行构建](../build/source.md)。找到包含 `include/inspireface.h` 和 `lib/libInspireFace.so` 的目录，macOS 对应 `.dylib`。
+从 [Release 1.2.4](https://github.com/HyperInspire/InspireFace/releases/tag/v1.2.4) 下载匹配的 SDK，或[自行构建](../build/source.md)。找到包含 `include/` 和 `lib/` 的 SDK 目录。Linux 使用 `libInspireFace.so`，macOS 使用 `libInspireFace.dylib`，Windows 使用 `libInspireFace.dll` 和独立的导入库。Windows 环境准备见 [Windows 接入](./windows.md)。
 
 将[下方检测程序](#a-complete-detection-program)保存为 `detect.c`，再将下面的配置保存为同一目录下的 `CMakeLists.txt`。
 
@@ -17,19 +17,36 @@ SDK 版本、下载链接和各平台编译方法见[获取和编译](../build/R
 
 ```cmake
 cmake_minimum_required(VERSION 3.20)
-project(inspireface_detection LANGUAGES C)
+project(inspireface_detection LANGUAGES C CXX)
 
 set(INSPIREFACE_ROOT "" CACHE PATH "SDK directory containing include/ and lib/")
-find_path(ISF_INCLUDE_DIR inspireface.h PATHS "${INSPIREFACE_ROOT}/include" NO_DEFAULT_PATH REQUIRED)
-find_library(ISF_LIBRARY NAMES InspireFace PATHS "${INSPIREFACE_ROOT}/lib" NO_DEFAULT_PATH REQUIRED)
-add_library(InspireFaceSDK UNKNOWN IMPORTED)
-set_target_properties(InspireFaceSDK PROPERTIES
-    IMPORTED_LOCATION "${ISF_LIBRARY}"
-    INTERFACE_INCLUDE_DIRECTORIES "${ISF_INCLUDE_DIR}")
+if(WIN32)
+    find_package(InspireFace CONFIG REQUIRED
+        PATHS "${INSPIREFACE_ROOT}/lib/cmake/InspireFace" NO_DEFAULT_PATH)
+    add_library(InspireFaceSDK ALIAS InspireFace::InspireFace)
+else()
+    find_path(ISF_INCLUDE_DIR inspireface.h PATHS "${INSPIREFACE_ROOT}/include" NO_DEFAULT_PATH REQUIRED)
+    find_library(ISF_LIBRARY NAMES InspireFace PATHS "${INSPIREFACE_ROOT}/lib" NO_DEFAULT_PATH REQUIRED)
+    add_library(InspireFaceSDK UNKNOWN IMPORTED)
+    set_target_properties(InspireFaceSDK PROPERTIES
+        IMPORTED_LOCATION "${ISF_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${ISF_INCLUDE_DIR}")
+endif()
 
 add_executable(detect_c detect.c)
 target_compile_features(detect_c PRIVATE c_std_99)
+set_target_properties(detect_c PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(detect_c PRIVATE InspireFaceSDK)
+
+if(WIN32)
+    get_target_property(ISF_LIBRARY_TYPE InspireFaceSDK TYPE)
+    if(ISF_LIBRARY_TYPE STREQUAL "SHARED_LIBRARY")
+        add_custom_command(TARGET detect_c POST_BUILD
+            COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+                "$<TARGET_FILE:InspireFaceSDK>" "$<TARGET_FILE_DIR:detect_c>"
+            VERBATIM)
+    endif()
+endif()
 ```
 
 </details>
@@ -41,6 +58,17 @@ cmake -S . -B build -DINSPIREFACE_ROOT=/path/to/InspireFace
 cmake --build build --parallel
 ./build/detect_c /path/to/Pikachu /path/to/face.jpg
 ```
+
+Windows 先打开 **x64 Native Tools Command Prompt for VS 2022**，再启动 PowerShell。准备 Release x64 SDK 后，同一份代码可以这样构建和运行：
+
+```powershell
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release `
+  "-DINSPIREFACE_ROOT=C:/SDKs/InspireFace"
+cmake --build build --parallel 4
+.\build\detect_c.exe C:\models\Pikachu C:\images\face.jpg
+```
+
+Windows 分支使用 SDK 安装的 CMake package，由 target 传递 DLL 导入定义和静态依赖；使用动态 SDK 时，会自动将 DLL 复制到可执行文件旁边。SDK 与应用保持相同的架构、构建配置和 MSVC 运行库设置，运行环境的安装见 [Windows 接入](./windows.md)。 路径中包含中文等非 ASCII 字符时，可参考 [Windows 完整示例](./windows.md#a-complete-detection-program)，先将 UTF-16 命令行参数转为 UTF-8，再传给 SDK。
 
 这份 CMake 配置将 SDK 导入为库目标。部署时，将运行库放到操作系统的库搜索路径中，配置方法见[库加载](../guides/troubleshooting.md#library-import-or-loading-fails)。
 
@@ -61,12 +89,12 @@ example/
   images/face.jpg
 ```
 
-将 `INSPIREFACE_ROOT` 指向这里的 `sdk` 目录。macOS 库名为 `libInspireFace.dylib`。保留同一 SDK 包中完整的 `include/` 和 `lib/` 目录。
+将 `INSPIREFACE_ROOT` 指向这里的 `sdk` 目录。macOS 库名为 `libInspireFace.dylib`。Windows 保留 `libInspireFace.dll`、对应的 `.lib` 导入库和 `lib/cmake/InspireFace/`。保留同一 SDK 包中完整的 `include/` 和 `lib/` 目录。
 
 配置可执行文件的运行时搜索路径，让它加载随应用打包的 SDK 库。模型作为独立文件保留，在启动运行环境时传入路径。
 
 ::: tip 先使用动态库 SDK 跑通示例
-上面的 CMake 配置链接一个动态 SDK 库。使用静态构建时，在应用最终链接阶段一并提供该构建所需的推理库、线程库和平台依赖。
+建议先使用动态 SDK。Windows CMake package 也会传递静态 SDK 的依赖，不要只链接单个 `.lib` 文件。其他平台使用静态构建时，在应用最终链接阶段一并提供推理库、线程库和平台依赖。
 :::
 
 ## 完整的检测程序 {#a-complete-detection-program}

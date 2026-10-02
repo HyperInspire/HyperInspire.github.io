@@ -49,6 +49,59 @@ python3 scripts/cpu_benchmark_opencv_summary.py \
 
 `taskset` 用于 Linux 的 CPU 绑定，macOS 上去掉这部分即可；ARM 平台还需去掉 AVX2 选项。Apple 的 GCD 负责管理 OpenCV 线程数，因此应同时记录请求值和实际线程数，测试程序会把两者写入 CSV 表头。使用 `--suite full` 运行较短的一组测试，或使用 `--suite u8c3` 测试几何变换和通道交换。
 
+### 在自己的 CPU 上测试 Image 和 Task {#measure-image-and-task-on-your-cpu}
+
+最新版独立 InspireCV 源码提供了 `inspirecv_simd_coverage_benchmark`，通过公开的 `Image` 和 `Task` 接口测试不同像素类型、通道数、图像尺寸和张量布局，也包含行尾有填充的输入。可以用它检查应用中的常用操作在本机上的耗时。这个工具只测 InspireCV；上面的 CPU 对比工具会同时测量 OpenCV。
+
+该工具于 **2026-10-02** 加入 InspireCV。InspireFace 当前引用的 InspireCV 版本较早，运行下面的示例需要单独构建 InspireCV 仓库。本页已有的性能数据仍对应各表注明的测试日期，没有包含这次新增 CPU 内核的实测结果。
+
+<details>
+<summary>构建并运行 Image 和 Task 性能测试</summary>
+
+先安装 CMake、支持 C++14 的编译器，以及 OpenCV 的 `core`、`imgproc` 开发库。目前开启 CPU benchmark 构建选项时，即使只构建这个工具，也需要这两个 OpenCV 组件。将 `OpenCV_DIR` 改成实际安装位置；如果 CMake 已经能找到 OpenCV，可以去掉该选项。
+
+```bash
+git clone --depth 1 https://github.com/tunmx/InspireCV.git
+cd InspireCV
+
+cmake -S . -B build-cpu-coverage \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DINSPIRECV_BUILD_CPU_BENCHMARKS=ON \
+  -DINSPIRECV_BACKEND_OPENCV=OFF \
+  -DINSPIRECV_ENABLE_AVX2=OFF \
+  -DOpenCV_DIR=/path/to/opencv/lib/cmake/opencv4
+cmake --build build-cpu-coverage \
+  --target inspirecv_simd_coverage_benchmark --parallel 4
+
+./build-cpu-coverage/inspirecv_simd_coverage_benchmark \
+  --suite all --samples 31 --min-ms 5 --max-width 640 \
+  --report cpu-coverage.csv
+
+./build-cpu-coverage/inspirecv_simd_coverage_benchmark \
+  --suite image --operation swap_rb \
+  --samples 31 --min-ms 5 --max-width 640 \
+  --report swap-rb.csv
+```
+
+第一组运行 Image 和 Task 两类测试，第二组只测通道交换。`INSPIRECV_ENABLE_AVX2=OFF` 表示不对整个项目启用 AVX2 编译；在支持的 x86 CPU 上，独立的 AVX2 内核仍可由运行时自动选择。
+
+</details>
+
+| Option | 用法 |
+| --- | --- |
+| `--suite all`、`image` 或 `task` | 选择全部测试，或只测一类接口。 |
+| `--operation NAME` | 按 CSV 中的完整操作名筛选，例如 `swap_rb`。 |
+| `--max-width 640` | 只测输入宽度不超过此值的用例；设为 `1920` 可覆盖全部尺寸。 |
+| `--samples 31` / `--min-ms 5` | 采样 31 次，通过调整重复调用次数，让每次采样的目标耗时至少为 5 ms。 |
+| `--report cpu-coverage.csv` | 将结果保存到 CSV 文件。 |
+
+`p50_us` 是单次调用耗时的中位数，`p95_us` 是第 95 百分位。每次采样都会对一批重复调用取平均，因此它们反映的是批次间的波动，不是逐帧耗时的长尾。CSV 还记录输入、输出尺寸、stride、layout 和 `timing_scope`：
+
+- `Image`：`public_api_allocation` 包含公开接口内部的输出内存分配。
+- `Task`：`preallocated_end_to_end` 测量复用 Pipeline 和输出缓冲区时的 `Pipeline::Run()` 耗时。
+
+比较时使用同一台机器，并对应相同的操作、尺寸和计时范围。这里测的是图像处理和预处理，不包含模型推理。
+
 ## CUDA Task 预处理 {#cuda-task-preprocessing}
 
 以下数据测于 **2026-08-16**，使用 **RTX 3060 12 GiB**、Ryzen 5 5600、CUDA **12.2**、NVIDIA 驱动 **550.144.03**、Linux 6.8 和 GCC 11.4，采用 Release 构建。保存的 CSV 中，InspireCV 构建版本记为 **1.0.0**。

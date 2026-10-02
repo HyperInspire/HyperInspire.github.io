@@ -388,7 +388,7 @@ function analyzeFrame(stream: ImageStream): void {
 
 @tab Python
 
-PyPI 的 **1.2.4.post1 包**已支持下面使用的上下文管理器和 `auto_launch=False`。传入 BGR `uint8` 数组。原生调用失败时抛出异常，正常处理但无人脸时返回空列表。
+PyPI 的 **1.2.4.post3 包**已支持下面使用的上下文管理器和 `auto_launch=False`。传入 BGR `uint8` 数组。原生调用失败时抛出异常，正常处理但无人脸时返回空列表。
 
 <details>
 <summary>Python — 完整分析示例</summary>

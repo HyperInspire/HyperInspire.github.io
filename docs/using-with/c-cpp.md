@@ -8,7 +8,7 @@ For an iOS or macOS app written in Objective-C or Swift, see the [Apple API guid
 
 ## Link the SDK
 
-Download the matching SDK from [Release 1.2.4](https://github.com/HyperInspire/InspireFace/releases/tag/v1.2.4), or [build it yourself](../build/source.md). Locate the directory containing `include/inspireface.h` and `lib/libInspireFace.so` (or the macOS `.dylib`).
+Download the matching SDK from [Release 1.2.4](https://github.com/HyperInspire/InspireFace/releases/tag/v1.2.4), or [build it yourself](../build/source.md). Locate the SDK directory containing `include/` and `lib/`. Linux uses `libInspireFace.so`, macOS uses `libInspireFace.dylib`, and Windows uses `libInspireFace.dll` with a separate import library. For Windows setup, see [Windows](./windows.md).
 
 Save the [detection program below](#a-complete-detection-program) as `detect.c`, and save this configuration as `CMakeLists.txt` in the same directory.
 
@@ -17,19 +17,36 @@ Save the [detection program below](#a-complete-detection-program) as `detect.c`,
 
 ```cmake
 cmake_minimum_required(VERSION 3.20)
-project(inspireface_detection LANGUAGES C)
+project(inspireface_detection LANGUAGES C CXX)
 
 set(INSPIREFACE_ROOT "" CACHE PATH "SDK directory containing include/ and lib/")
-find_path(ISF_INCLUDE_DIR inspireface.h PATHS "${INSPIREFACE_ROOT}/include" NO_DEFAULT_PATH REQUIRED)
-find_library(ISF_LIBRARY NAMES InspireFace PATHS "${INSPIREFACE_ROOT}/lib" NO_DEFAULT_PATH REQUIRED)
-add_library(InspireFaceSDK UNKNOWN IMPORTED)
-set_target_properties(InspireFaceSDK PROPERTIES
-    IMPORTED_LOCATION "${ISF_LIBRARY}"
-    INTERFACE_INCLUDE_DIRECTORIES "${ISF_INCLUDE_DIR}")
+if(WIN32)
+    find_package(InspireFace CONFIG REQUIRED
+        PATHS "${INSPIREFACE_ROOT}/lib/cmake/InspireFace" NO_DEFAULT_PATH)
+    add_library(InspireFaceSDK ALIAS InspireFace::InspireFace)
+else()
+    find_path(ISF_INCLUDE_DIR inspireface.h PATHS "${INSPIREFACE_ROOT}/include" NO_DEFAULT_PATH REQUIRED)
+    find_library(ISF_LIBRARY NAMES InspireFace PATHS "${INSPIREFACE_ROOT}/lib" NO_DEFAULT_PATH REQUIRED)
+    add_library(InspireFaceSDK UNKNOWN IMPORTED)
+    set_target_properties(InspireFaceSDK PROPERTIES
+        IMPORTED_LOCATION "${ISF_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${ISF_INCLUDE_DIR}")
+endif()
 
 add_executable(detect_c detect.c)
 target_compile_features(detect_c PRIVATE c_std_99)
+set_target_properties(detect_c PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(detect_c PRIVATE InspireFaceSDK)
+
+if(WIN32)
+    get_target_property(ISF_LIBRARY_TYPE InspireFaceSDK TYPE)
+    if(ISF_LIBRARY_TYPE STREQUAL "SHARED_LIBRARY")
+        add_custom_command(TARGET detect_c POST_BUILD
+            COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+                "$<TARGET_FILE:InspireFaceSDK>" "$<TARGET_FILE_DIR:detect_c>"
+            VERBATIM)
+    endif()
+endif()
 ```
 
 </details>
@@ -41,6 +58,17 @@ cmake -S . -B build -DINSPIREFACE_ROOT=/path/to/InspireFace
 cmake --build build --parallel
 ./build/detect_c /path/to/Pikachu /path/to/face.jpg
 ```
+
+On Windows, open **x64 Native Tools Command Prompt for VS 2022**, then start PowerShell. With a Release x64 SDK, use the same files:
+
+```powershell
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release `
+  "-DINSPIREFACE_ROOT=C:/SDKs/InspireFace"
+cmake --build build --parallel 4
+.\build\detect_c.exe C:\models\Pikachu C:\images\face.jpg
+```
+
+The Windows branch uses the SDK's installed CMake package. Its target supplies DLL import definitions and static dependencies, and the example copies a shared SDK's DLL beside the executable. Keep the SDK and application on the same architecture, build configuration and MSVC runtime. See [Windows deployment](./windows.md) for runtime installation. For paths with Chinese or other non-ASCII characters, use the [complete Windows example](./windows.md#a-complete-detection-program), which converts UTF-16 command-line arguments to UTF-8 before calling the SDK.
 
 This CMake configuration imports the SDK as a library target. For deployment, put its runtime libraries on the operating system's library search path. See [library loading](../guides/troubleshooting.md#library-import-or-loading-fails).
 
@@ -61,12 +89,12 @@ example/
   images/face.jpg
 ```
 
-Set `INSPIREFACE_ROOT` to the `sdk` directory above. On macOS the library is `libInspireFace.dylib`. Keep the complete `include/` and `lib/` directories from the same SDK package.
+Set `INSPIREFACE_ROOT` to the `sdk` directory above. On macOS the library is `libInspireFace.dylib`. For Windows, keep `libInspireFace.dll`, its `.lib` import library and `lib/cmake/InspireFace/` together. Keep the complete `include/` and `lib/` directories from the same SDK package.
 
 Configure the executable's runtime search path to load the packaged SDK libraries. The model stays in a separate file; pass its path when launching the runtime.
 
 ::: tip Use a shared-library SDK for the first example
-The CMake configuration above links one shared SDK library. For a static build, include the inference, threading and platform dependencies required by that build in the application's final link step.
+Start with a shared SDK. The Windows CMake package also carries the dependencies of a static SDK; use it instead of linking the `.lib` file alone. For a static build on other platforms, include the inference, threading and platform dependencies in the application's final link step.
 :::
 
 ## A complete detection program

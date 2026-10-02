@@ -27,9 +27,13 @@ The JAR is shared across targets. The native directory must match the **running 
 | macOS x86_64 | `native/macos-x86_64` | `libInspireFaceJNI.dylib` | `libInspireFace.dylib` |
 | Linux x86_64 | `native/linux-x86_64` | `libInspireFaceJNI.so` | `libInspireFace.so` |
 | Linux arm64 | `native/linux-arm64` | `libInspireFaceJNI.so` | `libInspireFace.so` |
-| Windows x86_64 | `native/windows-x86_64` | `InspireFaceJNI.dll` | `InspireFace.dll` |
+| Windows x86_64 (custom JNI build) | `native/windows-x86_64` | `InspireFaceJNI.dll` | `libInspireFace.dll` |
 
-These are the loader names and package paths for matching native builds, not a list of published binary downloads. Linux and macOS build instructions are provided in [Java packaging](../build/java.md); Windows needs a compatible native build and its runtime dependencies. A build with a static core may contain only the shared JNI adapter.
+These are the loader names and package paths for matching native builds. [Java packaging](../build/java.md) covers Linux and macOS. A build with a static core may contain only the shared JNI adapter.
+
+::: warning Windows packages
+The [Windows CPU SDK](./windows.md) and Windows PyPI wheel provide the native C/C++ library and Python binding, respectively. Neither includes `InspireFaceJNI.dll`. Using this Java API on Windows requires building and validating that JNI adapter separately; adding the core DLL to `java.library.path` is not enough. See [Java build scope](../build/java.md#platforms-and-backends).
+:::
 
 For a Gradle project, copy the JAR to `libs/` and add this dependency in `build.gradle`:
 
@@ -51,9 +55,11 @@ java -Djava.library.path=native/macos-arm64 -cp inspireface.jar:examples \
   DetectFaces /absolute/path/to/Pikachu /absolute/path/to/face.jpg
 ```
 
-On Linux, replace `native/macos-arm64` with the matching `native/linux-*` directory. The classpath separator stays `:`. On Windows, use `;` and put the native directory on `PATH` as well so Windows can find dependent DLLs. With a compatible Windows package:
+On Linux, replace `native/macos-arm64` with the matching `native/linux-*` directory. The classpath separator stays `:`. On Windows, use `;` and put the native directory on `PATH` as well so Windows can find dependent DLLs. If you have built a matching Windows JNI package:
 
 ```powershell
+$nativeDir = (Resolve-Path native/windows-x86_64).Path
+$env:PATH = "$nativeDir;$env:PATH"
 javac -cp inspireface.jar examples/DetectFaces.java
 java "-Djava.library.path=native/windows-x86_64" -cp "inspireface.jar;examples" DetectFaces C:\models\Pikachu C:\images\face.jpg
 ```

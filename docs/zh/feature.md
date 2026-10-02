@@ -154,7 +154,8 @@ FeatureHub 使用数值 ID 管理特征向量，支持插入、更新、删除�
 
 | Target | SDK 与模型包选择 | 接入说明 |
 | --- | --- | --- |
-| CPU | 桌面、移动端和嵌入式设备可使用 CPU 构建，搭配 `Pikachu` 等通用模型包。 | [模型与构建](./guides/models-and-builds.md) |
+| CPU | 桌面、移动端和嵌入式设备可使用 CPU 构建，搭配 `Pikachu` 等通用模型包。 | [x86 CPU](./using-with/x86.md) · [ARM](./using-with/arm.md) · [模型与构建](./guides/models-and-builds.md) |
+| Windows x64 CPU | C/C++ SDK 或 PyPI 安装包，搭配通用 CPU 模型包。 | [Windows](./using-with/windows.md) · [构建](./build/windows.md) |
 | iOS / macOS CPU | Objective-C、Swift Framework 与通用 CPU 模型包。 | [Apple API](./using-with/apple.md) · [iOS](./using-with/ios.md) · [macOS](./using-with/macos.md) |
 | Apple CoreML | 启用 Apple 扩展，并搭配兼容的 Apple 模型包。 | [iOS / Apple](./using-with/ios.md#apple-acceleration) |
 | Rockchip NPU | 使用 RKNN 构建，匹配 SoC 模型包和板端运行库。 | [Rockchip](./using-with/rknpu.md) |

@@ -27,9 +27,13 @@ Java/
 | macOS x86_64 | `native/macos-x86_64` | `libInspireFaceJNI.dylib` | `libInspireFace.dylib` |
 | Linux x86_64 | `native/linux-x86_64` | `libInspireFaceJNI.so` | `libInspireFace.so` |
 | Linux arm64 | `native/linux-arm64` | `libInspireFaceJNI.so` | `libInspireFace.so` |
-| Windows x86_64 | `native/windows-x86_64` | `InspireFaceJNI.dll` | `InspireFace.dll` |
+| Windows x86_64 (custom JNI build) | `native/windows-x86_64` | `InspireFaceJNI.dll` | `libInspireFace.dll` |
 
-表格列出对应原生构建的加载名称与目录，不代表这些平台都已提供预编译下载。[Java 打包](../build/java.md)提供 Linux 和 macOS 的构建方法；Windows 需要准备兼容的原生库及其运行时依赖。使用静态核心库构建时，目录中可能只有 JNI 动态库。
+表格列出对应原生构建的加载名称与目录。[Java 打包](../build/java.md)提供 Linux 和 macOS 的构建方法。使用静态核心库构建时，目录中可能只有 JNI 动态库。
+
+::: warning Windows 包的接口范围
+[Windows CPU SDK](./windows.md) 提供原生 C/C++ 库，Windows PyPI wheel 提供 Python 接口，两者都不包含 `InspireFaceJNI.dll`。在 Windows 上使用这里的 Java API，还需要单独构建并验证 JNI 适配库；只把核心 DLL 加入 `java.library.path` 不够。具体范围见 [Java 构建平台](../build/java.md#platforms-and-backends)。
+:::
 
 Gradle 项目可以将 JAR 放到 `libs/`，然后在 `build.gradle` 中添加：
 
@@ -51,9 +55,11 @@ java -Djava.library.path=native/macos-arm64 -cp inspireface.jar:examples \
   DetectFaces /absolute/path/to/Pikachu /absolute/path/to/face.jpg
 ```
 
-Linux 将 `native/macos-arm64` 改为对应的 `native/linux-*` 目录，classpath 仍使用 `:` 分隔。Windows 使用 `;`，还需将动态库目录加入 `PATH`，供系统查找依赖 DLL。准备好兼容的 Windows 包后：
+Linux 将 `native/macos-arm64` 改为对应的 `native/linux-*` 目录，classpath 仍使用 `:` 分隔。Windows 使用 `;`，还需将动态库目录加入 `PATH`，供系统查找依赖 DLL。自行构建好匹配的 Windows JNI 包后：
 
 ```powershell
+$nativeDir = (Resolve-Path native/windows-x86_64).Path
+$env:PATH = "$nativeDir;$env:PATH"
 javac -cp inspireface.jar examples/DetectFaces.java
 java "-Djava.library.path=native/windows-x86_64" -cp "inspireface.jar;examples" DetectFaces C:\models\Pikachu C:\images\face.jpg
 ```

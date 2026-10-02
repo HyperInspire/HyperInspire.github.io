@@ -2,7 +2,7 @@
 
 C++ applications can use either the [C API](./c-cpp.md) or the `inspire::Session` interface. Use the C API when you want an explicit ABI boundary. The C++ interface works directly with InspireCV image and geometry types; keep its headers, compiler ABI and native library matched.
 
-Download the matching **1.2.4** SDK from [SDK downloads](../build/README.md#prebuilt-sdks). For a custom build, see [source preparation and options](../build/source.md), then choose [Linux](../build/linux.md) or [macOS](../build/macos.md). This page covers linking and using the C++ API.
+Download the matching **1.2.4** SDK from [SDK downloads](../build/README.md#prebuilt-sdks). For a custom build, see [source preparation and options](../build/source.md), then choose [Windows](../build/windows.md), [Linux](../build/linux.md) or [macOS](../build/macos.md). This page covers linking and using the C++ API.
 
 For an iOS or macOS app written in Objective-C or Swift, see the [Apple API guide](./apple.md). The native C/C++ integration below remains available with the headers and libraries from the same build.
 
@@ -20,16 +20,32 @@ cmake_minimum_required(VERSION 3.20)
 project(inspireface_detection LANGUAGES CXX)
 
 set(INSPIREFACE_ROOT "" CACHE PATH "SDK directory containing include/ and lib/")
-find_path(ISF_INCLUDE_DIR inspireface/inspireface.hpp PATHS "${INSPIREFACE_ROOT}/include" NO_DEFAULT_PATH REQUIRED)
-find_library(ISF_LIBRARY NAMES InspireFace PATHS "${INSPIREFACE_ROOT}/lib" NO_DEFAULT_PATH REQUIRED)
-add_library(InspireFaceSDK UNKNOWN IMPORTED)
-set_target_properties(InspireFaceSDK PROPERTIES
-    IMPORTED_LOCATION "${ISF_LIBRARY}"
-    INTERFACE_INCLUDE_DIRECTORIES "${ISF_INCLUDE_DIR}")
+if(WIN32)
+    find_package(InspireFace CONFIG REQUIRED
+        PATHS "${INSPIREFACE_ROOT}/lib/cmake/InspireFace" NO_DEFAULT_PATH)
+    add_library(InspireFaceSDK ALIAS InspireFace::InspireFace)
+else()
+    find_path(ISF_INCLUDE_DIR inspireface.h PATHS "${INSPIREFACE_ROOT}/include" NO_DEFAULT_PATH REQUIRED)
+    find_library(ISF_LIBRARY NAMES InspireFace PATHS "${INSPIREFACE_ROOT}/lib" NO_DEFAULT_PATH REQUIRED)
+    add_library(InspireFaceSDK UNKNOWN IMPORTED)
+    set_target_properties(InspireFaceSDK PROPERTIES
+        IMPORTED_LOCATION "${ISF_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${ISF_INCLUDE_DIR}")
+endif()
 
 add_executable(detect_cpp detect.cpp)
 target_compile_features(detect_cpp PRIVATE cxx_std_14)
 target_link_libraries(detect_cpp PRIVATE InspireFaceSDK)
+
+if(WIN32)
+    get_target_property(ISF_LIBRARY_TYPE InspireFaceSDK TYPE)
+    if(ISF_LIBRARY_TYPE STREQUAL "SHARED_LIBRARY")
+        add_custom_command(TARGET detect_cpp POST_BUILD
+            COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+                "$<TARGET_FILE:InspireFaceSDK>" "$<TARGET_FILE_DIR:detect_cpp>"
+            VERBATIM)
+    endif()
+endif()
 ```
 
 </details>
@@ -43,11 +59,22 @@ cmake --build build --parallel
 ./build/detect_cpp /path/to/Pikachu /path/to/face.jpg
 ```
 
+On Windows, open **x64 Native Tools Command Prompt for VS 2022**, then start PowerShell. With a Release x64 SDK, use the same files:
+
+```powershell
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release `
+  "-DINSPIREFACE_ROOT=C:/SDKs/InspireFace"
+cmake --build build --parallel 4
+.\build\detect_cpp.exe C:\models\Pikachu C:\images\face.jpg
+```
+
+The Windows branch uses the SDK's installed CMake package. Its target supplies DLL import definitions and static dependencies, and the example copies a shared SDK's DLL beside the executable. Keep the SDK and application on the same architecture, build configuration and MSVC runtime. See [Windows deployment](./windows.md) for runtime installation. For paths with Chinese or other non-ASCII characters, use the [complete Windows example](./windows.md#a-complete-detection-program), which converts UTF-16 command-line arguments to UTF-8 before calling the SDK.
+
 The program writes `detected-cpp.jpg`. The imported SDK target supplies the include directory and library path; no separate OpenCV dependency is needed.
 
 ### Build an SDK with C++ headers
 
-If the package only contains the C headers, build a matching SDK with C++ header installation enabled. After preparing the [source dependencies](../build/source.md), run from the InspireFace root:
+The Windows build installs C++ headers by default; follow [Windows build](../build/windows.md) when using that platform. If another package only contains the C headers, build a matching SDK with C++ header installation enabled. After preparing the [source dependencies](../build/source.md), run from the InspireFace root:
 
 ```bash
 cmake -S . -B build/cpp-sdk \

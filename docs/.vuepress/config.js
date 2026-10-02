@@ -31,6 +31,7 @@ const sidebar = [
       { text: 'C++', link: '/using-with/cpp' },
       { text: 'Python', link: '/using-with/python' },
       { text: 'Java', link: '/using-with/java' },
+      { text: 'Windows', link: '/using-with/windows' },
       { text: 'Android', link: '/using-with/android' },
       { text: 'Apple', link: '/using-with/apple' },
       { text: 'iOS', link: '/using-with/ios' },
@@ -44,6 +45,7 @@ const sidebar = [
       { text: 'Overview and downloads', link: '/build/' },
       { text: 'Source and common options', link: '/build/source' },
       { text: 'Linux', link: '/build/linux' },
+      { text: 'Windows', link: '/build/windows' },
       { text: 'macOS', link: '/build/macos' },
       { text: 'Android', link: '/build/android' },
       { text: 'iOS', link: '/build/ios' },
@@ -57,6 +59,7 @@ const sidebar = [
   {
     text: 'Hardware deployment',
     children: [
+      { text: 'x86 CPU', link: '/using-with/x86' },
       { text: 'ARM', link: '/using-with/arm' },
       { text: 'NVIDIA TensorRT', link: '/using-with/cuda' },
       { text: 'Rockchip NPU', link: '/using-with/rknpu' },

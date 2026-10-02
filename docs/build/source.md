@@ -26,7 +26,7 @@ cd InspireFace
 git clone --recurse-submodules https://github.com/tunmx/inspireface-3rdparty.git 3rdparty
 ```
 
-Continue with the build guide for your target platform.
+Continue with the build guide for your target platform. For Windows, use the source commands in [Build for Windows](./windows.md#get-the-source): its build entry point is currently on `feature/win`.
 
 ## Prepare the build tools {#prepare-the-build-tools}
 
@@ -35,8 +35,8 @@ Continue with the build guide for your target platform.
 | Git | Fetch the SDK and recursive third-party dependencies. |
 | CMake | 3.20 or newer. |
 | C++ compiler | C++14 support; use the target platform’s compiler or cross toolchain. |
-| Build tool | Make or Ninja for direct CMake builds; most `command/` scripts call Make. |
-| Platform SDK | Android NDK, Xcode, OpenHarmony Native SDK or board toolchain as applicable. |
+| Build tool | Make or Ninja for direct CMake builds; the Windows PowerShell script uses Ninja. |
+| Platform SDK | MSVC v143 with a Windows SDK, Android NDK, Xcode, OpenHarmony Native SDK or board toolchain as applicable. |
 
 Some bundled dependencies use older CMake policy settings. The direct CMake commands here pass `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` for CMake 4 compatibility. The unified Apple builder also passes this setting. The HarmonyOS HAR script in the `v1.2.4` tag does not pass this setting; use CMake 3.20–3.x when building that version.
 
@@ -58,7 +58,7 @@ cmake --install build/local-cpu
 
 This direct build produces the native C/C++ library. For Objective-C and Swift frameworks, use the unified Apple builder in the [iOS](./ios.md) or [macOS](./macos.md) chapter.
 
-Use a separate build directory for each architecture and backend. The [Linux](./linux.md) and [macOS](./macos.md) chapters add platform-specific settings and binary inspection commands.
+Use a separate build directory for each architecture and backend. The [Linux](./linux.md) and [macOS](./macos.md) chapters add platform-specific settings and binary inspection commands. On Windows, use the [PowerShell build entry point](./windows.md#build-a-shared-sdk) from an x64 Visual Studio Native Tools environment.
 
 ## Understand the output layout {#understand-the-output-layout}
 
@@ -83,7 +83,7 @@ Set `INSPIREFACE_ROOT` to `build/local-cpu/install/InspireFace` when using the [
 ::: warning Release scripts reorganize their output
 Many scripts under `command/` move installed files to the top of their own build directory and delete intermediate compilation files. Their final paths therefore differ from a direct CMake build. Keep application files outside those directories, and use each platform page’s stated output path.
 
-The Apple builder keeps reusable dependency caches under `build/apple-cache` and stages SDK outputs separately; see the [macOS](./macos.md) and [iOS](./ios.md) guides.
+The Apple builder keeps reusable dependency caches under `build/apple-cache` and stages SDK outputs separately; see the [macOS](./macos.md) and [iOS](./ios.md) guides. The Windows script keeps its build tree and installs under `build/windows-x64-Release-shared/install/` by default.
 :::
 
 ## Common CMake options {#common-cmake-options}

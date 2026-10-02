@@ -21,13 +21,15 @@ bash command/download_models_general.sh Pikachu
 
 This writes `test_res/pack/Pikachu`, which is enough for the first CPU example. To download every listed pack, run the script without an argument.
 
+On Windows, use the same CPU packs. Python can download its default pack with `isf.launch()`. For offline use, download `Pikachu` from the model release and pass its local path; see [Windows setup](../using-with/windows.md).
+
 For iOS and macOS CPU frameworks, start with `Pikachu` as well. A CoreML build needs a compatible CoreML pack; changing the build flag or renaming a general pack does not convert its models. The general download script above does not provide a CoreML pack.
 
 A pack is a file, sometimes without an extension. If you downloaded a ZIP archive, extract it first. Pass the pack file to `HFLaunchInspireFace` or `launch(resource_path=...)`.
 
 ## Validate before creating sessions
 
-The 1.2.4 API includes pack validation and metadata inspection. The Python example works with the **1.2.4.post1 PyPI package**:
+The 1.2.4 API includes pack validation and metadata inspection. The Python example works with the **1.2.4.post3 PyPI package**:
 
 ```python
 import inspireface as isf
@@ -129,11 +131,11 @@ Android 1.2.4.post1 provides `InspireFace.GlobalReload(packPath)`, which returns
 
 ## Download an SDK
 
-[Get and build the SDK: overview and downloads](../build/README.md) lists the **1.2.4 native release**, Python package and Android dependency. Check the device and **process architecture**, and use matching headers, wrappers and native libraries. The native release supports the API-level-2 examples; Python 1.2.4.post1 wheels and the Android 1.2.4.post1 AAR also include this SDK version.
+[Get and build the SDK: overview and downloads](../build/README.md) lists the **1.2.4 native release**, Python package and Android dependency. Check the device and **process architecture**, and use matching headers, wrappers and native libraries. The native release supports the API-level-2 examples; Python 1.2.4.post3 wheels and the Android 1.2.4.post1 AAR also include this SDK version.
 
 ## Build a CPU SDK
 
-[Source and common options](../build/source.md) includes the checkout, dependency initialization and complete CPU build commands. The [Linux](../build/linux.md) and [macOS](../build/macos.md) chapters cover toolchains, architecture and output checks.
+[Source and common options](../build/source.md) includes the checkout, dependency initialization and complete CPU build commands. The [Windows](../build/windows.md), [Linux](../build/linux.md) and [macOS](../build/macos.md) chapters cover toolchains, architecture and output checks.
 
 ## Build options that affect integration
 
@@ -141,6 +143,7 @@ Android 1.2.4.post1 provides `InspireFace.GlobalReload(packPath)`, which returns
 
 ## Target-specific builds
 
+- [Windows](../build/windows.md): MSVC x64 CPU builds, installed CMake targets and DLL deployment.
 - [Java](../build/java.md): JAR, JNI libraries and host JVM checks.
 - [Android](../build/android.md): NDK, ABIs, JNI and AAR packaging.
 - [iOS](../build/ios.md): device / simulator slices, XCFrameworks and CoreML.

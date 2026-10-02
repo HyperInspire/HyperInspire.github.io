@@ -8,7 +8,7 @@
 python -m pip install inspireface opencv-python
 ```
 
-当前 PyPI 包为 **1.2.4.post1**，已包含 **1.2.4 CPU SDK**。已有安装使用 `python -m pip install --upgrade inspireface` 升级，平台安装包与要求见 [Python 指南](./using-with/python.md#install)。
+当前 PyPI 包为 **1.2.4.post3**，已包含 **1.2.4 CPU SDK**，支持 Windows x64、Linux x86_64 / ARM64 和 macOS Intel / Apple Silicon。已有安装使用 `python -m pip install --upgrade inspireface` 升级，平台安装包与要求见 [Python 指南](./using-with/python.md#install)。
 
 ## 检测图片中的人脸 {#detect-faces-in-an-image}
 
@@ -60,6 +60,8 @@ python first_face.py
 ```python
 isf.launch(resource_path="/path/to/Pikachu")
 ```
+
+Windows 路径也可以使用正斜杠，例如 `isf.launch(resource_path="C:/models/Pikachu")`。
 
 资源包可能没有扩展名。如果下载的是 ZIP 压缩包，请先解压，再把资源文件传给 `launch`。部署时，将测试过的 SDK 与资源包配套发布。
 

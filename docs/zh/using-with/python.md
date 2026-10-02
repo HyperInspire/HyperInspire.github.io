@@ -8,9 +8,11 @@ Python 接口可直接处理 NumPy 图像，完成人脸检测、特征提取和
 python -m pip install inspireface opencv-python
 ```
 
-[PyPI 当前版本](https://pypi.org/project/inspireface/1.2.4.post1/)为 **1.2.4.post1**，已包含 **1.2.4** CPU 原生库，可直接使用检测、识别、分析、快照、抓拍和诊断接口，无需单独编译 SDK。已经安装过 InspireFace 的环境，使用 `python -m pip install --upgrade inspireface` 升级。
+[PyPI 当前版本](https://pypi.org/project/inspireface/1.2.4.post3/)为 **1.2.4.post3**，已包含 **1.2.4** CPU 原生库，可直接使用检测、识别、分析、快照、抓拍和诊断接口，无需单独编译 SDK。已经安装过 InspireFace 的环境，使用 `python -m pip install --upgrade inspireface` 升级。
 
-已提供 Linux x86_64 / ARM64 和 macOS Intel / Apple Silicon 的 wheel。当前 macOS 原生库要求 **arm64 使用 macOS 14+**、**Intel 使用 macOS 15+**，平台文件与 wheel 标签说明见[安装包下载](../build/README.md#python-and-android-packages)。模型可在首次使用时下载，也可以从本地资源包加载。
+已提供 **Windows x64**、Linux x86_64 / ARM64 和 macOS Intel / Apple Silicon 的 wheel。当前 macOS 原生库要求 **arm64 使用 macOS 14+**、**Intel 使用 macOS 15+**，平台文件与 wheel 标签说明见[安装包下载](../build/README.md#python-and-android-packages)。模型可在首次使用时下载，也可以从本地资源包加载。
+
+Windows 可以直接使用下文相同的 API 与示例。请使用 **x64 Python**，发布的 wheel 使用 CPU 推理，已包含 `libInspireFace.dll`。如果缺少 DLL 依赖，安装 [Microsoft Visual C++ v14 x64 运行库](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist)后重试，具体排查见 [Windows 加载错误](../guides/troubleshooting.md#windows-python-loading)。
 
 ## 初始化一次，复用会话 {#initialize-once-and-reuse-the-session}
 
@@ -200,14 +202,27 @@ except isf.InspireFaceError as error:
 
 wheel 自带原生库。使用 1.2.4 封装加载本地构建时，在**导入** `inspireface` **之前**设置 `INSPIREFACE_LIBRARY_PATH`：
 
+::: tabs #python-native-library
+
+@tab Linux
+
 ```bash
-# Run from an InspireFace checkout, inside your virtual environment.
-python -m pip install -e ./python
 export INSPIREFACE_LIBRARY_PATH=/absolute/path/to/libInspireFace.so
 python -c 'import inspireface as isf; print(isf.version())'
 ```
 
+@tab Windows (PowerShell)
+
+```powershell
+$env:INSPIREFACE_LIBRARY_PATH = 'C:\sdk\InspireFace\lib\libInspireFace.dll'
+python -c "import inspireface as isf; print(isf.version())"
+```
+
+:::
+
 macOS 使用 SDK 中 `InspireFace/lib/` 下的原生 `libInspireFace.dylib`，也可以按 [macOS 构建指南](../build/macos.md)生成动态库。Objective-C 和 Swift Framework 用于 Apple 应用 target，不能直接替换 Python 加载的这个库文件。库架构必须与运行中的 Python 进程一致；即使设备是 Apple Silicon，通过 Rosetta 运行的 Intel Python 仍需 Intel 库。
+
+已经安装 PyPI 封装时，也可以直接用上述命令指定本地库；只有修改 Python 源码时才需要 editable 安装。Windows 路径指向 CPU SDK 的 DLL，Python 和运行库都使用 x64。需要恢复包内库时，在 PowerShell 中运行 `Remove-Item Env:INSPIREFACE_LIBRARY_PATH -ErrorAction SilentlyContinue`，再重启 Python。
 
 安装原生库时，一并准备对应后端的运行依赖。具体步骤见 [Rockchip Python](../guides/python-rockchip-device.md) 和 [TensorRT](./cuda.md)。
 

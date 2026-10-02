@@ -21,13 +21,15 @@ bash command/download_models_general.sh Pikachu
 
 文件会保存为 `test_res/pack/Pikachu`，首次运行 CPU 示例使用这个包即可。需要下载脚本列出的全部模型包时，不传参数运行脚本。
 
+Windows 同样使用 CPU 通用模型包。Python 调用 `isf.launch()` 可下载默认模型；离线使用时，从模型发布页下载 `Pikachu` 并传入本地路径，具体见 [Windows 接入](../using-with/windows.md)。
+
 iOS 和 macOS 的 CPU Framework 同样可以从 `Pikachu` 开始。CoreML 构建需配套兼容的 CoreML 模型包；修改编译选项或重命名通用包都不会转换模型格式。上面的通用下载脚本不提供 CoreML 包。
 
 模型包是一个文件，有时没有扩展名。如果下载的是 ZIP 压缩包，先解压，再将模型包文件传给 `HFLaunchInspireFace` 或 `launch(resource_path=...)`。
 
 ## 创建会话前验证模型包 {#validate-before-creating-sessions}
 
-1.2.4 接口提供模型包验证和元信息读取。下面的 Python 示例可直接使用 PyPI 的 **1.2.4.post1 包**：
+1.2.4 接口提供模型包验证和元信息读取。下面的 Python 示例可直接使用 PyPI 的 **1.2.4.post3 包**：
 
 ```python
 import inspireface as isf
@@ -129,11 +131,11 @@ Android 1.2.4.post1 提供 `InspireFace.GlobalReload(packPath)`，返回 `false`
 
 ## 下载 SDK {#download-an-sdk}
 
-[获取和编译：概述与下载](../build/README.md)列出 **1.2.4 原生发布包**、Python 包和 Android 依赖。选择时同时检查设备与**进程架构**，并使用配套的头文件、封装和原生库。原生发布包已支持 API level 2 示例，Python 1.2.4.post1 wheel 和 Android 1.2.4.post1 AAR 也包含这一版 SDK。
+[获取和编译：概述与下载](../build/README.md)列出 **1.2.4 原生发布包**、Python 包和 Android 依赖。选择时同时检查设备与**进程架构**，并使用配套的头文件、封装和原生库。原生发布包已支持 API level 2 示例，Python 1.2.4.post3 wheel 和 Android 1.2.4.post1 AAR 也包含这一版 SDK。
 
 ## 构建 CPU SDK {#build-a-cpu-sdk}
 
-[源码准备与通用选项](../build/source.md)包含源码获取、依赖初始化和完整的 CPU 构建命令。[Linux](../build/linux.md) 与 [macOS](../build/macos.md) 章节进一步说明工具链、架构和产物检查。
+[源码准备与通用选项](../build/source.md)包含源码获取、依赖初始化和完整的 CPU 构建命令。[Windows](../build/windows.md)、[Linux](../build/linux.md) 与 [macOS](../build/macos.md) 章节进一步说明工具链、架构和产物检查。
 
 ## 影响接入的构建选项 {#build-options-that-affect-integration}
 
@@ -141,6 +143,7 @@ Android 1.2.4.post1 提供 `InspireFace.GlobalReload(packPath)`，返回 `false`
 
 ## 各平台的构建方式 {#target-specific-builds}
 
+- [Windows](../build/windows.md)：MSVC x64 CPU 构建、CMake target 与 DLL 部署。
 - [Java](../build/java.md)：JAR、JNI 库和本机 JVM 验证。
 - [Android](../build/android.md)：NDK、ABI、JNI 与 AAR 打包。
 - [iOS](../build/ios.md)：真机与模拟器切片、XCFramework 和 CoreML。

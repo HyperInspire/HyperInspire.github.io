@@ -4,7 +4,7 @@ Use a prebuilt SDK when its platform, backend and API version fit your applicati
 
 ## Prebuilt SDKs {#prebuilt-sdks}
 
-The current [GitHub release is v1.2.4](https://github.com/HyperInspire/InspireFace/releases/tag/v1.2.4). The files below contain the native SDK for Linux, Android, Apple and HarmonyOS. Python and the Android AAR use package version **1.2.4.post1** with the same **1.2.4** SDK version; their installation links are [listed below](#python-and-android-packages).
+The current [GitHub release is v1.2.4](https://github.com/HyperInspire/InspireFace/releases/tag/v1.2.4). The files below contain the native SDK for Linux, Android, Apple and HarmonyOS. Python uses **1.2.4.post3**, including a Windows x64 wheel. The Android AAR remains **1.2.4.post1**. Both contain native SDK **1.2.4**; their installation links are [listed below](#python-and-android-packages).
 
 ::: tip Use the packaged SDK
 The **1.2.4** downloads provide the snapshot, capture and diagnostic APIs used in these guides. Use the headers and libraries from the same archive. Build from source when changing the backend, toolchain or minimum OS version.
@@ -28,7 +28,7 @@ The **1.2.4** downloads provide the snapshot, capture and diagnostic APIs used i
 
 </div>
 
-The CUDA/Ubuntu label above is the release asset name; check the library's actual dependencies on the deployment machine. The HarmonyOS archive includes an arm64 native SDK and a staged HAR project with its Node-API library; see [HarmonyOS integration](../using-with/harmonyos.md) to import it. This release has no prebuilt Windows, CoreML or standalone desktop Java package. CoreML and Java have their own build guides below.
+The CUDA/Ubuntu label above is the release asset name; check the library's actual dependencies on the deployment machine. The HarmonyOS archive includes an arm64 native SDK and a staged HAR project with its Node-API library; see [HarmonyOS integration](../using-with/harmonyos.md) to import it. Windows x64 CPU is available through PyPI and the [Windows source build](./windows.md). CoreML and standalone desktop Java have their own build guides below.
 
 Choose the library for the **application process**, including its architecture and C runtime. A 64-bit device can still run a 32-bit application. Keep each archive’s headers and libraries together, and check the platform guide before linking static frameworks or GPU/NPU libraries.
 
@@ -51,7 +51,7 @@ The packaged macOS libraries target **14.0 on arm64** and **15.0 on x86_64**. iO
 
 ## Python and Android packages {#python-and-android-packages}
 
-The [Python package on PyPI](https://pypi.org/project/inspireface/1.2.4.post1/) is **1.2.4.post1** and includes the **1.2.4 CPU runtime**. Install it with:
+The [Python package on PyPI](https://pypi.org/project/inspireface/1.2.4.post3/) is **1.2.4.post3** and includes the **1.2.4 CPU runtime**. Install it with:
 
 ```bash
 python -m pip install inspireface opencv-python
@@ -61,14 +61,17 @@ To upgrade an existing installation, run `python -m pip install --upgrade inspir
 
 | Platform | Architecture | Published wheel tag |
 | --- | --- | --- |
+| Windows | x64 | `win_amd64` |
 | Linux | x86_64 | `manylinux2014_x86_64` |
 | Linux | ARM64 | `manylinux2014_aarch64` |
 | macOS | Apple Silicon | `macosx_11_0_arm64` |
 | macOS | Intel | `macosx_12_0_x86_64` |
 
-The [PyPI file list](https://pypi.org/project/inspireface/1.2.4.post1/#files) contains the downloads and checksums. For a custom native library or wheel, see [Python packaging and library replacement](./python.md).
+Windows requires **64-bit Python** and the **Visual C++ x64 Redistributable**. The wheel includes `libInspireFace.dll` for CPU inference; no local compiler is needed. See [Windows integration](../using-with/windows.md) for local model loading and DLL troubleshooting.
 
-::: warning macOS requirements for 1.2.4.post1
+The [PyPI file list](https://pypi.org/project/inspireface/1.2.4.post3/#files) contains the downloads and checksums. For a custom native library or wheel, see [Python packaging and library replacement](./python.md).
+
+::: warning macOS requirements for 1.2.4.post3
 The bundled native libraries target **macOS 14.0 or later on arm64** and **macOS 15.0 or later on x86_64**. These requirements are higher than the wheel filenames indicate. For an earlier macOS version, build a compatible library and use a matching wheel tag as described in [Python packaging](./python.md#package-the-current-macos-sdk).
 :::
 
@@ -94,6 +97,7 @@ Native SDKs, JVM packages and Python wheels need a resource pack at runtime. The
 | --- | --- |
 | [Source and common options](./source.md) | Checkouts, dependencies, CMake options and output layout. |
 | [Linux](./linux.md) | Native CPU, ARM cross-compilation, Ubuntu and manylinux builds. |
+| [Windows](./windows.md) | MSVC x64 CPU builds, shared/static libraries, CMake integration and DLL deployment. |
 | [macOS](./macos.md) | Intel, Apple Silicon, universal frameworks, Swift modules and CoreML. |
 | [Android](./android.md) | NDK, ABIs, JNI libraries and AAR packaging. |
 | [iOS](./ios.md) | Device / simulator slices, XCFramework packaging and CoreML. |
@@ -101,6 +105,6 @@ Native SDKs, JVM packages and Python wheels need a resource pack at runtime. The
 | [NVIDIA TensorRT](./nvidia.md) | CUDA/TensorRT dependencies and Linux builds. |
 | [Rockchip NPU](./rockchip.md) | Board toolchains, RKNN/RGA and Android NPU builds. |
 | [Java packaging](./java.md) | JDK setup, JAR and JNI builds, native-library distribution and JVM tests. |
-| [Python packaging](./python.md) | Replace `.so`/`.dylib`, build wheels and verify installation. |
+| [Python packaging](./python.md) | Replace `.so`/`.dylib`/`.dll`, build wheels and verify installation. |
 
 </div>

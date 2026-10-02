@@ -2,7 +2,7 @@
 
 The Python API uses `ctypes` to call the native SDK. To switch from CPU to TensorRT or Rockchip NPU, download the matching **1.2.4 shared SDK** from [SDK downloads](./README.md#prebuilt-sdks), or build it for your target. CoreML requires a source build. Select the library from Python or include it in a wheel, keeping the wrapper and native SDK matched.
 
-For CPU use, install the published **1.2.4.post1** package with `python -m pip install inspireface opencv-python`. It includes the **1.2.4** native library. This chapter covers replacing that library and building your own wheel; available packages are listed in the [SDK overview](./README.md#python-and-android-packages).
+For CPU use, install the published **1.2.4.post3** package with `python -m pip install inspireface opencv-python`. It includes the **1.2.4** native library. This chapter covers replacing that library and building your own wheel; available packages are listed in the [SDK overview](./README.md#python-and-android-packages).
 
 | What you need | Approach |
 | --- | --- |
@@ -12,27 +12,41 @@ For CPU use, install the published **1.2.4.post1** package with `python -m pip i
 
 ## Prepare the native SDK and wrapper {#prepare-the-native-sdk-and-wrapper}
 
-Python needs a **shared library**: `libInspireFace.so` on Linux or `libInspireFace.dylib` on macOS. With the current PyPI wrapper and a matching 1.2.4 release library, continue to [select a shared library](#select-or-replace-a-shared-library).
+Python needs a **shared library**: `libInspireFace.dll` on Windows, `libInspireFace.so` on Linux or `libInspireFace.dylib` on macOS. With the current PyPI wrapper and a matching 1.2.4 release library, continue to [select a shared library](#select-or-replace-a-shared-library).
 
-To build your own library or edit the wrapper, complete [source preparation](./source.md), then follow [Linux](./linux.md), [macOS](./macos.md), [NVIDIA](./nvidia.md) or [Rockchip](./rockchip.md). Enable `ISF_BUILD_SHARED_LIBS=ON` and prepare the source wrapper as described below.
+To build your own library or edit the wrapper, complete [source preparation](./source.md), then follow [Windows](./windows.md), [Linux](./linux.md), [macOS](./macos.md), [NVIDIA](./nvidia.md) or [Rockchip](./rockchip.md). Enable `ISF_BUILD_SHARED_LIBS=ON` and prepare the source wrapper as described below.
 
 On Apple platforms, the new Objective-C / Swift frameworks are an additional integration route for native apps. Python still loads the **raw macOS dylib**, not `InspireFace.xcframework`, `InspireFaceSwift.framework` or an iOS static archive. `build_macos_arm64.sh` and `build_macos_x86.sh` produce that dylib. The arm64 CoreML script produces a raw `.a`; use the [custom shared build](./macos.md#set-architecture-and-deployment-target) for Python instead.
 
-The CMake configuration generates `python/version.txt`. If you built the SDK in this checkout, it is already in place. If you are reusing a matching SDK built elsewhere, copy its accompanying `version.txt` into this checkout before installing or packaging the wrapper:
+The CMake configuration generates `python/version.txt`. If you built the SDK in this checkout, it is already in place. When reusing a matching 1.2.4 SDK built elsewhere, the Python version file must contain only `1.2.4`:
 
 ```bash
-cp /absolute/path/to/sdk/version.txt python/version.txt
+python -c "from pathlib import Path; Path('python/version.txt').write_text('1.2.4\n')"
 ```
 
-Use the file from the same SDK as the native library; keep the Python source revision matched to that SDK.
+The SDK root’s `version.txt` contains a label such as `InspireFace Version: 1.2.4`; do not copy that label into the Python version file. Keep the Python source revision matched to the library. The Windows wheel script below prepares this file automatically.
 
 From the InspireFace repository root, create a Python environment and install the wrapper:
+
+::: tabs #python-build-shell
+
+@tab Linux / macOS
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e ./python
 ```
+
+@tab Windows (PowerShell)
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ./python
+```
+
+:::
 
 An editable installation reads the wrapper from your checkout. It does not compile the native SDK. Choose the native library before the first import.
 
@@ -52,7 +66,14 @@ export INSPIREFACE_LIBRARY_PATH=/absolute/path/to/libInspireFace.dylib
 python -c 'import inspireface as isf; print(isf.version())'
 ```
 
-`INSPIREFACE_LIBRARY_PATH` accepts a **file**, not a directory. A missing file raises `RuntimeError`; a library that cannot be loaded raises `ImportError` with the loader error. When an override is set, loading fails directly instead of falling back to the bundled library. Clear it with `unset INSPIREFACE_LIBRARY_PATH` to use the package's library again.
+On Windows, use the `.dll` path in PowerShell:
+
+```powershell
+$env:INSPIREFACE_LIBRARY_PATH = 'C:\sdk\InspireFace\lib\libInspireFace.dll'
+python -c "import inspireface as isf; print(isf.version())"
+```
+
+`INSPIREFACE_LIBRARY_PATH` accepts a **file**, not a directory. A missing file raises `RuntimeError`; a library that cannot be loaded raises `ImportError` with the loader error. When an override is set, loading fails directly instead of falling back to the bundled library. Clear it with `unset INSPIREFACE_LIBRARY_PATH` on Linux/macOS or `Remove-Item Env:INSPIREFACE_LIBRARY_PATH -ErrorAction SilentlyContinue` in PowerShell to use the package's library again.
 
 ::: warning Restart after replacing a library
 Set the path before importing `inspireface`. After replacing the file or selecting another build, restart the Python process or notebook kernel. Keep the wrapper and native library on the same SDK revision; an older library may lack symbols needed by the wrapper.
@@ -76,6 +97,14 @@ file /absolute/path/to/libInspireFace.dylib
 otool -L /absolute/path/to/libInspireFace.dylib
 ```
 
+On Windows, run this in a Visual Studio Developer PowerShell:
+
+```powershell
+dumpbin /DEPENDENTS C:\sdk\InspireFace\lib\libInspireFace.dll
+```
+
+The published CPU DLL needs the [Microsoft Visual C++ v14 x64 runtime](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist). It includes its CPU inference dependency, so no additional inference DLL is needed.
+
 Resolve any missing runtime libraries before importing Python. TensorRT/CUDA and Rockchip builds also need the backend runtime installed on the target; copying `libInspireFace.so` alone does not install those dependencies. See the corresponding platform chapter for runtime setup.
 
 ## Put the library into a wheel {#put-the-library-into-a-wheel}
@@ -84,6 +113,7 @@ The bundled library lives under `python/inspireface/modules/core/libs/`. The dir
 
 | Target | Package directory | Library filename |
 | --- | --- | --- |
+| Windows x64 | `libs/windows/x64/` | `libInspireFace.dll` |
 | Linux x86_64 | `libs/linux/x64/` | `libInspireFace.so` |
 | Linux aarch64 | `libs/linux/arm64/` | `libInspireFace.so` |
 | macOS Apple Silicon | `libs/darwin/arm64/` | `libInspireFace.dylib` |
@@ -95,7 +125,7 @@ The following commands package a **Linux x86_64** library. Run them from the rep
 
 ```bash
 if ! test -f python/version.txt; then
-  echo "Missing python/version.txt: build the SDK or copy its matching version file first." >&2
+  echo "Missing python/version.txt: build the SDK or prepare its matching version number first." >&2
   exit 1
 fi
 python -m pip install build
@@ -115,9 +145,9 @@ cp "$ISF_NATIVE" "$ISF_BUNDLE_DIR/libInspireFace.so"
 python -m build --wheel --outdir "$PWD/python/dist" "$ISF_WHEEL_STAGE"
 ```
 
-For Linux aarch64, use `arm64` and `linux_aarch64`. For macOS, follow the [complete packaging example](#package-the-current-macos-sdk) below, including its explicit deployment tag.
+For Windows, use the [dedicated packaging script](#windows-wheel) below. For Linux aarch64, use `arm64` and `linux_aarch64`. For macOS, follow the [complete packaging example](#package-the-current-macos-sdk) below, including its explicit deployment tag.
 
-The wheel version comes from `python/version.txt` plus the suffix in `python/post`. The current source uses `1.2.4` and `.post1`, producing `inspireface-1.2.4.post1-py3-none-linux_x86_64.whl`. The native SDK version remains `1.2.4`.
+The wheel version comes from `python/version.txt` plus the suffix in `python/post`. The current source uses `1.2.4` and `.post3`, producing `inspireface-1.2.4.post3-py3-none-linux_x86_64.whl`. The native SDK version remains `1.2.4`.
 
 ### Choose the directory and wheel tag {#choose-the-directory-and-wheel-tag}
 
@@ -125,15 +155,50 @@ These three packaging variables have different jobs:
 
 | Variable | Controls | Example |
 | --- | --- | --- |
-| `INSPIRE_FACE_TARGET_PLATFORM` | Which OS directory is included in the package | `linux`, `darwin` |
+| `INSPIRE_FACE_TARGET_PLATFORM` | Which OS directory is included in the package | `windows`, `linux`, `darwin` |
 | `INSPIRE_FACE_TARGET_ARCH` | Which architecture directory is included | `x64`, `arm64` |
-| `INSPIRE_FACE_TARGET_AARCH_MAPPING` | Platform tag written into the wheel | `linux_x86_64`, `manylinux2014_aarch64`, `macosx_11_0_arm64` |
+| `INSPIRE_FACE_TARGET_AARCH_MAPPING` | Platform tag written into the wheel | `win_amd64`, `linux_x86_64`, `manylinux2014_aarch64`, `macosx_11_0_arm64` |
 
 If unset, `setup.py` chooses directories and tags from the build host. Its Linux default is `manylinux2014`; for a local build with no manylinux compatibility check, the `linux_x86_64` or `linux_aarch64` tag above is more appropriate. A portable manylinux wheel requires building against the intended compatibility baseline and checking its external dependencies.
 
 The 1.2.4 wrapper produces a `py3-none-<platform>` wheel: `ctypes` has no CPython extension ABI dependency, but the wheel contains a native library and is platform-specific. The package declares Python 3.7 or newer. Changing a tag or renaming a library does not change its CPU architecture, libc requirements or backend dependencies.
 
 Cross-packaging can run on a different host after you have built the target library. Set all three variables explicitly, then test the resulting wheel on the actual target. `INSPIREFACE_LIBRARY_PATH` only controls runtime loading; it does **not** select the library bundled by `setup.py`.
+
+### Build a Windows x64 wheel {#windows-wheel}
+
+For a normal CPU installation, use PyPI. To package a modified SDK, prepare the [Windows build environment](./windows.md), then run this from the repository root with x64 Python:
+
+```powershell
+.\command\build_wheel_windows.ps1 -PythonExecutable python
+```
+
+With CMake 4, first build the SDK with the [policy compatibility option](./windows.md#build-options), then use `-SdkDirectory` below. The wheel script does not pass that option through to CMake.
+
+The script builds a Release CPU DLL and packages it as `py3-none-win_amd64`. Native tests are skipped by default; add `-TestNative` to run them during the build. If the SDK is already built, reuse its install directory instead:
+
+```powershell
+.\command\build_wheel_windows.ps1 -PythonExecutable python `
+  -SdkDirectory 'C:\sdk\inspireface-windows-x64-1.2.4'
+```
+
+`-SdkDirectory` points to the root containing `version.txt` and `InspireFace/lib/libInspireFace.dll`. This route needs Python but does not invoke the C++ compiler. Do not combine it with `-TestNative`, `-BuildDirectory` or `-InspireCVSource`.
+
+The script checks the SDK version, x64 PE format, release runtime dependencies and wheel contents. It rejects Debug DLLs and builds that need extra backend DLLs. Packaging uses a temporary directory and leaves the checkout's bundled libraries unchanged.
+
+The current output is `python/dist/inspireface-1.2.4.post3-py3-none-win_amd64.whl`, with a `.manifest.json` recording the DLL imports and SHA-256 hashes. Set `-OutputDirectory` to choose another output folder. An existing wheel is retained unless `-Force` is supplied.
+
+Install the result in a fresh environment:
+
+```powershell
+python -m venv .venv-wheel-check
+.\.venv-wheel-check\Scripts\python.exe -m pip install python/dist/inspireface-1.2.4.post3-py3-none-win_amd64.whl
+Remove-Item Env:INSPIREFACE_LIBRARY_PATH -ErrorAction SilentlyContinue
+Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue
+.\.venv-wheel-check\Scripts\python.exe -I -c "import inspireface as isf; print(isf.__version__); print(isf.version()); print(isf.diagnostic_info())"
+```
+
+Run the [complete detection example](../using-with/python.md#detection-script) with this environment's Python and a local model to check inference. The wheel contains the CPU DLL; the model pack remains a separate file. The target machine needs the x64 Visual C++ runtime.
 
 ### Package the current macOS SDK {#package-the-current-macos-sdk}
 
@@ -151,7 +216,7 @@ ISF_NATIVE="$ISF_APPLE_SDK/InspireFace/lib/libInspireFace.dylib"
 xcrun lipo -info "$ISF_NATIVE"
 xcrun vtool -show-build "$ISF_NATIVE"
 otool -L "$ISF_NATIVE"
-cp "$ISF_APPLE_SDK/version.txt" python/version.txt
+python -c "from pathlib import Path; Path('python/version.txt').write_text('1.2.4\n')"
 
 python -m pip install build
 export INSPIRE_FACE_TARGET_PLATFORM=darwin
@@ -169,9 +234,9 @@ python -m build --wheel --outdir "$PWD/python/dist" "$ISF_WHEEL_STAGE"
 
 </details>
 
-With the current `.post1` suffix, the result is `inspireface-1.2.4.post1-py3-none-macosx_14_0_arm64.whl`. For Intel, use `build_macos_x86.sh`, its `inspireface-macos-intel-x86-64-1.2.4` output directory, `x64` for the package directory / target architecture variable, and a matching `macosx_<major>_<minor>_x86_64` tag. Set the deployment target for that build explicitly too.
+With the current `.post3` suffix, the result is `inspireface-1.2.4.post3-py3-none-macosx_14_0_arm64.whl`. For Intel, use `build_macos_x86.sh`, its `inspireface-macos-intel-x86-64-1.2.4` output directory, `x64` for the package directory / target architecture variable, and a matching `macosx_<major>_<minor>_x86_64` tag. Set the deployment target for that build explicitly too.
 
-When packaging an existing Apple XCFramework bundle, take the raw dylib from `SDKs/macosx-arm64/InspireFace/lib/` or `SDKs/macosx-x86_64/InspireFace/lib/`, with the `version.txt` from the same slice. Package each architecture separately; including an XCFramework does not make a Python wheel universal.
+When packaging an existing Apple XCFramework bundle, take the raw dylib from `SDKs/macosx-arm64/InspireFace/lib/` or `SDKs/macosx-x86_64/InspireFace/lib/`, with the version number from the same slice. Package each architecture separately; including an XCFramework does not make a Python wheel universal.
 
 ::: warning Match the wheel tag to the library
 `setup.py` defaults to `macosx_11_0_arm64` or `macosx_12_0_x86_64`. It does not read the binary's minimum OS. Set `INSPIRE_FACE_TARGET_AARCH_MAPPING` to match your actual build; never use an older deployment tag for a newer library. The current Apple CI targets macOS 14.0 on arm64 and 15.0 on x86_64.
@@ -184,19 +249,19 @@ To package CoreML on arm64, first use the [CoreML shared CMake build](./macos.md
 Replace the filename below with the wheel you just built. Check that it contains the expected native library and platform tag:
 
 ```bash
-python -m zipfile -l python/dist/inspireface-1.2.4.post1-py3-none-linux_x86_64.whl
+python -m zipfile -l python/dist/inspireface-1.2.4.post3-py3-none-linux_x86_64.whl
 ```
 
 Find the entry ending in `inspireface/modules/core/libs/linux/x64/libInspireFace.so`; the archive may place it under a `.data/purelib/` prefix. Model packs are separate from the wheel; deploy the matching pack alongside your application.
 
 ## Install and verify the packaged library {#install-and-verify-the-packaged-library}
 
-Test in a new environment so the editable wrapper does not mask the installed package. Clear the local-library override and any source `PYTHONPATH` before importing:
+For Windows, use the verification commands in [Windows wheel packaging](#windows-wheel). The following shell commands are for Linux/macOS. Test in a new environment so the editable wrapper does not mask the installed package. Clear the local-library override and any source `PYTHONPATH` before importing:
 
 ```bash
 python3 -m venv .venv-wheel-check
 source .venv-wheel-check/bin/activate
-python -m pip install python/dist/inspireface-1.2.4.post1-py3-none-linux_x86_64.whl
+python -m pip install python/dist/inspireface-1.2.4.post3-py3-none-linux_x86_64.whl
 unset INSPIREFACE_LIBRARY_PATH
 unset PYTHONPATH
 ```
@@ -227,6 +292,7 @@ The repository also has scripts that compile the SDK and copy its library into t
 
 | Target | Entry point from the repository root |
 | --- | --- |
+| Windows x64 CPU | `.\command\build_wheel_windows.ps1 -PythonExecutable python` |
 | Linux x86_64, manylinux2014 | `docker compose run --rm build-manylinux2014-x86` |
 | Linux aarch64, manylinux2014 | `docker compose run --rm build-manylinux2014-aarch64` |
 
@@ -234,4 +300,4 @@ Run Linux packaging in the provided Docker environment; the aarch64 container ne
 
 For macOS, use the [Apple SDK packaging steps](#package-the-current-macos-sdk) on this page. The existing `build_wheel_macos_arm64.sh` and `build_wheel_macos_x86.sh` still invoke a separate direct CMake build: they do not use the new Apple driver, do not explicitly select the target architecture or deployment version, and inherit `setup.py`'s default wheel tag. Their filenames alone do not establish the resulting library's compatibility.
 
-The directory selection, tags and runtime override are implemented in [`python/setup.py`](https://github.com/HyperInspire/InspireFace/blob/8b37a2eb1e2fe61608195a979dda6cadb84f5106/python/setup.py), [`_library_path.py`](https://github.com/HyperInspire/InspireFace/blob/8b37a2eb1e2fe61608195a979dda6cadb84f5106/python/inspireface/modules/core/_library_path.py) and [`_native_loader.py`](https://github.com/HyperInspire/InspireFace/blob/8b37a2eb1e2fe61608195a979dda6cadb84f5106/python/inspireface/modules/core/_native_loader.py).
+The directory selection, tags and runtime override are implemented in [`python/setup.py`](https://github.com/HyperInspire/InspireFace/blob/41cc84d56e4cb11a03088cf8f08935eab30ae336/python/setup.py), [`_library_path.py`](https://github.com/HyperInspire/InspireFace/blob/41cc84d56e4cb11a03088cf8f08935eab30ae336/python/inspireface/modules/core/_library_path.py) and [`_native_loader.py`](https://github.com/HyperInspire/InspireFace/blob/41cc84d56e4cb11a03088cf8f08935eab30ae336/python/inspireface/modules/core/_native_loader.py).

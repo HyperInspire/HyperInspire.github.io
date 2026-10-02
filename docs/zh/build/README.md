@@ -4,7 +4,7 @@
 
 ## 预编译 SDK {#prebuilt-sdks}
 
-当前 [GitHub Release 为 v1.2.4](https://github.com/HyperInspire/InspireFace/releases/tag/v1.2.4)，下方提供 Linux、Android、Apple 和 HarmonyOS 的原生 SDK。Python 和 Android AAR 的包版本为 **1.2.4.post1**，原生 SDK 同为 **1.2.4**，安装方式见[下方说明](#python-and-android-packages)。
+当前 [GitHub Release 为 v1.2.4](https://github.com/HyperInspire/InspireFace/releases/tag/v1.2.4)，下方提供 Linux、Android、Apple 和 HarmonyOS 的原生 SDK。Python 包当前为 **1.2.4.post3**，包含 Windows x64 wheel；Android AAR 仍为 **1.2.4.post1**。两者的原生 SDK 同为 **1.2.4**，安装方式见[下方说明](#python-and-android-packages)。
 
 ::: tip 直接使用预编译包
 **1.2.4** 下载包已提供文档中的快照、抓拍和诊断接口，使用同一个包内的头文件和库即可。需要更换后端、工具链或调整最低系统版本时，再从源码构建。
@@ -28,7 +28,7 @@
 
 </div>
 
-表中的 CUDA / Ubuntu 版本来自发布文件名，部署时仍需检查库的实际依赖。HarmonyOS 包内包含 arm64 原生 SDK、HAR 工程和配套的 Node-API 库，导入方式见 [HarmonyOS 接入](../using-with/harmonyos.md)。此版本没有 Windows、CoreML 或独立桌面 Java 的预编译包，CoreML 和 Java 的构建方式见下方对应章节。
+表中的 CUDA / Ubuntu 版本来自发布文件名，部署时仍需检查库的实际依赖。HarmonyOS 包内包含 arm64 原生 SDK、HAR 工程和配套的 Node-API 库，导入方式见 [HarmonyOS 接入](../using-with/harmonyos.md)。Windows x64 CPU 可通过 PyPI 安装，也可以[从源码构建 C/C++ SDK](./windows.md)。CoreML 与独立桌面 Java 的构建方式见下方对应章节。
 
 按**应用进程**选择架构和 C 运行库。64 位设备上的应用也可能是 32 位进程。使用同一压缩包中的头文件和库；静态 Framework、GPU / NPU 库的链接方式见对应平台章节。
 
@@ -51,7 +51,7 @@ CPU 版本直接下载 [inspireface-apple-1.2.4.zip](https://github.com/HyperIns
 
 ## Python 与 Android 包 {#python-and-android-packages}
 
-[PyPI 上的 Python 包](https://pypi.org/project/inspireface/1.2.4.post1/)已更新为 **1.2.4.post1**，包含 **1.2.4 CPU 原生库**，直接安装即可：
+[PyPI 上的 Python 包](https://pypi.org/project/inspireface/1.2.4.post3/)已更新为 **1.2.4.post3**，包含 **1.2.4 CPU 原生库**，直接安装即可：
 
 ```bash
 python -m pip install inspireface opencv-python
@@ -61,14 +61,17 @@ python -m pip install inspireface opencv-python
 
 | Platform | Architecture | Published wheel tag |
 | --- | --- | --- |
+| Windows | x64 | `win_amd64` |
 | Linux | x86_64 | `manylinux2014_x86_64` |
 | Linux | ARM64 | `manylinux2014_aarch64` |
 | macOS | Apple Silicon | `macosx_11_0_arm64` |
 | macOS | Intel | `macosx_12_0_x86_64` |
 
-下载文件及校验值见 [PyPI 文件列表](https://pypi.org/project/inspireface/1.2.4.post1/#files)。需要替换原生库或制作 wheel 时，参照 [Python 打包与原生库替换](./python.md)。
+Windows 使用 **64 位 Python**，运行时需要 **Visual C++ x64 Redistributable**。wheel 已包含 CPU 推理用的 `libInspireFace.dll`，安装时无需本地编译器。模型加载与 DLL 排查见 [Windows 接入](../using-with/windows.md)。
 
-::: warning 1.2.4.post1 的 macOS 系统要求
+下载文件及校验值见 [PyPI 文件列表](https://pypi.org/project/inspireface/1.2.4.post3/#files)。需要替换原生库或制作 wheel 时，参照 [Python 打包与原生库替换](./python.md)。
+
+::: warning 1.2.4.post3 的 macOS 系统要求
 包内原生库要求 **arm64 使用 macOS 14.0 或更新版本**，**x86_64 使用 macOS 15.0 或更新版本**，高于 wheel 文件名标出的版本。需要支持更早的 macOS 时，请按 [Python 打包](./python.md#package-the-current-macos-sdk)构建兼容的动态库，并使用匹配的 wheel 标签。
 :::
 
@@ -94,6 +97,7 @@ JAR 可跨目标使用，原生库按运行 JVM 的系统和架构选择，并�
 | --- | --- |
 | [源码准备与通用选项](./source.md) | 获取源码、准备依赖、CMake 选项和产物结构。 |
 | [Linux](./linux.md) | CPU 本机构建、ARM 交叉编译、Ubuntu 与 manylinux。 |
+| [Windows](./windows.md) | MSVC x64 CPU 构建、动态 / 静态库、CMake 接入和 DLL 部署。 |
 | [macOS](./macos.md) | Intel、Apple Silicon、通用 Framework、Swift 模块与 CoreML。 |
 | [Android](./android.md) | NDK、ABI、JNI 库与 AAR 打包。 |
 | [iOS](./ios.md) | 真机与模拟器切片、XCFramework 打包和 CoreML。 |
@@ -101,6 +105,6 @@ JAR 可跨目标使用，原生库按运行 JVM 的系统和架构选择，并�
 | [NVIDIA TensorRT](./nvidia.md) | CUDA / TensorRT 依赖和 Linux 构建。 |
 | [Rockchip NPU](./rockchip.md) | 板端工具链、RKNN / RGA 与 Android NPU 构建。 |
 | [Java 打包](./java.md) | JDK、JAR 与 JNI 构建、原生库分发和 JVM 测试。 |
-| [Python 打包](./python.md) | 替换 `.so` / `.dylib`、构建 wheel 和安装验证。 |
+| [Python 打包](./python.md) | 替换 `.so` / `.dylib` / `.dll`、构建 wheel 和安装验证。 |
 
 </div>

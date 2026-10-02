@@ -2,11 +2,15 @@
 
 [InspireCV](https://github.com/tunmx/InspireCV) 是用于图像操作和模型输入预处理的 C++ 库，可以独立于 InspireFace 使用。默认构建采用 OKCV，OpenCV 为可选依赖。
 
-文件读写、裁剪、缩放、绘制和简单滤波使用 `Image`；需要明确指定像素格式、变换、归一化或张量布局时，使用 `task::Pipeline`。以下示例使用 InspireCV 1.0.2。
+文件读写、裁剪、缩放、绘制和简单滤波使用 `Image`；需要明确指定像素格式、变换、归一化或张量布局时，使用 `task::Pipeline`。以下示例使用独立的 InspireCV 源码。
 
 CPU 与 OpenCV 的对比、CUDA 预处理和显存内连续操作的耗时，见[图像处理性能测试](./image-processing-benchmarks.md)。其中也有复测命令和原始 CSV。
 
-NEON 图像算子和部署选项见 [ARM 部署](../using-with/arm.md)。
+CPU 部署和加速选项见 [x86 CPU](../using-with/x86.md) 与 [ARM](../using-with/arm.md)。
+
+[Windows C/C++ SDK](../using-with/windows.md) 已包含配套的图像处理头文件与实现。在 InspireFace 应用中直接链接 `InspireFace::InspireFace` 即可；独立使用 InspireCV 时，再按下面的方法单独构建。
+
+下文的四通道 `SwapRB()` 和扩展后的 x86 加速支持已进入独立 InspireCV 的最新源码，InspireFace 内置的依赖版本尚未同步这些更新。
 
 ## 构建与链接 {#build-and-link}
 
@@ -43,6 +47,8 @@ target_link_libraries(image_app PRIVATE InspireCV::inspirecv)
 | `INSPIRECV_TASK_ENABLE_ARM_NEON` | ON | 启用受支持的 ARM NEON 预处理路径。 |
 | `INSPIRECV_ENABLE_AVX2` | OFF | 为所有 x86 C++ 源文件启用 AVX2，要求目标 CPU 支持。 |
 | `INSPIRECV_ENABLE_CUDA` | OFF | 构建可选的 CUDA 预处理，要求 CMake 3.18 或更新版本。 |
+
+在 x86 上，`INSPIRECV_ENABLE_AVX2=OFF` 仍会在 CPU 和操作系统支持时，自动使用单独编译的 AVX2 算子。需要将构建产物分发到不同机器时，保留这个默认值即可；`ON` 会为整个库启用 AVX2，要求目标机器支持。最新源码将自动加速覆盖到更多图像变换、颜色转换和 Task 张量输出，现有 API 调用方式不变。
 
 切换后端时查看[项目 CMake 选项](https://github.com/tunmx/InspireCV/blob/main/CMakeLists.txt)。默认后端的 OpenCV 读写和 GUI 集成，与替换 Image 后端本身是不同配置。
 
@@ -181,6 +187,20 @@ bool save_preview(const inspirecv::Image& image) {
 
 `SwapRB()` 改变通道顺序，`Mul` 和 `Add` 改变像素值，`Reset` 则替换整个缓冲区。8-bit 中间计算可能发生截断；需要保留小数或超出范围的值时，用下面的 float 图像。
 
+独立 InspireCV 的最新源码在默认 OKCV 后端下，也支持用 `SwapRB()` 交换 RGBA 和 BGRA，同时保留 alpha 通道：
+
+```cpp
+#include <inspirecv/inspirecv.h>
+#include <cstdint>
+
+const std::uint8_t rgba[] = {255, 64, 32, 128};
+auto source = inspirecv::Image::Create(1, 1, 4, rgba);
+auto bgra = source.SwapRB();
+// bgra has four channels: {32, 64, 255, 128}.
+```
+
+这个示例使用 OKCV。切换到可选的 OpenCV 后端后，四通道图像经过 `SwapRB()` 会返回三通道结果，不保留 alpha。
+
 <div class="doc-image-grid two-column">
 <figure>
 <a href="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/swapped.jpg" target="_blank" rel="noopener"><img src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/cv/swapped.jpg" alt="SwapRB(): 交换红、蓝通道。" width="325" height="325" loading="lazy" /></a>
@@ -256,6 +276,8 @@ auto status = pipeline.Run(resized, tensor);
 转换到配置的输出通道顺序后，浮点归一化按 `(value - mean[channel]) * scale[channel]` 计算。示例将 `[0, 255]` 映射到 `[-1, 1]`。接入模型时应使用模型实际要求的预处理参数。
 
 `TensorBuffer` 描述的存储由调用方分配和持有。按尺寸、元素类型和步长，为 `values` 分配足够内存。步长为零时采用紧密排列的默认值。根据模型要求选择 HWC、CHW 或四通道打包布局。
+
+Float32 输出需要按 `float` 对齐的存储，例如 `std::vector<float>`；字节步长应为 `sizeof(float)` 的整数倍，不需要额外的 SIMD 对齐。
 
 将下面的代码分别保存为同一目录中的 `preprocess.cpp` 和 `CMakeLists.txt`，使用已安装的 InspireCV 构建。程序还会保存 `resized.jpg`，便于检查空间变换结果。
 
@@ -417,6 +439,8 @@ auto status = pipeline.Run(source, width, height, &bgr);
 ```
 
 按声明的格式提供足够大的缓冲区，NV21 的宽高使用偶数。Android 分平面输入按实际步长重新排列，并将摄像头缓冲区保留到调用结束。JPEG 文件先解码，再创建原始图像视图。
+
+I420 输入按 Y、U、V 顺序连续存放。带行填充时，宽、高和 Y 行步长都需要是偶数，U/V 行步长各为 Y 的一半。`RawImageView` 只有一个步长字段；相机各平面的步长不符合这个布局时，先重新排列。紧密排列的 I420 保持 `row_stride_bytes=0` 即可。
 
 | Method | 内存使用说明 |
 | --- | --- |

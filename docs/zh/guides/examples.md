@@ -63,7 +63,7 @@ java -Djava.library.path=native/macos-arm64 -cp inspireface.jar:examples \
   DetectFaces /absolute/path/to/Pikachu /absolute/path/to/face.jpg
 ```
 
-Linux 使用对应的 `native/linux-*` 目录；Windows 的 classpath 分隔符是 `;`。按**运行 JVM** 的架构选择原生库，完整配置与内存规则见 [Java 接入](../using-with/java.md)。
+Linux 使用对应的 `native/linux-*` 目录，按**运行 JVM** 的架构选择原生库。Windows CPU SDK 与 PyPI wheel 不包含 JNI；Windows Java 应用还需要单独构建适配库。库加载、classpath 写法与内存规则见 [Java 接入](../using-with/java.md)。
 
 ## Python {#python}
 
@@ -78,9 +78,15 @@ python -m pip install inspireface opencv-python
 | [capture.py](#python-capture) | 抓拍就绪后保存选中的完整帧。 |
 | [benchmark.py](#python-benchmark) | 测量预热后的静态图片检测延迟。 |
 
-下面的 Python 示例，包括抓拍和性能测量，都可以使用 PyPI 的 **1.2.4.post1 包**运行，包内已包含 1.2.4 原生 SDK。需要更换推理后端或使用自行编译的库时，再按[自定义原生库](../using-with/python.md#use-a-local-native-build)配置。
+下面的 Python 示例，包括抓拍和性能测量，都可以使用 PyPI 的 **1.2.4.post3 包**运行，包内已包含 1.2.4 原生 SDK。需要更换推理后端或使用自行编译的库时，再按[自定义原生库](../using-with/python.md#use-a-local-native-build)配置。
 
 检测示例省略 `--model` 时可以下载默认 `Pikachu` 模型包，下面的其他命令使用明确的资源路径。图像无法读取属于错误；图像可读但未检测到人脸，是正常检测结果。
+
+Windows x64 使用同一份 Python 文件。[安装 Windows 包](../using-with/windows.md)后，在 PowerShell 中传入本地路径即可，例如：
+
+```powershell
+python detect.py C:\images\face.jpg --model C:\models\Pikachu --output detected.jpg
+```
 
 ### 检测图像中的人脸 {#python-detection}
 
@@ -367,6 +373,18 @@ cmake --build build --parallel 4
 ./build/detect_cpp /path/to/Pikachu face.jpg
 ```
 
+Windows 使用 Visual Studio 2022 x64 Native Tools 环境中的 PowerShell，并准备 Release x64 SDK：
+
+```powershell
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release `
+  "-DINSPIREFACE_ROOT=C:/SDKs/InspireFace" -DBUILD_CPP_EXAMPLE=ON
+cmake --build build --parallel 4
+.\build\detect_c.exe C:\models\Pikachu C:\images\face.jpg
+.\build\detect_cpp.exe C:\models\Pikachu C:\images\face.jpg
+```
+
+Windows 构建使用安装包中的 `InspireFace::InspireFace` target；动态 SDK 的 DLL 会复制到两个可执行文件旁边。SDK 目录和运行环境要求见 [Windows](../using-with/windows.md)。 路径中包含中文等非 ASCII 字符时，[Windows 完整示例](../using-with/windows.md#a-complete-detection-program)展示了如何将 UTF-16 命令行参数转为 UTF-8，再传给 SDK。
+
 C 示例打印人脸框，C++ 示例还会在当前工作目录生成 `detected-cpp.jpg`。如果 SDK 只包含 C 头文件，保持 `BUILD_CPP_EXAMPLE` 关闭。本文使用动态库；链接自定义静态 SDK 时，可能还需要链接它依赖的其他库。
 
 [C 接入](../using-with/c-cpp.md)和 [C++ 接入](../using-with/cpp.md)介绍具体代码与资源生命周期。编译和运行时，使用同一次 SDK 构建产出的头文件与库。
@@ -501,15 +519,22 @@ cmake_minimum_required(VERSION 3.20)
 project(inspireface_examples LANGUAGES C CXX)
 
 set(INSPIREFACE_ROOT "" CACHE PATH "SDK directory containing include/ and lib/")
-find_path(ISF_INCLUDE_DIR inspireface.h PATHS "${INSPIREFACE_ROOT}/include" NO_DEFAULT_PATH REQUIRED)
-find_library(ISF_LIBRARY NAMES InspireFace PATHS "${INSPIREFACE_ROOT}/lib" NO_DEFAULT_PATH REQUIRED)
-add_library(InspireFaceSDK UNKNOWN IMPORTED)
-set_target_properties(InspireFaceSDK PROPERTIES
-    IMPORTED_LOCATION "${ISF_LIBRARY}"
-    INTERFACE_INCLUDE_DIRECTORIES "${ISF_INCLUDE_DIR}")
+if(WIN32)
+    find_package(InspireFace CONFIG REQUIRED
+        PATHS "${INSPIREFACE_ROOT}/lib/cmake/InspireFace" NO_DEFAULT_PATH)
+    add_library(InspireFaceSDK ALIAS InspireFace::InspireFace)
+else()
+    find_path(ISF_INCLUDE_DIR inspireface.h PATHS "${INSPIREFACE_ROOT}/include" NO_DEFAULT_PATH REQUIRED)
+    find_library(ISF_LIBRARY NAMES InspireFace PATHS "${INSPIREFACE_ROOT}/lib" NO_DEFAULT_PATH REQUIRED)
+    add_library(InspireFaceSDK UNKNOWN IMPORTED)
+    set_target_properties(InspireFaceSDK PROPERTIES
+        IMPORTED_LOCATION "${ISF_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${ISF_INCLUDE_DIR}")
+endif()
 
 add_executable(detect_c detect.c)
 target_compile_features(detect_c PRIVATE c_std_99)
+set_target_properties(detect_c PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(detect_c PRIVATE InspireFaceSDK)
 
 option(BUILD_CPP_EXAMPLE "Build the C++ wrapper example (requires its headers)" OFF)
@@ -517,6 +542,20 @@ if(BUILD_CPP_EXAMPLE)
     add_executable(detect_cpp detect.cpp)
     target_compile_features(detect_cpp PRIVATE cxx_std_14)
     target_link_libraries(detect_cpp PRIVATE InspireFaceSDK)
+endif()
+
+if(WIN32)
+    get_target_property(ISF_LIBRARY_TYPE InspireFaceSDK TYPE)
+    if(ISF_LIBRARY_TYPE STREQUAL "SHARED_LIBRARY")
+        foreach(example IN ITEMS detect_c detect_cpp)
+            if(TARGET ${example})
+                add_custom_command(TARGET ${example} POST_BUILD
+                    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+                        "$<TARGET_FILE:InspireFaceSDK>" "$<TARGET_FILE_DIR:${example}>"
+                    VERBATIM)
+            endif()
+        endforeach()
+    endif()
 endif()
 ```
 

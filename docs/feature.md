@@ -154,7 +154,8 @@ Choose a backend supported by the target hardware and pair it with the appropria
 
 | Target | SDK and pack choice | Setup |
 | --- | --- | --- |
-| Desktop, mobile or embedded CPU | CPU build with a compatible general pack such as Pikachu | [Models and builds](./guides/models-and-builds.md) |
+| Desktop, mobile or embedded CPU | CPU build with a compatible general pack such as Pikachu | [x86 CPU](./using-with/x86.md) · [ARM](./using-with/arm.md) · [Models and builds](./guides/models-and-builds.md) |
+| Windows x64 CPU | C/C++ SDK or the PyPI package, with a general CPU pack | [Windows](./using-with/windows.md) · [Build](./build/windows.md) |
 | iOS / macOS CPU | Objective-C and Swift frameworks with a general CPU resource pack | [Apple APIs](./using-with/apple.md) · [iOS](./using-with/ios.md) · [macOS](./using-with/macos.md) |
 | Apple CoreML | Apple-extension build and compatible Apple model resources | [iOS / Apple](./using-with/ios.md#apple-acceleration) |
 | Rockchip NPU | RKNN build, matching SoC pack and board runtime | [Rockchip](./using-with/rknpu.md) |

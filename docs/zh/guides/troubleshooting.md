@@ -17,7 +17,7 @@ print(isf.diagnostic_info())
 
 同时检查 Python 包版本和原生 SDK 版本。如果设置了 `INSPIREFACE_LIBRARY_PATH`，也记录这个路径：程序会加载它指定的原生库，替代 wheel 自带的库。
 
-**1.2.4.post1** PyPI 包的原生版本为 **1.2.4**，C API level 为 **2**。旧环境使用 `python -m pip install --upgrade inspireface` 升级。如果 `INSPIREFACE_LIBRARY_PATH` 仍指向旧库，清除该设置以使用包内 CPU 库，或同时更新自定义库。更新后重新启动 Python 进程。
+**1.2.4.post3** PyPI 包的原生版本为 **1.2.4**，C API level 为 **2**。旧环境使用 `python -m pip install --upgrade inspireface` 升级。如果 `INSPIREFACE_LIBRARY_PATH` 仍指向旧库，清除该设置以使用包内 CPU 库，或同时更新自定义库。更新后重新启动 Python 进程。
 
 ## 导入或加载库失败 {#library-import-or-loading-fails}
 
@@ -31,6 +31,31 @@ print(isf.diagnostic_info())
 Linux 使用 `ldd /path/to/libInspireFace.so` 查看动态依赖；macOS 使用 `otool -L /path/to/libInspireFace.dylib`。
 
 在首次导入前设置 `INSPIREFACE_LIBRARY_PATH`。修改路径后，重新启动进程以加载指定的库。
+
+## Windows Python 加载错误 {#windows-python-loading}
+
+PyPI 从 **1.2.4.post2** 开始提供 Windows x64 CPU 包。运行 `python -m pip install inspireface opencv-python` 即可安装，使用这个 CPU wheel 无需编译 SDK 或配置 GPU 运行环境。
+
+| Symptom | 检查方法 |
+| --- | --- |
+| `No matching distribution found` | 使用 x64 Python 3.7 或更新版本，并确认当前包索引已有 Windows wheel。暂未提供 Windows x86 或原生 ARM64 wheel。 |
+| `WinError 193` / `not a valid Win32 application` | Python 和 DLL 都应为 x64；64 位 Windows 也可能安装了 32 位 Python。 |
+| `WinError 126`、找不到模块，或缺少 `VCRUNTIME140_1.dll` / `MSVCP140.dll` | 安装或修复 [Microsoft Visual C++ v14 x64 运行库](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist)。DLL 文件存在时，也可能是它依赖的其他库缺失。 |
+| 升级后提示找不到原生函数 | 检查 `INSPIREFACE_LIBRARY_PATH` 是否仍指向自定义旧 DLL；将它与封装一起更新，或清除覆盖路径。 |
+| `RuntimeError: InspireFace native library not found` | 覆盖路径需要包含完整 `.dll` 文件名；使用包内库时，重新安装对应 Windows wheel。 |
+
+在 PowerShell 中检查解释器，并切回包内 CPU 库：
+
+```powershell
+python -c "import platform, struct, sys; print(sys.executable); print(platform.machine()); print(8 * struct.calcsize('P'))"
+python -m pip show inspireface
+Remove-Item Env:INSPIREFACE_LIBRARY_PATH -ErrorAction SilentlyContinue
+python -c "import inspireface as isf; print(isf.__version__); print(isf.version()); print(isf.c_api_level())"
+```
+
+架构应为 `AMD64` 或 `x86_64`，指针位数为 `64`。更换库后重新启动 Python 进程或 notebook kernel。本地构建的 DLL 路径与依赖检查方法见 [Python 打包](../build/python.md#select-or-replace-a-shared-library)。
+
+Windows 模型路径可以写成 `C:/models/Pikachu` 或 `r"C:\models\Pikachu"`，向 `launch` 传入资源包文件，而不是它的上层文件夹。
 
 ## Java 原生库与缓冲区错误 {#java-integration-fails}
 

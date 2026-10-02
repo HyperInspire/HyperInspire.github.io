@@ -2,7 +2,7 @@
 
 InspireFace 是一个用于处理图片和视频中人脸的 C/C++ SDK。它可以检测人脸、跨帧跟踪、提取关键点和特征向量，也可以按需进行姿态、质量和 RGB 活体分析。你负责提供图像并使用结果；相机和应用界面由应用自身管理。
 
-C、C++、Python、Java、Android、HarmonyOS ArkTS、Objective-C 和 Swift 都采用相同的处理流程。Apple 接口覆盖 iOS 与 macOS，支持图像输入、跟踪、分析、识别和抓拍。
+C、C++、Python、Java、Android、HarmonyOS ArkTS、Objective-C 和 Swift 都采用相同的处理流程。Apple 接口覆盖 iOS 与 macOS，支持图像输入、跟踪、分析、识别和抓拍。Windows x64 可通过 C/C++ 或已发布的 Python 包使用 CPU 推理。
 
 <figure>
 <img class="doc-banner" src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/inspireface-doc-images-web/banner.webp" alt="InspireFace 的检测、关键点、识别、活体与多平台部署示意" width="2048" height="683" />
@@ -85,6 +85,7 @@ Plus 新增被动活体与炫光活体，通过移动端实时采集、服务端
 | [Android](./using-with/android.md) | 通过 JNI 封装接入的 Java 或 Kotlin 应用。 |
 | [Objective-C / Swift](./using-with/apple.md) | Apple 原生接口，使用 NSError / throws 处理错误，并显式管理缓冲区和资源。 |
 | [iOS](./using-with/ios.md) | Xcode 接入、真机与模拟器构建、相机像素缓冲区。 |
+| [Windows](./using-with/windows.md) | x64 CPU 应用可接入 C/C++，或直接安装 PyPI 的 Python 包。 |
 | [macOS](./using-with/macos.md) | Intel 与 Apple Silicon 应用、动态 Framework 和原生命令行工具。 |
 | [HarmonyOS](./using-with/harmonyos.md) | 通过源码中的 Node-API 适配层接入 ArkTS 应用。 |
 
@@ -96,11 +97,11 @@ SDK 库提供运行时，**资源包**包含模型及其配置，两者缺一不
 
 InspireCV 负责图像操作和预处理。即使应用不需要人脸识别，也可以单独使用它的 [Image 和 Task API](./guides/inspirecv.md)。
 
-**1.2.4** 已提供 Linux、Android、Apple 和 HarmonyOS 的预编译 SDK，下载和接入方式见[概述与下载](./build/README.md)。需要自行编译时，按[获取和编译](./build/README.md#choose-a-build-guide)中的平台章节操作；Python 更换 `.so` / `.dylib` 和制作 wheel 有[独立章节](./build/python.md)。
+**1.2.4** 已提供 Linux、Android、Apple 和 HarmonyOS 的预编译 SDK，下载和接入方式见[概述与下载](./build/README.md)。需要自行编译时，按[获取和编译](./build/README.md#choose-a-build-guide)中的平台章节操作；Python 更换 `.so` / `.dylib` / `.dll` 和制作 wheel 有[独立章节](./build/python.md)。
 
 ## 示例对应的版本 {#about-these-examples}
 
-Native 和 Java 示例使用 InspireFace **1.2.4**，图像处理示例使用 InspireCV **1.0.2**。Python 示例使用 PyPI 的 **1.2.4.post1 包**，其中已包含 1.2.4 原生 SDK，支持快照、抓拍和诊断接口。Android 示例使用 **1.2.4.post1**，包内包含抓拍、快照与完整 Java API。使用自行编译的原生库时，保持语言封装、头文件和库配套。
+Native 和 Java 示例使用 InspireFace **1.2.4**，图像处理示例使用 InspireCV **1.0.2**。Python 示例使用 PyPI 的 **1.2.4.post3 包**，其中已包含 1.2.4 原生 SDK，支持快照、抓拍和诊断接口。Android 示例使用 **1.2.4.post1**，包内包含抓拍、快照与完整 Java API。使用自行编译的原生库时，保持语言封装、头文件和库配套。
 
 在 [SDK Releases](https://github.com/HyperInspire/InspireFace/releases) 和 [Python 包文件列表](https://pypi.org/project/inspireface/#files)中选择适合平台的版本。[常见问题](./guides/troubleshooting.md#identify-the-loaded-sdk)说明了如何查看应用实际加载的版本。
 

@@ -2,7 +2,7 @@
 
 按功能和 API 查找示例。先通过平台指南完成安装和初始化，再在功能指南的代码 tab 中选择使用的 API。
 
-示例使用 **InspireFace 1.2.4**、**InspireCV 1.0.2**、**Android Java SDK 1.2.4.post1** 和 **HarmonyOS ArkTS SDK 1.2.4**。[Python](../using-with/python.md) 使用 PyPI 的 **1.2.4.post1 包**，已包含 1.2.4 原生 SDK。Objective-C 和 Swift 可直接使用 [1.2.4 Apple 包](../build/README.md#apple-sdk-packaging)，HarmonyOS 发布包中包含原生 SDK 与 HAR 工程。[Java（JVM）](../using-with/java.md)使用 1.2.4 源码构建的 portable JNI，与 Android 包分别列出。下表列出各接口支持的操作。
+示例使用 **InspireFace 1.2.4**、**InspireCV 1.0.2**、**Android Java SDK 1.2.4.post1** 和 **HarmonyOS ArkTS SDK 1.2.4**。[Python](../using-with/python.md) 使用 PyPI 的 **1.2.4.post3 包**，已包含 1.2.4 原生 SDK。Objective-C 和 Swift 可直接使用 [1.2.4 Apple 包](../build/README.md#apple-sdk-packaging)，HarmonyOS 发布包中包含原生 SDK 与 HAR 工程。[Java（JVM）](../using-with/java.md)使用 1.2.4 源码构建的 portable JNI，与 Android 包分别列出。Windows x64 对应下表的 C、C++ 和 Python 列，使用相同接口。下表列出各接口支持的操作。
 
 ## 各 API 的功能示例 {#feature-examples-by-api}
 
@@ -47,6 +47,7 @@
 | C ABI | 句柄、状态码和 `HFSessionConfigV2`。 | [C API](../using-with/c-cpp.md) |
 | Java deployment | Java 8 JAR、JNI 路径、进程架构、直接缓冲区与显式释放。 | [Java](../using-with/java.md)、[Java 打包](../build/java.md) |
 | Android deployment | 1.2.4.post1 AAR、每 ABI 单库、R8、CameraX 与两层 Java 接口。 | [Android](../using-with/android.md) |
+| Windows deployment | x64 CPU、C/C++ CMake 接入、Python wheel 与 DLL 运行环境。 | [Windows](../using-with/windows.md)、[Windows 构建](../build/windows.md) |
 | Apple APIs | Objective-C 错误处理、Swift 类型、借用视图和完整检测示例。 | [Objective-C 与 Swift](../using-with/apple.md) |
 | iOS deployment | 真机与模拟器 XCFramework、Xcode 链接、相机缓冲区和 CoreML。 | [iOS](../using-with/ios.md) |
 | macOS deployment | Intel / Apple Silicon Framework、嵌入、签名和原生库。 | [macOS](../using-with/macos.md) |

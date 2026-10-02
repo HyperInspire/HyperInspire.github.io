@@ -2,7 +2,7 @@
 
 InspireFace is a C/C++ SDK for processing faces in images and video. It detects faces, follows them between frames, extracts landmarks and embeddings, and runs optional analysis such as pose, quality and RGB liveness. Your application supplies the images, manages the camera and UI, and uses the returned results.
 
-The same processing flow is available through C, C++, Python, Java, Android, HarmonyOS ArkTS, Objective-C and Swift. The Apple interfaces cover iOS and macOS, including image buffers, tracking, analysis, recognition and capture.
+The same processing flow is available through C, C++, Python, Java, Android, HarmonyOS ArkTS, Objective-C and Swift. The Apple interfaces cover iOS and macOS, including image buffers, tracking, analysis, recognition and capture. Windows x64 supports CPU inference through C/C++ and the published Python package.
 
 <figure>
 <img class="doc-banner" src="https://inspireface-1259028827.cos.ap-singapore.myqcloud.com/docs/inspireface-doc-images-web/banner.webp" alt="InspireFace detection, landmarks, recognition, liveness and deployment overview" width="2048" height="683" />
@@ -85,6 +85,7 @@ The Android demos above currently use an online service for verification. Try th
 | [Android](./using-with/android.md) | Java or Kotlin applications using the JNI wrapper. |
 | [Objective-C / Swift](./using-with/apple.md) | Native Apple interfaces with NSError / throws, scoped buffer access and explicit cleanup. |
 | [iOS](./using-with/ios.md) | Xcode integration, device and simulator builds, camera pixel buffers. |
+| [Windows](./using-with/windows.md) | x64 CPU applications using C/C++, or Python installed from PyPI. |
 | [macOS](./using-with/macos.md) | Intel and Apple Silicon apps, dynamic frameworks and native tools. |
 | [HarmonyOS](./using-with/harmonyos.md) | ArkTS applications using the Node-API adapter in the source tree. |
 
@@ -96,11 +97,11 @@ For hardware acceleration, use the SDK build and resource pack for your target b
 
 InspireCV handles image operations and preprocessing. Its standalone [Image and Task APIs](./guides/inspirecv.md) are useful even when an application does not need face recognition.
 
-Prebuilt **1.2.4** SDKs are available for Linux, Android, Apple and HarmonyOS; see [Overview and downloads](./build/README.md) for the packages and integration paths. To compile your own SDK, choose a [platform build guide](./build/README.md#choose-a-build-guide); replacing Python’s `.so`/`.dylib` and creating a wheel have a [dedicated chapter](./build/python.md).
+Prebuilt **1.2.4** SDKs are available for Linux, Android, Apple and HarmonyOS; see [Overview and downloads](./build/README.md) for the packages and integration paths. To compile your own SDK, choose a [platform build guide](./build/README.md#choose-a-build-guide); replacing Python’s `.so`/`.dylib`/`.dll` and creating a wheel have a [dedicated chapter](./build/python.md).
 
 ## About these examples
 
-The native and Java examples use InspireFace **1.2.4**; image-processing examples use InspireCV **1.0.2**. Python examples use the **1.2.4.post1 PyPI package**, which includes the 1.2.4 native SDK and supports snapshots, capture and diagnostics. Android examples use **1.2.4.post1**, including capture, snapshots and the complete Java API. When using a custom native build, keep its wrappers and headers matched to the library.
+The native and Java examples use InspireFace **1.2.4**; image-processing examples use InspireCV **1.0.2**. Python examples use the **1.2.4.post3 PyPI package**, which includes the 1.2.4 native SDK and supports snapshots, capture and diagnostics. Android examples use **1.2.4.post1**, including capture, snapshots and the complete Java API. When using a custom native build, keep its wrappers and headers matched to the library.
 
 Check the [SDK releases](https://github.com/HyperInspire/InspireFace/releases) and [Python package files](https://pypi.org/project/inspireface/#files) for your platform. The [troubleshooting guide](./guides/troubleshooting.md#identify-the-loaded-sdk) shows how to inspect the version actually loaded by your application.
 
