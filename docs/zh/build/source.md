@@ -8,11 +8,11 @@
 
 ### Release 版本（推荐） {#release-source}
 
-常规接入推荐使用 [InsightFace 仓库](https://github.com/deepinsight/insightface/tree/master/cpp-package/inspireface)中的 Release 版本。进入 `cpp-package/inspireface` 后，再下载依赖：
+使用本文的 1.2.4 接口和构建脚本时，获取官方 [v1.2.4 发布标签](https://github.com/HyperInspire/InspireFace/tree/v1.2.4)对应的源码，再下载依赖：
 
 ```bash
-git clone https://github.com/deepinsight/insightface.git
-cd insightface/cpp-package/inspireface
+git clone --branch v1.2.4 --single-branch https://github.com/HyperInspire/InspireFace.git
+cd InspireFace
 git clone --recurse-submodules https://github.com/tunmx/inspireface-3rdparty.git 3rdparty
 ```
 
@@ -26,7 +26,7 @@ cd InspireFace
 git clone --recurse-submodules https://github.com/tunmx/inspireface-3rdparty.git 3rdparty
 ```
 
-获取源码后，按目标平台的构建指南继续。Windows 的构建入口目前位于 `feature/win` 分支，获取源码时请使用 [Windows 构建](./windows.md#get-the-source)中的命令。
+获取源码后，按目标平台的构建指南继续。1.2.4 发布版本已包含 [Windows 构建入口](./windows.md#get-the-source)。
 
 ## 准备构建工具 {#prepare-the-build-tools}
 
@@ -38,7 +38,7 @@ git clone --recurse-submodules https://github.com/tunmx/inspireface-3rdparty.git
 | Build tool | 直接使用 CMake 时可选 Make 或 Ninja；Windows PowerShell 脚本使用 Ninja。 |
 | Platform SDK | 按平台准备 MSVC v143 与 Windows SDK、Android NDK、Xcode、OpenHarmony Native SDK 或板端工具链。 |
 
-部分依赖使用较早的 CMake policy 设置。本文直接调用 CMake 的命令通过 `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` 兼容 CMake 4。统一的 Apple 构建脚本也带有此项。`v1.2.4` tag 中的 HarmonyOS HAR 脚本没有传入该设置，构建该版本时请使用 CMake 3.20–3.x。
+部分依赖使用较早的 CMake policy 设置。本文直接调用 CMake 的命令通过 `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` 兼容 CMake 4。统一的 Apple 构建脚本和当前 `v1.2.4` 发布版本中的 HarmonyOS HAR 脚本也带有此项。
 
 ## 构建 CPU SDK {#build-a-cpu-sdk}
 

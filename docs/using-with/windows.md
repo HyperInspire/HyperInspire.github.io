@@ -14,9 +14,27 @@ The published `win_amd64` wheel includes the CPU DLL. It does not require Visual
 
 For a customized native library or a wheel of your own, see [Python packaging](../build/python.md#windows-wheel).
 
+## Download the native SDK {#download-the-native-sdk}
+
+Download the [Windows x64 CPU SDK ZIP](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-windows-x64-1.2.4.zip) and its [SHA-256 checksum](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-windows-x64-1.2.4.zip.sha256). The package contains a Release DLL, import library, C/C++ headers and CMake package. You can use it directly without compiling the SDK.
+
+From the download directory, calculate the ZIP's hash and compare it with the checksum file:
+
+```powershell
+Get-FileHash .\inspireface-windows-x64-1.2.4.zip -Algorithm SHA256
+```
+
+After the hashes match, extract it:
+
+```powershell
+Expand-Archive -LiteralPath .\inspireface-windows-x64-1.2.4.zip -DestinationPath C:\SDKs
+```
+
+The SDK is now under `C:\SDKs\inspireface-windows-x64-1.2.4\InspireFace`. Download a [model pack](../guides/models-and-builds.md#pick-a-resource-pack) separately. To change the toolchain, configuration or linkage, follow [Build for Windows](../build/windows.md).
+
 ## Link an application {#link-an-application}
 
-Follow [Build for Windows](../build/windows.md) to produce a matching x64 SDK. Keep its complete `InspireFace/include/`, `InspireFace/lib/` and CMake package together. The shared SDK contains:
+Use the extracted SDK above or a matching source build. Keep its complete `InspireFace/include/`, `InspireFace/lib/` and CMake package together. The shared SDK contains:
 
 <div class="sdk-table">
 
@@ -55,11 +73,11 @@ endif()
 
 </details>
 
-Open **x64 Native Tools Command Prompt for VS 2022**, start PowerShell, then run these commands from the application directory. Adjust `InspireFace_DIR` to your installed SDK:
+Open **x64 Native Tools Command Prompt for VS 2022**, start PowerShell, then run these commands from the application directory. The path below uses the extracted 1.2.4 package; adjust `InspireFace_DIR` if you installed it elsewhere:
 
 ```powershell
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release `
-  "-DInspireFace_DIR=C:/SDKs/InspireFace/lib/cmake/InspireFace"
+  "-DInspireFace_DIR=C:/SDKs/inspireface-windows-x64-1.2.4/InspireFace/lib/cmake/InspireFace"
 cmake --build build --parallel 4
 .\build\detect_windows.exe C:\models\Pikachu C:\images\face.jpg
 ```

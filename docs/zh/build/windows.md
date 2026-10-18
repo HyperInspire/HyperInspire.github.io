@@ -1,6 +1,6 @@
 # Windows SDK {#windows-sdk}
 
-使用 Visual Studio 2022 构建 Windows **x64 CPU** SDK。它提供 C 和 C++ 接口，可用于图像读取、跟踪、识别、关键点和可选分析。Python 用户可以直接安装已发布的 Windows 包，见 [Windows 接入](../using-with/windows.md)。
+Windows **x64 CPU** SDK 已提供 [1.2.4 预编译包](../using-with/windows.md#download-the-native-sdk)，包含 C 和 C++ 接口，可用于图像读取、跟踪、识别、关键点和可选分析。本章介绍如何使用 Visual Studio 2022 自行构建 SDK。Python 用户可以直接安装已发布的 Windows 包，见 [Windows 接入](../using-with/windows.md)。
 
 ## 准备工具 {#prepare-the-tools}
 
@@ -24,10 +24,10 @@
 
 ## 获取源码 {#get-the-source}
 
-Windows 构建入口目前位于 Develop 仓库的 [`feature/win` 分支](https://github.com/HyperInspire/InspireFace/tree/feature/win)。获取该分支及其依赖：
+官方 [v1.2.4 发布标签](https://github.com/HyperInspire/InspireFace/tree/v1.2.4)已包含 Windows 构建入口。获取该版本及其依赖：
 
 ```powershell
-git clone --branch feature/win --single-branch https://github.com/HyperInspire/InspireFace.git
+git clone --branch v1.2.4 --single-branch https://github.com/HyperInspire/InspireFace.git
 cd InspireFace
 git clone --recurse-submodules https://github.com/tunmx/inspireface-3rdparty.git 3rdparty
 ```

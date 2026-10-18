@@ -10,7 +10,7 @@ For CPU deployment and acceleration options, see [x86 CPU](../using-with/x86.md)
 
 The [Windows C/C++ SDK](../using-with/windows.md) already includes the matching image-processing headers and implementation. Link `InspireFace::InspireFace` when using these APIs inside an InspireFace application; a separate InspireCV installation is only needed for standalone use.
 
-The four-channel `SwapRB()` and expanded x86 acceleration described below are available in the latest standalone InspireCV source. InspireFace has not yet updated its bundled dependency to include them.
+The four-channel `SwapRB()` and expanded x86 acceleration described below are included in [InspireCV revision 45d58606](https://github.com/tunmx/InspireCV/tree/45d58606baf810dfd0b483ca0088a895052d347f), which is also selected by InspireFace's current third-party source. When updating an installed SDK, keep its headers and libraries together; available acceleration paths depend on the target CPU and build options.
 
 ## Build and link
 

@@ -10,7 +10,7 @@ CPU 部署和加速选项见 [x86 CPU](../using-with/x86.md) 与 [ARM](../using-
 
 [Windows C/C++ SDK](../using-with/windows.md) 已包含配套的图像处理头文件与实现。在 InspireFace 应用中直接链接 `InspireFace::InspireFace` 即可；独立使用 InspireCV 时，再按下面的方法单独构建。
 
-下文的四通道 `SwapRB()` 和扩展后的 x86 加速支持已进入独立 InspireCV 的最新源码，InspireFace 内置的依赖版本尚未同步这些更新。
+下文的四通道 `SwapRB()` 和扩展后的 x86 加速支持已包含在 [InspireCV 45d58606](https://github.com/tunmx/InspireCV/tree/45d58606baf810dfd0b483ca0088a895052d347f) 中，InspireFace 当前的第三方依赖源码也已使用该版本。更新已安装的 SDK 时，头文件和库应一起更新；可用的加速路径取决于目标 CPU 和构建选项。
 
 ## 构建与链接 {#build-and-link}
 

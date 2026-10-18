@@ -4,7 +4,7 @@ Use a prebuilt SDK when its platform, backend and API version fit your applicati
 
 ## Prebuilt SDKs {#prebuilt-sdks}
 
-The current [GitHub release is v1.2.4](https://github.com/HyperInspire/InspireFace/releases/tag/v1.2.4). The files below contain the native SDK for Linux, Android, Apple and HarmonyOS. Python uses **1.2.4.post3**, including a Windows x64 wheel. The Android AAR remains **1.2.4.post1**. Both contain native SDK **1.2.4**; their installation links are [listed below](#python-and-android-packages).
+The current [GitHub release is v1.2.4](https://github.com/HyperInspire/InspireFace/releases/tag/v1.2.4). The files below contain the native SDK for Windows, Linux, Android, Apple and HarmonyOS. Python uses **1.2.4.post3**, including a Windows x64 wheel. The Android AAR remains **1.2.4.post1**. Both contain native SDK **1.2.4**; their installation links are [listed below](#python-and-android-packages).
 
 ::: tip Use the packaged SDK
 The **1.2.4** downloads provide the snapshot, capture and diagnostic APIs used in these guides. Use the headers and libraries from the same archive. Build from source when changing the backend, toolchain or minimum OS version.
@@ -14,12 +14,13 @@ The **1.2.4** downloads provide the snapshot, capture and diagnostic APIs used i
 
 | Platform | Backend | Download |
 | --- | --- | --- |
+| Windows x64 | CPU / MNN | [C/C++ SDK](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-windows-x64-1.2.4.zip) · [SHA-256](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-windows-x64-1.2.4.zip.sha256) |
 | Linux x86_64 | CPU | [Ubuntu 18.04](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-linux-x86-ubuntu18-1.2.4.zip) · [manylinux2014](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-linux-x86-manylinux2014-1.2.4.zip) |
 | Linux ARM64 | CPU | [aarch64](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-linux-aarch64-1.2.4.zip) |
 | Linux ARMv7 | CPU | [armhf](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-linux-armv7-armhf-1.2.4.zip) |
 | macOS / iOS | CPU | [Apple XCFrameworks + C/C++](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-apple-1.2.4.zip) |
 | Android | CPU | [Native SDK + Java/JNI](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-android-1.2.4.zip) |
-| HarmonyOS ARM64 | CPU | [Native SDK + HAR project](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-harmonyos-arm64-v8a-1.2.4.zip) |
+| HarmonyOS ARM64 | CPU | [Native SDK + HAR project](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-harmonyos-arm64-v8a-1.2.4.zip) · [SHA-256](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-harmonyos-arm64-v8a-1.2.4.zip.sha256) |
 | Linux x86_64 | TensorRT | [CUDA 12.2 / Ubuntu 22.04](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-linux-tensorrt-cuda12.2_ubuntu22.04-1.2.4.zip) |
 | Linux ARM64 | RK356x / RK3588 | [aarch64 / RKNPU2](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-linux-aarch64-rk356x-rk3588-1.2.4.zip) |
 | Linux ARMv7 | RV1109 / RV1126 | [armhf / RKNPU1](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-linux-armv7-rv1109rv1126-armhf-1.2.4.zip) |
@@ -28,7 +29,7 @@ The **1.2.4** downloads provide the snapshot, capture and diagnostic APIs used i
 
 </div>
 
-The CUDA/Ubuntu label above is the release asset name; check the library's actual dependencies on the deployment machine. The HarmonyOS archive includes an arm64 native SDK and a staged HAR project with its Node-API library; see [HarmonyOS integration](../using-with/harmonyos.md) to import it. Windows x64 CPU is available through PyPI and the [Windows source build](./windows.md). CoreML and standalone desktop Java have their own build guides below.
+The CUDA/Ubuntu label above is the release asset name; check the library's actual dependencies on the deployment machine. The HarmonyOS archive includes an arm64 native SDK and a staged HAR project with its Node-API library; see [HarmonyOS integration](../using-with/harmonyos.md) to import it. For Windows x64 CPU, use the [prebuilt C/C++ SDK](../using-with/windows.md#download-the-native-sdk), install the Python package from PyPI, or [build from source](./windows.md). CoreML and standalone desktop Java have their own build guides below.
 
 Choose the library for the **application process**, including its architecture and C runtime. A 64-bit device can still run a 32-bit application. Keep each archive’s headers and libraries together, and check the platform guide before linking static frameworks or GPU/NPU libraries.
 

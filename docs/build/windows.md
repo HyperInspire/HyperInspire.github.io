@@ -1,6 +1,6 @@
 # Windows SDK {#windows-sdk}
 
-Build the Windows **x64 CPU** SDK with Visual Studio 2022. It provides the C and C++ APIs, including image loading, tracking, recognition, landmarks and optional analysis. Python users can install the published Windows package directly; see [Windows integration](../using-with/windows.md).
+The Windows **x64 CPU** SDK is available as a [prebuilt 1.2.4 package](../using-with/windows.md#download-the-native-sdk). It provides the C and C++ APIs, including image loading, tracking, recognition, landmarks and optional analysis. This chapter covers building a custom SDK with Visual Studio 2022. Python users can install the published Windows package directly; see [Windows integration](../using-with/windows.md).
 
 ## Prepare the tools {#prepare-the-tools}
 
@@ -24,10 +24,10 @@ The current build entry point targets x64 CPU inference. Windows x86, ARM64, CUD
 
 ## Get the source {#get-the-source}
 
-The Windows build entry point is currently on the Develop repository’s [`feature/win` branch](https://github.com/HyperInspire/InspireFace/tree/feature/win). Get that branch and its dependencies:
+The official [v1.2.4 release tag](https://github.com/HyperInspire/InspireFace/tree/v1.2.4) includes the Windows build entry point. Get that version and its dependencies:
 
 ```powershell
-git clone --branch feature/win --single-branch https://github.com/HyperInspire/InspireFace.git
+git clone --branch v1.2.4 --single-branch https://github.com/HyperInspire/InspireFace.git
 cd InspireFace
 git clone --recurse-submodules https://github.com/tunmx/inspireface-3rdparty.git 3rdparty
 ```

@@ -4,7 +4,7 @@
 
 ## 预编译 SDK {#prebuilt-sdks}
 
-当前 [GitHub Release 为 v1.2.4](https://github.com/HyperInspire/InspireFace/releases/tag/v1.2.4)，下方提供 Linux、Android、Apple 和 HarmonyOS 的原生 SDK。Python 包当前为 **1.2.4.post3**，包含 Windows x64 wheel；Android AAR 仍为 **1.2.4.post1**。两者的原生 SDK 同为 **1.2.4**，安装方式见[下方说明](#python-and-android-packages)。
+当前 [GitHub Release 为 v1.2.4](https://github.com/HyperInspire/InspireFace/releases/tag/v1.2.4)，下方提供 Windows、Linux、Android、Apple 和 HarmonyOS 的原生 SDK。Python 包当前为 **1.2.4.post3**，包含 Windows x64 wheel；Android AAR 仍为 **1.2.4.post1**。两者的原生 SDK 同为 **1.2.4**，安装方式见[下方说明](#python-and-android-packages)。
 
 ::: tip 直接使用预编译包
 **1.2.4** 下载包已提供文档中的快照、抓拍和诊断接口，使用同一个包内的头文件和库即可。需要更换后端、工具链或调整最低系统版本时，再从源码构建。
@@ -14,12 +14,13 @@
 
 | Platform | Backend | Download |
 | --- | --- | --- |
+| Windows x64 | CPU / MNN | [C/C++ SDK](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-windows-x64-1.2.4.zip) · [SHA-256](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-windows-x64-1.2.4.zip.sha256) |
 | Linux x86_64 | CPU | [Ubuntu 18.04](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-linux-x86-ubuntu18-1.2.4.zip) · [manylinux2014](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-linux-x86-manylinux2014-1.2.4.zip) |
 | Linux ARM64 | CPU | [aarch64](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-linux-aarch64-1.2.4.zip) |
 | Linux ARMv7 | CPU | [armhf](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-linux-armv7-armhf-1.2.4.zip) |
 | macOS / iOS | CPU | [Apple XCFrameworks + C/C++](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-apple-1.2.4.zip) |
 | Android | CPU | [Native SDK + Java/JNI](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-android-1.2.4.zip) |
-| HarmonyOS ARM64 | CPU | [Native SDK + HAR project](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-harmonyos-arm64-v8a-1.2.4.zip) |
+| HarmonyOS ARM64 | CPU | [Native SDK + HAR project](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-harmonyos-arm64-v8a-1.2.4.zip) · [SHA-256](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-harmonyos-arm64-v8a-1.2.4.zip.sha256) |
 | Linux x86_64 | TensorRT | [CUDA 12.2 / Ubuntu 22.04](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-linux-tensorrt-cuda12.2_ubuntu22.04-1.2.4.zip) |
 | Linux ARM64 | RK356x / RK3588 | [aarch64 / RKNPU2](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-linux-aarch64-rk356x-rk3588-1.2.4.zip) |
 | Linux ARMv7 | RV1109 / RV1126 | [armhf / RKNPU1](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-linux-armv7-rv1109rv1126-armhf-1.2.4.zip) |
@@ -28,7 +29,7 @@
 
 </div>
 
-表中的 CUDA / Ubuntu 版本来自发布文件名，部署时仍需检查库的实际依赖。HarmonyOS 包内包含 arm64 原生 SDK、HAR 工程和配套的 Node-API 库，导入方式见 [HarmonyOS 接入](../using-with/harmonyos.md)。Windows x64 CPU 可通过 PyPI 安装，也可以[从源码构建 C/C++ SDK](./windows.md)。CoreML 与独立桌面 Java 的构建方式见下方对应章节。
+表中的 CUDA / Ubuntu 版本来自发布文件名，部署时仍需检查库的实际依赖。HarmonyOS 包内包含 arm64 原生 SDK、HAR 工程和配套的 Node-API 库，导入方式见 [HarmonyOS 接入](../using-with/harmonyos.md)。Windows x64 CPU 可使用[预编译 C/C++ SDK](../using-with/windows.md#download-the-native-sdk)、通过 PyPI 安装 Python 包，或[从源码构建](./windows.md)。CoreML 与独立桌面 Java 的构建方式见下方对应章节。
 
 按**应用进程**选择架构和 C 运行库。64 位设备上的应用也可能是 32 位进程。使用同一压缩包中的头文件和库；静态 Framework、GPU / NPU 库的链接方式见对应平台章节。
 

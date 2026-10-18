@@ -6,12 +6,12 @@ Audit the public APIs, build scripts, examples and tests in the local source
 checkouts, then update the English and Chinese developer documentation. Source repositories
 are read-only inputs to this task.
 
-- InspireFace: `d601574cd75ea9c416cc8f7bd509a50054c092f1` (2026-10-03 audit), CMake version 1.2.4; Windows additions are on `feature/win`.
-- Published native SDK: `v1.2.4`, tag commit `98f9e958c11ec9254ca68eaa251a6caf8842c5ba` (release assets checked 2026-09-30).
+- InspireFace: `645f74f776b83456f23c226815cef39608df4d0b` (2026-10-19 audit), CMake version 1.2.4; Windows support is included in the release.
+- Published native SDK: `v1.2.4`, remote tag commit `645f74f776b83456f23c226815cef39608df4d0b`, published 2026-10-17 (release assets checked 2026-10-19).
 - Android SDK: `7675e3eb339bfb93d07586a6bfbff24a94cd85fa`, tag `v1.2.4.post1`.
-- Current documentation revision: 1.2.4.d9. Earlier dated sections retain their audit baselines.
+- Current documentation revision: 1.2.4.d10. Earlier dated sections retain their audit baselines.
 - Standalone InspireCV: `45d58606baf810dfd0b483ca0088a895052d347f` (2026-10-03 audit), README version 1.0.2.
-- InspireFace bundled InspireCV: `c452da47f344391b5009199077ae1d23f9bdc0d5`; newer standalone capabilities are labeled separately.
+- Current third-party source selects InspireCV `45d58606baf810dfd0b483ca0088a895052d347f`; the checked Windows and HarmonyOS release packages contain its updated Task header. The local InspireFace dependency checkout still uses `c452da47f344391b5009199077ae1d23f9bdc0d5`.
 - Preserve existing document URLs, the default light theme, Android demo QR code
   and the recently selected cloud illustrations.
 - Keep PLUS information brief and separate from the SDK learning path.
@@ -1055,3 +1055,61 @@ Validation:
   viewport override was reset and the temporary preview server stopped.
 - Source working trees remained clean. No commit or remote deployment was
   performed as part of this documentation update.
+
+
+## Published 1.2.4 SDK synchronization (2026-10-19, 1.2.4.d10)
+
+Compared the live 1.2.4.d9 site with the current GitHub release, source, PyPI
+metadata and Android tags. The remote v1.2.4 tag now points to 645f74f7;
+the local tag still points to the older 98f9e958. The current source tree is
+identical to the d601574c baseline already covered by d9, so this update focuses
+on distribution, source selection and dependency-version guidance.
+
+Changes:
+
+- Updated eight English/Chinese page pairs. Added the Windows x64 CPU ZIP and
+  checksum to downloads and linked the prebuilt path from Windows build and
+  integration pages. The integration guide now explains checksum comparison,
+  extraction and the exact CMake package path inside the published archive.
+- Added the existing HarmonyOS checksum to the download table and included
+  Windows in the Introduction's prebuilt-platform list.
+- Changed recommended release source commands to the official v1.2.4 tag.
+  The InsightFace mirror still declares 1.2.3. Removed the obsolete feature/win
+  branch requirement; Windows is in the current release.
+- Corrected the HarmonyOS CMake guidance: the current release's HAR script
+  includes CMAKE_POLICY_VERSION_MINIMUM=3.5.
+- Updated InspireCV and x86 guidance to reflect the current third-party source's
+  45d58606 dependency. Retained the need to check an installed SDK's dependencies
+  and build options rather than infer SIMD availability from its version alone.
+- Kept Python at 1.2.4.post3 and Android at 1.2.4.post1. Updated both npm manifests
+  to 1.2.4-d10 and the README's next-release example to d11.
+
+Evidence:
+
+- Official release metadata lists 13 SDK ZIPs and Windows/HarmonyOS SHA-256 files.
+  Every documented 1.2.4 asset name was compared with this list.
+- Downloaded Windows and HarmonyOS ZIPs passed their published SHA-256 checks
+  and ZIP integrity checks. The Windows package includes the documented DLL,
+  import library, headers and relocatable InspireFace::InspireFace CMake target.
+- The current third-party repository selects InspireCV 45d58606. Both checked
+  release archives contain include/inspirecv/task/data.h from that revision,
+  rather than the older c452da47 header.
+- The release workflow for commit 645f74f7 completed successfully on 2026-10-17:
+  https://github.com/HyperInspire/InspireFace/actions/runs/39011598529
+- Audit downloads and metadata are under /tmp/inspireface-release-audit-20261019/.
+  Source repositories and their local tags were not changed.
+
+Validation:
+
+- npm run docs:check passed: 95 HTML pages, 17,344 local references, 92 Python
+  fences, 47 language pairs, 422 matching code fences and 44 synchronized inline
+  examples. Both manifests, HTML metadata and localized badges show 1.2.4.d10.
+- The current release provides all 15 documented asset names (13 ZIPs and two
+  checksum files). Obsolete feature/win and HarmonyOS CMake restriction text
+  was removed from both languages.
+- The changed Windows CMake path matches the downloaded archive. Windows and
+  HarmonyOS execution was not repeated on target devices for this content update.
+- The build reports the existing old Browserslist dataset; it does not prevent
+  compilation. Dependency upgrades remain outside this update.
+- Browser preview confirmed the Windows download section and SDK table render
+  correctly with the d10 version badge.

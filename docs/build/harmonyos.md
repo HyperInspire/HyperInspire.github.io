@@ -36,7 +36,7 @@ For ArkTS, go straight to [adding the HAR to an app](#add-the-har-to-an-app) usi
 
 ## Prepare the Native SDK {#prepare-the-native-sdk}
 
-Complete [source preparation](./source.md), then install an OpenHarmony Native SDK, CMake 3.20–3.x, Make and Node.js. Use CMake 3.x with the `v1.2.4` tag: its HAR script does not pass the additional policy setting needed by its dependencies under CMake 4. DevEco Studio is used later to integrate and package the HAR module.
+Complete [source preparation](./source.md), then install an OpenHarmony Native SDK, CMake 3.20 or newer, Make and Node.js. The HAR script in the current `v1.2.4` release passes `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` for dependencies with older policy settings under CMake 4. DevEco Studio is used later to integrate and package the HAR module.
 
 Set `OHOS_NATIVE_HOME` to the Native SDK directory containing the toolchain file:
 

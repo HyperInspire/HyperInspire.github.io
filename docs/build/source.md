@@ -8,11 +8,11 @@ Choose one of the following sources.
 
 ### Release version (recommended) {#release-source}
 
-For regular integration, start with the Release version in [InsightFace](https://github.com/deepinsight/insightface/tree/master/cpp-package/inspireface). Enter `cpp-package/inspireface` before downloading the dependencies:
+For the 1.2.4 APIs and build scripts used in these guides, check out the official [v1.2.4 release tag](https://github.com/HyperInspire/InspireFace/tree/v1.2.4), then download its dependencies:
 
 ```bash
-git clone https://github.com/deepinsight/insightface.git
-cd insightface/cpp-package/inspireface
+git clone --branch v1.2.4 --single-branch https://github.com/HyperInspire/InspireFace.git
+cd InspireFace
 git clone --recurse-submodules https://github.com/tunmx/inspireface-3rdparty.git 3rdparty
 ```
 
@@ -26,7 +26,7 @@ cd InspireFace
 git clone --recurse-submodules https://github.com/tunmx/inspireface-3rdparty.git 3rdparty
 ```
 
-Continue with the build guide for your target platform. For Windows, use the source commands in [Build for Windows](./windows.md#get-the-source): its build entry point is currently on `feature/win`.
+Continue with the build guide for your target platform. The 1.2.4 release includes the [Windows build entry point](./windows.md#get-the-source).
 
 ## Prepare the build tools {#prepare-the-build-tools}
 
@@ -38,7 +38,7 @@ Continue with the build guide for your target platform. For Windows, use the sou
 | Build tool | Make or Ninja for direct CMake builds; the Windows PowerShell script uses Ninja. |
 | Platform SDK | MSVC v143 with a Windows SDK, Android NDK, Xcode, OpenHarmony Native SDK or board toolchain as applicable. |
 
-Some bundled dependencies use older CMake policy settings. The direct CMake commands here pass `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` for CMake 4 compatibility. The unified Apple builder also passes this setting. The HarmonyOS HAR script in the `v1.2.4` tag does not pass this setting; use CMake 3.20–3.x when building that version.
+Some bundled dependencies use older CMake policy settings. The direct CMake commands here pass `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` for CMake 4 compatibility. The unified Apple builder and the HarmonyOS HAR script in the current `v1.2.4` release also pass this setting.
 
 ## Build a CPU SDK {#build-a-cpu-sdk}
 

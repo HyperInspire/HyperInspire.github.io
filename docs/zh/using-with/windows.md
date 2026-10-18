@@ -14,9 +14,27 @@ python -m pip install inspireface opencv-python
 
 需要自定义原生库或制作自己的 wheel 时，见 [Python 打包](../build/python.md#windows-wheel)。
 
+## 下载原生 SDK {#download-the-native-sdk}
+
+下载 [Windows x64 CPU SDK ZIP](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-windows-x64-1.2.4.zip) 和对应的 [SHA-256 校验文件](https://github.com/HyperInspire/InspireFace/releases/download/v1.2.4/inspireface-windows-x64-1.2.4.zip.sha256)。包内包含 Release DLL、导入库、C/C++ 头文件和 CMake 包，可直接接入，无需自行编译 SDK。
+
+在下载目录计算 ZIP 的哈希值，并与校验文件中的值比较：
+
+```powershell
+Get-FileHash .\inspireface-windows-x64-1.2.4.zip -Algorithm SHA256
+```
+
+确认一致后解压：
+
+```powershell
+Expand-Archive -LiteralPath .\inspireface-windows-x64-1.2.4.zip -DestinationPath C:\SDKs
+```
+
+SDK 位于 `C:\SDKs\inspireface-windows-x64-1.2.4\InspireFace`。[模型包](../guides/models-and-builds.md#pick-a-resource-pack)需要单独下载。需要更换工具链、构建配置或动态/静态链接方式时，参照 [Windows 构建](../build/windows.md)。
+
 ## 链接应用 {#link-an-application}
 
-按 [Windows 构建](../build/windows.md)生成配套的 x64 SDK。保留完整的 `InspireFace/include/`、`InspireFace/lib/` 和 CMake 包。动态 SDK 中各文件的用途如下：
+使用上方解压后的 SDK 或配套的源码构建产物。保留完整的 `InspireFace/include/`、`InspireFace/lib/` 和 CMake 包。动态 SDK 中各文件的用途如下：
 
 <div class="sdk-table">
 
@@ -55,11 +73,11 @@ endif()
 
 </details>
 
-打开 **x64 Native Tools Command Prompt for VS 2022**，启动 PowerShell，再在应用目录执行。将 `InspireFace_DIR` 改为自己的 SDK 安装路径：
+打开 **x64 Native Tools Command Prompt for VS 2022**，启动 PowerShell，再在应用目录执行。下方路径对应解压后的 1.2.4 包；如果安装在其他位置，请调整 `InspireFace_DIR`：
 
 ```powershell
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release `
-  "-DInspireFace_DIR=C:/SDKs/InspireFace/lib/cmake/InspireFace"
+  "-DInspireFace_DIR=C:/SDKs/inspireface-windows-x64-1.2.4/InspireFace/lib/cmake/InspireFace"
 cmake --build build --parallel 4
 .\build\detect_windows.exe C:\models\Pikachu C:\images\face.jpg
 ```

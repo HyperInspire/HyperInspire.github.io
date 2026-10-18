@@ -36,7 +36,7 @@ ArkTS 接入可以直接使用 `HarmonyOS/har`，跳到[将 HAR 加入应用](#a
 
 ## 准备 Native SDK {#prepare-the-native-sdk}
 
-先完成[源码准备](./source.md)，再安装 OpenHarmony Native SDK、CMake 3.20–3.x、Make 和 Node.js。构建 `v1.2.4` tag 时使用 CMake 3.x：该版本的 HAR 脚本没有传入依赖在 CMake 4 下所需的额外 policy 设置。后续通过 DevEco Studio 接入和打包 HAR 模块。
+先完成[源码准备](./source.md)，再安装 OpenHarmony Native SDK、CMake 3.20 或更新版本、Make 和 Node.js。当前 `v1.2.4` 发布版本的 HAR 脚本已传入 `-DCMAKE_POLICY_VERSION_MINIMUM=3.5`，用于兼容依赖在 CMake 4 下的旧 policy 设置。后续通过 DevEco Studio 接入和打包 HAR 模块。
 
 将 `OHOS_NATIVE_HOME` 指向包含 toolchain 文件的 Native SDK 目录：
 
